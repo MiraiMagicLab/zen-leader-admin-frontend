@@ -9,27 +9,34 @@ export function mapAuthUser(dto: AuthUserDto): AuthUser {
     email: dto.email,
     username: dto.email,
     name: dto.displayName?.trim() || dto.email,
-    role: dto.role,
+    role: dto.roles?.[0] || 'USER',
     avatarUrl: dto.avatarUrl,
   };
 }
 
 export function assertAdminUser(user: AuthUserDto): void {
-  if (user.role?.toUpperCase() !== ADMIN_ROLE) {
+  const hasAdminRole = user.roles?.some(
+    (role) => role.toUpperCase() === ADMIN_ROLE,
+  );
+  if (!hasAdminRole) {
     throw new Error('Tài khoản không có quyền truy cập Admin.');
   }
-  if (!user.isVerified) {
+  
+  const isVerified = user.isVerified ?? user.verified;
+  if (!isVerified) {
     throw new Error('Tài khoản chưa được xác minh email.');
   }
-  if (!user.isActive) {
+
+  const isActive = user.isActive ?? user.active;
+  if (!isActive) {
     throw new Error('Tài khoản đã bị vô hiệu hóa.');
   }
 }
 
-export function unwrapAuthResponse(
-  response: ApiResponse<AuthenticationDto>,
+export function unwrapAuthResponse<T extends { accessToken: string }>(
+  response: ApiResponse<T>,
   fallbackMessage: string,
-): AuthenticationDto {
+): T {
   if (!response.success || !response.data?.accessToken) {
     throw new Error(
       response.errorMessage?.message ??
@@ -40,3 +47,4 @@ export function unwrapAuthResponse(
 
   return response.data;
 }
+

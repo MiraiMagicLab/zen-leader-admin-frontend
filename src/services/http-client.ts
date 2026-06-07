@@ -7,7 +7,7 @@ import axios, {
 import { AUTH_API } from '@/lib/auth/constants';
 import { unwrapAuthResponse } from '@/lib/auth/session';
 import type { ApiResponse } from '@/services/types/api';
-import type { AuthenticationDto } from '@/services/auth/types';
+import type { TokenResponseDto } from '@/services/auth/types';
 import { ROUTES } from '@/routes';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -15,7 +15,7 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
-let refreshPromise: Promise<AuthenticationDto> | null = null;
+let refreshPromise: Promise<TokenResponseDto> | null = null;
 
 export const httpClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -56,9 +56,9 @@ httpClient.interceptors.response.use(
 
     try {
       originalRequest._retry = true;
-      const session = await refreshAccessTokenSingleFlight(refreshToken);
-      useAuthStore.getState().setSession(session);
-      originalRequest.headers.Authorization = `Bearer ${session.accessToken}`;
+      const tokenResponse = await refreshAccessTokenSingleFlight(refreshToken);
+      useAuthStore.getState().setTokens(tokenResponse.accessToken, tokenResponse.refreshToken);
+      originalRequest.headers.Authorization = `Bearer ${tokenResponse.accessToken}`;
       return httpClient(originalRequest);
     } catch {
       useAuthStore.getState().clearSession();
@@ -70,10 +70,10 @@ httpClient.interceptors.response.use(
 
 async function refreshAccessTokenSingleFlight(
   refreshToken: string,
-): Promise<AuthenticationDto> {
+): Promise<TokenResponseDto> {
   if (!refreshPromise) {
     refreshPromise = httpClient
-      .post<ApiResponse<AuthenticationDto>>(AUTH_API.refresh, { refreshToken })
+      .post<ApiResponse<TokenResponseDto>>(AUTH_API.refresh, { refreshToken })
       .then(({ data }) =>
         unwrapAuthResponse(data, 'Phiên đăng nhập đã hết hạn.'),
       )
@@ -84,6 +84,7 @@ async function refreshAccessTokenSingleFlight(
 
   return refreshPromise;
 }
+
 
 function redirectToLogin() {
   if (window.location.pathname !== ROUTES.login) {

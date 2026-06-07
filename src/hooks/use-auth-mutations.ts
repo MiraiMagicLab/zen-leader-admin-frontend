@@ -2,8 +2,8 @@ import { useMutation } from '@tanstack/react-query';
 
 import { queryKeys } from '@/hooks/query-keys';
 import { queryClient } from '@/lib/query-client';
-import { loginApi, logoutApi } from '@/services/auth';
-import type { LoginRequest } from '@/services/auth';
+import { loginApi, logoutApi, getUserMeApi } from '@/services/auth';
+import type { LoginRequest, AuthenticationDto } from '@/services/auth';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -12,10 +12,18 @@ export function useLoginMutation() {
 
   return useMutation({
     mutationKey: queryKeys.auth.login(),
-    mutationFn: (payload: LoginRequest) => loginApi(payload),
+    mutationFn: async (payload: LoginRequest): Promise<AuthenticationDto> => {
+      const tokenResponse = await loginApi(payload);
+      const user = await getUserMeApi(tokenResponse.accessToken);
+      return {
+        ...tokenResponse,
+        user,
+      };
+    },
     onSuccess: setSession,
   });
 }
+
 
 export function useLogoutMutation() {
   const clearSession = useAuthStore((state) => state.clearSession);

@@ -56,7 +56,7 @@ export function LoginPage() {
     const password = String(formData.get('password') ?? '');
 
     loginMutation.mutate(
-      { email, password },
+      { email, passwordHash: password },
       {
         onSuccess: () => navigate(ROUTES.home, { replace: true }),
         onError: (err) => setError(getAuthMutationErrorMessage(err)),

@@ -18,6 +18,7 @@ type AuthState = {
   accessToken: string | null;
   refreshToken: string | null;
   setSession: (session: AuthenticationDto) => void;
+  setTokens: (accessToken: string, refreshToken: string) => void;
   clearSession: () => void;
 };
 
@@ -37,6 +38,13 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
+      setTokens: (accessToken, refreshToken) => {
+        set({
+          accessToken,
+          refreshToken,
+        });
+      },
+
       clearSession: () => {
         set({
           user: null,
@@ -45,6 +53,7 @@ export const useAuthStore = create<AuthState>()(
         });
       },
     }),
+
     {
       name: 'lucy-admin-auth',
       partialize: (state) => ({
