@@ -1,0 +1,184 @@
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
+import { RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { PageHeader } from '@/components/admin/page-header';
+import { DataTable } from '@/components/data-table/data-table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { queryKeys } from '@/hooks/query-keys';
+import { formatDateTime } from '@/lib/format';
+import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
+import { paymentsApi } from '@/services/payments/payments-api';
+import type { AdminPaymentOrderResponse } from '@/services/types/domain';
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'PENDING', label: 'PENDING' },
+  { value: 'PAID', label: 'PAID' },
+  { value: 'ENROLL_FAILED', label: 'ENROLL_FAILED' },
+  { value: 'EXPIRED', label: 'EXPIRED' },
+  { value: 'CANCELLED', label: 'CANCELLED' },
+];
+
+export function PaymentsPage() {
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(0);
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const ordersQuery = useQuery({
+    queryKey: queryKeys.payments.list(page, statusFilter),
+    queryFn: () =>
+      paymentsApi.listOrders(
+        page,
+        20,
+        statusFilter === 'all' ? undefined : statusFilter,
+      ),
+  });
+
+  const retryMutation = useMutation({
+    mutationFn: (orderId: string) => paymentsApi.retryEnrollment(orderId),
+    onSuccess: () => {
+      toast.success('Đã thử ghi danh lại.');
+      void queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const columns = useMemo<ColumnDef<AdminPaymentOrderResponse>[]>(
+    () => [
+      {
+        accessorKey: 'orderId',
+        header: 'Mã đơn',
+        cell: ({ row }) => (
+          <span className="font-mono text-xs">{row.original.orderId.slice(0, 8)}…</span>
+        ),
+      },
+      {
+        id: 'user',
+        header: 'Người dùng',
+        cell: ({ row }) => (
+          <div>
+            <p className="font-medium">{row.original.userDisplayName}</p>
+            <p className="text-muted-foreground text-xs">{row.original.userEmail}</p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'courseRunCode',
+        header: 'Lớp chạy',
+      },
+      {
+        accessorKey: 'amount',
+        header: 'Số tiền',
+        cell: ({ row }) =>
+          `${row.original.amount.toLocaleString()} ${row.original.currency}`,
+      },
+      {
+        accessorKey: 'status',
+        header: 'Trạng thái',
+        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+      },
+      {
+        accessorKey: 'enrollmentActive',
+        header: 'Ghi danh',
+        cell: ({ row }) =>
+          row.original.enrollmentActive ? (
+            <Badge>Active</Badge>
+          ) : (
+            <Badge variant="outline">Chưa</Badge>
+          ),
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Tạo lúc',
+        cell: ({ row }) => formatDateTime(row.original.createdAt),
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) =>
+          row.original.status === 'ENROLL_FAILED' ||
+          (row.original.status === 'PAID' && !row.original.enrollmentActive) ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={retryMutation.isPending}
+              onClick={() => retryMutation.mutate(row.original.orderId)}
+            >
+              Retry ghi danh
+            </Button>
+          ) : null,
+      },
+    ],
+    [retryMutation],
+  );
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        title="Thanh toán"
+        description="Theo dõi đơn hàng và xử lý lỗi ghi danh sau thanh toán."
+        actions={
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void ordersQuery.refetch()}
+            >
+              <RefreshCw className="mr-2 size-4" />
+              Làm mới
+            </Button>
+          </div>
+        }
+      />
+
+      <DataTable
+        columns={columns}
+        data={ordersQuery.data?.data ?? []}
+        isLoading={ordersQuery.isLoading}
+        emptyMessage="Chưa có đơn thanh toán."
+      />
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 0}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Trang trước
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page + 1 >= (ordersQuery.data?.totalPages ?? 1)}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Trang sau
+        </Button>
+      </div>
+    </div>
+  );
+}

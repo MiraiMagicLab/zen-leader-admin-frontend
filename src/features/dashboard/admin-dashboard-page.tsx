@@ -1,118 +1,229 @@
-import { useState } from 'react';
-import { Activity, DollarSign, Eye, Users } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import {
+  Activity,
+  Bell,
+  BookOpen,
+  CalendarDays,
+  CreditCard,
+  GraduationCap,
+  Layers,
+  ShieldAlert,
+  Sparkles,
+  Users,
+  Video,
+} from 'lucide-react';
 
-import { AdminSidebar } from '@/components/ui/admin-sidebar';
-import { DashboardCard } from '@/components/ui/dashboard-card';
-import { DashboardHeader } from '@/components/ui/dashboard-header';
-import { QuickActions } from '@/components/ui/quick-actions';
-import { RecentActivity } from '@/components/ui/recent-activity';
-import { RevenueChart } from '@/components/ui/revenue-chart';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { SystemStatus } from '@/components/ui/system-status';
-import { UsersTable } from '@/components/ui/users-table';
+import { QuickLinks } from '@/components/admin/quick-links';
+import { StatCard } from '@/components/admin/stat-card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { queryKeys } from '@/hooks/query-keys';
+import { BRAND } from '@/lib/brand/constants';
+import { formatNumber } from '@/lib/format';
+import { ROUTES } from '@/routes/paths';
+import { courseRunsApi } from '@/services/course-runs/course-runs-api';
+import { coursesApi } from '@/services/courses/courses-api';
+import { eventsApi } from '@/services/events/events-api';
+import { programsApi } from '@/services/programs/programs-api';
+import { getUsersApi } from '@/services/users/users-api';
+import { useAuthStore } from '@/stores/auth-store';
 
-const stats = [
+const quickLinks = [
   {
-    title: 'Total Users',
-    value: '12,345',
-    change: '+12%',
-    changeType: 'positive' as const,
+    title: 'Quản lý người dùng',
+    description: 'Phân quyền, khóa tài khoản và xem hồ sơ học viên.',
+    href: ROUTES.users,
     icon: Users,
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10',
   },
   {
-    title: 'Revenue',
-    value: '$45,678',
-    change: '+8.2%',
-    changeType: 'positive' as const,
-    icon: DollarSign,
-    color: 'text-green-500',
-    bgColor: 'bg-green-500/10',
+    title: 'Tạo khóa học',
+    description: 'Thêm chương trình, khóa học và lớp chạy mới.',
+    href: ROUTES.courses,
+    icon: BookOpen,
   },
   {
-    title: 'Active Sessions',
-    value: '2,456',
-    change: '+15%',
-    changeType: 'positive' as const,
-    icon: Activity,
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-500/10',
+    title: 'Sự kiện & live',
+    description: 'Lên lịch sự kiện và quản lý phiên live.',
+    href: ROUTES.events,
+    icon: CalendarDays,
   },
   {
-    title: 'Page Views',
-    value: '34,567',
-    change: '-2.4%',
-    changeType: 'negative' as const,
-    icon: Eye,
-    color: 'text-orange-500',
-    bgColor: 'bg-orange-500/10',
+    title: 'Kiểm duyệt nội dung',
+    description: 'Xử lý báo cáo UGC và tin nhắn lớp học.',
+    href: ROUTES.moderation,
+    icon: ShieldAlert,
   },
 ];
 
 export function AdminDashboardPage() {
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.name?.trim() || 'Admin';
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
-  };
+  const statsQuery = useQuery({
+    queryKey: queryKeys.dashboard.stats(),
+    queryFn: async () => {
+      const [users, programs, courses, runs, events] = await Promise.all([
+        getUsersApi({ page: 1, size: 1 }),
+        programsApi.getAll(),
+        coursesApi.getAll(),
+        courseRunsApi.getAll(),
+        eventsApi.getAll(0, 1, true),
+      ]);
+      return {
+        users: users.totalElement,
+        programs: programs.length,
+        courses: courses.length,
+        runs: runs.length,
+        events: events.totalElements,
+      };
+    },
+  });
 
-  const handleExport = () => {
-    console.log('Exporting data...');
-  };
-
-  const handleAddUser = () => {
-    console.log('Adding new user...');
-  };
+  const stats = statsQuery.data;
+  const isLoading = statsQuery.isLoading;
 
   return (
-    <SidebarProvider>
-      <AdminSidebar />
-      <SidebarInset>
-        <DashboardHeader
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onRefresh={handleRefresh}
-          onExport={handleExport}
-          isRefreshing={isRefreshing}
+    <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/12 via-card to-card px-6 py-8 shadow-sm md:px-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-20 -right-16 size-56 rounded-full bg-primary/10 blur-3xl"
         />
-        <div className="flex flex-1 flex-col gap-2 p-2 pt-0 sm:gap-4 sm:p-4">
-          <div className="min-h-[calc(100vh-4rem)] flex-1 rounded-lg p-3 sm:rounded-xl sm:p-4 md:p-6">
-            <div className="mx-auto max-w-6xl space-y-4 sm:space-y-6">
-              <div className="px-2 sm:px-0">
-                <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-                  Welcome Admin
-                </h1>
-                <p className="text-muted-foreground text-sm sm:text-base">
-                  Here&apos;s what&apos;s happening with your platform today.
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-16 -left-10 size-40 rounded-full bg-primary/5 blur-2xl"
+        />
+        <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-3">
+            <div className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium">
+              <Sparkles className="size-3.5" />
+              Bảng điều khiển quản trị
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
+                Xin chào, {displayName}
+              </h1>
+              <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed md:text-base">
+                Tổng quan hoạt động nền tảng {BRAND.name} — theo dõi người dùng,
+                nội dung học và vận hành hệ thống.
+              </p>
+            </div>
+          </div>
+          <div className="bg-background/70 grid grid-cols-2 gap-3 rounded-xl border p-4 backdrop-blur-sm sm:min-w-[240px]">
+            <div>
+              <p className="text-muted-foreground text-xs">Sự kiện</p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-7 w-10" />
+              ) : (
+                <p className="text-xl font-bold tabular-nums">
+                  {formatNumber(stats?.events ?? 0)}
                 </p>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-                {stats.map((stat, index) => (
-                  <DashboardCard key={stat.title} stat={stat} index={index} />
-                ))}
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-3">
-                <div className="space-y-4 sm:space-y-6 xl:col-span-2">
-                  <RevenueChart />
-                  <UsersTable onAddUser={handleAddUser} />
-                </div>
-                <div className="space-y-4 sm:space-y-6">
-                  <QuickActions
-                    onAddUser={handleAddUser}
-                    onExport={handleExport}
-                  />
-                  <SystemStatus />
-                  <RecentActivity />
-                </div>
-              </div>
+              )}
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Lớp chạy</p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-7 w-10" />
+              ) : (
+                <p className="text-xl font-bold tabular-nums">
+                  {formatNumber(stats?.runs ?? 0)}
+                </p>
+              )}
             </div>
           </div>
         </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">Thống kê nhanh</h2>
+          <p className="text-muted-foreground text-sm">
+            Số liệu tổng hợp từ backend theo thời gian thực.
+          </p>
+        </div>
+        <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="Người dùng"
+            value={formatNumber(stats?.users ?? 0)}
+            icon={Users}
+            href={ROUTES.users}
+            tone="blue"
+            isLoading={isLoading}
+          />
+          <StatCard
+            title="Chương trình"
+            value={formatNumber(stats?.programs ?? 0)}
+            icon={GraduationCap}
+            href={ROUTES.programs}
+            tone="emerald"
+            isLoading={isLoading}
+          />
+          <StatCard
+            title="Khóa học"
+            value={formatNumber(stats?.courses ?? 0)}
+            icon={BookOpen}
+            href={ROUTES.courses}
+            tone="violet"
+            isLoading={isLoading}
+          />
+          <StatCard
+            title="Lớp chạy"
+            value={formatNumber(stats?.runs ?? 0)}
+            icon={Activity}
+            href={ROUTES.courseRuns}
+            tone="amber"
+            isLoading={isLoading}
+          />
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <Card className="shadow-sm xl:col-span-2">
+          <CardHeader>
+            <CardTitle>Thao tác nhanh</CardTitle>
+            <CardDescription>
+              Truy cập nhanh các khu vực quản trị thường dùng.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <QuickLinks items={quickLinks} />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Module vận hành</CardTitle>
+            <CardDescription>Các mục hỗ trợ vận hành hàng ngày.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {[
+              { label: 'Live sessions', icon: Video, href: ROUTES.liveSessions },
+              { label: 'Thông báo broadcast', icon: Bell, href: ROUTES.notifications },
+              { label: 'Thanh toán & đơn hàng', icon: CreditCard, href: ROUTES.payments },
+              { label: 'Lớp chạy đang mở', icon: Layers, href: ROUTES.courseRuns },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className="hover:bg-muted/60 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors"
+                >
+                  <Icon className="text-muted-foreground size-4" />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 }

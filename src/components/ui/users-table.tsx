@@ -15,33 +15,33 @@ import {
 const users = [
   {
     id: 1,
-    name: 'Alex Johnson',
-    email: 'alex@example.com',
-    avatar: 'https://i.pravatar.cc',
+    name: 'Nguyễn Văn An',
+    email: 'nguyen.van.an@zenleader.online',
+    avatar: 'https://i.pravatar.cc/150?u=zen1',
     role: 'Admin',
     status: 'active',
-    joinDate: '2024-01-15',
-    location: 'New York, US',
+    joinDate: '2025-01-15',
+    location: 'Hà Nội, VN',
   },
   {
     id: 2,
-    name: 'Sarah Chen',
-    email: 'sarah@example.com',
-    avatar: 'https://i.pravatar.cc',
-    role: 'User',
+    name: 'Trần Thị Bích',
+    email: 'tran.thi.bich@zenleader.online',
+    avatar: 'https://i.pravatar.cc/150?u=zen2',
+    role: 'Học viên',
     status: 'active',
-    joinDate: '2024-02-20',
-    location: 'San Francisco, US',
+    joinDate: '2025-02-20',
+    location: 'TP. HCM, VN',
   },
   {
     id: 3,
-    name: 'Michael Brown',
-    email: 'michael@example.com',
-    avatar: 'https://i.pravatar.cc',
-    role: 'Moderator',
+    name: 'Lê Minh Cường',
+    email: 'le.minh.cuong@zenleader.online',
+    avatar: 'https://i.pravatar.cc/150?u=zen3',
+    role: 'Giảng viên',
     status: 'inactive',
-    joinDate: '2024-01-08',
-    location: 'London, UK',
+    joinDate: '2025-01-08',
+    location: 'Đà Nẵng, VN',
   },
 ];
 
@@ -54,9 +54,9 @@ export const UsersTable = memo(({ onAddUser }: UsersTableProps) => {
     <div className="border-border bg-card/40 rounded-xl border p-3 sm:p-6">
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h3 className="text-lg font-semibold sm:text-xl">Recent Users</h3>
+          <h3 className="text-lg font-semibold sm:text-xl">Học viên gần đây</h3>
           <p className="text-muted-foreground text-sm">
-            Latest user registrations and activity
+            Đăng ký và hoạt động mới nhất trên nền tảng
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -66,8 +66,8 @@ export const UsersTable = memo(({ onAddUser }: UsersTableProps) => {
           </div>
           <Button variant="outline" size="sm" onClick={onAddUser}>
             <Plus className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Add User</span>
-            <span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">Thêm học viên</span>
+            <span className="sm:hidden">Thêm</span>
           </Button>
         </div>
       </div>
@@ -104,7 +104,7 @@ export const UsersTable = memo(({ onAddUser }: UsersTableProps) => {
                     className={`rounded-full px-2 py-1 text-xs font-medium ${
                       user.role === 'Admin'
                         ? 'bg-purple-500/10 text-purple-500'
-                        : user.role === 'Moderator'
+                        : user.role === 'Giảng viên'
                           ? 'bg-blue-500/10 text-blue-500'
                           : 'bg-gray-500/10 text-gray-500'
                     }`}
@@ -128,7 +128,9 @@ export const UsersTable = memo(({ onAddUser }: UsersTableProps) => {
             <div className="ml-auto flex items-center gap-3">
               <div className="text-muted-foreground flex items-center gap-1 text-xs">
                 <Calendar className="h-3 w-3" />
-                <span>{new Date(user.joinDate).toLocaleDateString()}</span>
+                <span>
+                  {new Date(user.joinDate).toLocaleDateString('vi-VN')}
+                </span>
               </div>
 
               <Button variant="ghost" size="sm" className="ml-auto">

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  LayoutDashboard,
+  GraduationCap,
   Lock,
   ShieldCheck,
   Sparkles,
@@ -26,19 +26,20 @@ import {
   getAuthMutationErrorMessage,
   useLoginMutation,
 } from '@/hooks/use-auth-mutations';
-import { ROUTES } from '@/routes';
+import { BOOTSTRAP_ADMIN, BRAND } from '@/lib/brand/constants';
+import { ROUTES } from '@/routes/paths';
 import { cn } from '@/lib/utils';
 
 const highlights = [
   {
     icon: ShieldCheck,
     title: 'Bảo mật đa lớp',
-    description: 'Phân quyền admin và audit log theo thời gian thực.',
+    description: 'Phân quyền admin, audit log và kiểm soát truy cập theo thời gian thực.',
   },
   {
     icon: Sparkles,
-    title: 'Dashboard thông minh',
-    description: 'Theo dõi KPI, người dùng và hoạt động hệ thống.',
+    title: 'Quản trị LMS',
+    description: 'Theo dõi học viên, khóa học, lớp chạy và hoạt động nền tảng.',
   },
 ];
 
@@ -68,7 +69,6 @@ export function LoginPage() {
 
   return (
     <div className="bg-background relative flex min-h-svh overflow-hidden">
-      {/* Ambient background */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--primary)/0.18,transparent)]"
@@ -83,7 +83,6 @@ export function LoginPage() {
       />
 
       <div className="relative z-10 grid w-full lg:grid-cols-2">
-        {/* Brand panel */}
         <motion.aside
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
@@ -101,14 +100,13 @@ export function LoginPage() {
 
           <div className="relative">
             <div className="bg-primary text-primary-foreground mb-8 flex size-12 items-center justify-center rounded-2xl shadow-lg shadow-primary/25">
-              <LayoutDashboard className="size-6" />
+              <GraduationCap className="size-6" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight xl:text-4xl">
-              Lucy Admin
+              {BRAND.adminTitle}
             </h1>
             <p className="text-muted-foreground mt-3 max-w-md text-base leading-relaxed">
-              Nền tảng quản trị hiện đại — tập trung dữ liệu, vận hành và giám
-              sát trong một không gian làm việc thống nhất.
+              {BRAND.tagline}
             </p>
           </div>
 
@@ -138,11 +136,11 @@ export function LoginPage() {
           </ul>
 
           <p className="text-muted-foreground relative text-xs">
-            © {new Date().getFullYear()} Lucy Platform. Admin Console v0.0.1
+            © {new Date().getFullYear()} {BRAND.copyright}. {BRAND.adminSubtitle}{' '}
+            {BRAND.version}
           </p>
         </motion.aside>
 
-        {/* Form panel */}
         <div className="flex items-center justify-center p-6 sm:p-10">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
@@ -152,11 +150,11 @@ export function LoginPage() {
           >
             <div className="mb-8 flex items-center gap-3 lg:hidden">
               <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-xl shadow-md shadow-primary/20">
-                <LayoutDashboard className="size-5" />
+                <GraduationCap className="size-5" />
               </div>
               <div>
-                <p className="font-semibold">Lucy Admin</p>
-                <p className="text-muted-foreground text-xs">Admin Console</p>
+                <p className="font-semibold">{BRAND.adminTitle}</p>
+                <p className="text-muted-foreground text-xs">{BRAND.adminSubtitle}</p>
               </div>
             </div>
 
@@ -166,13 +164,13 @@ export function LoginPage() {
                   variant="secondary"
                   className="mb-2 w-fit border-primary/20 bg-primary/10 text-primary"
                 >
-                  Secure access
+                  Truy cập bảo mật
                 </Badge>
                 <CardTitle className="text-2xl font-bold tracking-tight">
                   Chào mừng trở lại
                 </CardTitle>
                 <CardDescription className="text-base">
-                  Đăng nhập để truy cập bảng điều khiển quản trị.
+                  Đăng nhập để truy cập bảng điều khiển {BRAND.name}.
                 </CardDescription>
               </CardHeader>
 
@@ -185,15 +183,15 @@ export function LoginPage() {
                   ) : null}
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Email / tài khoản</Label>
                     <div className="relative">
                       <User className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                       <Input
                         id="email"
                         name="email"
-                        type="email"
-                        placeholder="admin@lucy.local"
-                        autoComplete="email"
+                        type="text"
+                        placeholder={BOOTSTRAP_ADMIN.email}
+                        autoComplete="username"
                         required
                         disabled={isSubmitting}
                         className="h-11 bg-background/60 pl-10"
@@ -248,16 +246,16 @@ export function LoginPage() {
                   </p>
                   <p className="mt-1 text-center text-sm font-medium">
                     <span className="text-muted-foreground font-normal">
-                      email{' '}
+                      tài khoản{' '}
                     </span>
-                    admin@lucy.local
+                    {BOOTSTRAP_ADMIN.email}
                     <span className="text-muted-foreground mx-2 font-normal">
                       ·
                     </span>
                     <span className="text-muted-foreground font-normal">
-                      pass{' '}
+                      mật khẩu{' '}
                     </span>
-                    change-me
+                    {BOOTSTRAP_ADMIN.password}
                   </p>
                 </div>
               </CardContent>

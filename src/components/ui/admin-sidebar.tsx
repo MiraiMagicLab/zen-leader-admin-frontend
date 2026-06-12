@@ -1,9 +1,11 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, type ComponentType } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -16,72 +18,140 @@ import {
 import {
   LayoutDashboard,
   Users,
-  BarChart3,
-  FileText,
-  Activity,
-  Database,
-  Shield,
-  Zap,
-  Bell,
+  GraduationCap,
+  BookOpen,
+  CalendarDays,
+  CreditCard,
+  ScrollText,
   Settings,
+  Layers,
+  Video,
+  Bell,
+  ShieldAlert,
 } from 'lucide-react';
+import { BRAND } from '@/lib/brand/constants';
+import { ROUTES } from '@/routes/paths';
 
-const menuItems = [
-  { title: 'Dashboard', icon: LayoutDashboard, href: '#dashboard' },
-  { title: 'Analytics', icon: BarChart3, href: '#analytics' },
-  { title: 'Users', icon: Users, href: '#users' },
-  { title: 'Content', icon: FileText, href: '#content' },
-  { title: 'Activity', icon: Activity, href: '#activity' },
-  { title: 'Database', icon: Database, href: '#database' },
-  { title: 'Security', icon: Shield, href: '#security' },
-  { title: 'Performance', icon: Zap, href: '#performance' },
-  { title: 'Notifications', icon: Bell, href: '#notifications' },
-  { title: 'Settings', icon: Settings, href: '#settings' },
+type MenuItem = {
+  title: string;
+  icon: ComponentType<{ className?: string }>;
+  to: string;
+  end?: boolean;
+};
+
+type MenuGroup = {
+  label: string;
+  items: MenuItem[];
+};
+
+const menuGroups: MenuGroup[] = [
+  {
+    label: 'Tổng quan',
+    items: [
+      { title: 'Dashboard', icon: LayoutDashboard, to: ROUTES.home, end: true },
+    ],
+  },
+  {
+    label: 'Nội dung học',
+    items: [
+      { title: 'Chương trình', icon: GraduationCap, to: ROUTES.programs },
+      { title: 'Khóa học', icon: BookOpen, to: ROUTES.courses },
+      { title: 'Lớp chạy', icon: Layers, to: ROUTES.courseRuns },
+    ],
+  },
+  {
+    label: 'Cộng đồng',
+    items: [
+      { title: 'Sự kiện', icon: CalendarDays, to: ROUTES.events },
+      { title: 'Live sessions', icon: Video, to: ROUTES.liveSessions },
+      { title: 'Thông báo', icon: Bell, to: ROUTES.notifications },
+    ],
+  },
+  {
+    label: 'Vận hành',
+    items: [
+      { title: 'Người dùng', icon: Users, to: ROUTES.users },
+      { title: 'Thanh toán', icon: CreditCard, to: ROUTES.payments },
+      { title: 'Kiểm duyệt', icon: ShieldAlert, to: ROUTES.moderation },
+      { title: 'Audit log', icon: ScrollText, to: ROUTES.auditLogs },
+    ],
+  },
 ];
 
 export const AdminSidebar = memo(() => {
+  const location = useLocation();
+
+  const isActive = (to: string, end?: boolean) => {
+    if (end) {
+      return location.pathname === to;
+    }
+    return location.pathname === to || location.pathname.startsWith(`${to}/`);
+  };
+
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href="#dashboard">
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <LayoutDashboard className="h-5 w-5" />
+              <NavLink to={ROUTES.home}>
+                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg shadow-sm shadow-primary/25">
+                  <GraduationCap className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">Lucy Admin</span>
-                  <span className="truncate text-xs">Admin Panel</span>
+                  <span className="truncate font-semibold">{BRAND.adminTitle}</span>
+                  <span className="text-muted-foreground truncate text-xs">
+                    {BRAND.adminSubtitle}
+                  </span>
                 </div>
-              </a>
+              </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild>
-                      <a href={item.href}>
-                        <Icon />
-                        <span>{item.title}</span>
-                      </a>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menuGroups.map((group) => (
+          <SidebarGroup key={group.label}>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.to, item.end);
+                  return (
+                    <SidebarMenuItem key={item.to}>
+                      <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                        <NavLink to={item.to} end={item.end}>
+                          <Icon />
+                          <span>{item.title}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={isActive(ROUTES.settings)}
+              tooltip="Cài đặt"
+            >
+              <NavLink to={ROUTES.settings}>
+                <Settings />
+                <span>Cài đặt</span>
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

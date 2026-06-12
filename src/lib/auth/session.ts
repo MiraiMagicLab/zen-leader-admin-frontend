@@ -1,4 +1,4 @@
-import type { AuthenticationDto, AuthUserDto } from '@/services/auth/types';
+import type { AuthUserDto } from '@/services/auth/types';
 import type { ApiResponse } from '@/services/types/api';
 import { ADMIN_ROLE } from '@/lib/auth/constants';
 import type { AuthUser } from '@/stores/auth-store';

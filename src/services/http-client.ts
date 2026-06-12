@@ -8,7 +8,7 @@ import { AUTH_API } from '@/lib/auth/constants';
 import { unwrapAuthResponse } from '@/lib/auth/session';
 import type { ApiResponse } from '@/services/types/api';
 import type { TokenResponseDto } from '@/services/auth/types';
-import { ROUTES } from '@/routes';
+import { ROUTES } from '@/routes/paths';
 import { useAuthStore } from '@/stores/auth-store';
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {

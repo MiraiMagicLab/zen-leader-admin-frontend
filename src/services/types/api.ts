@@ -1,4 +1,4 @@
-/** Khớp com.lucy.api.common.dtos.response.ApiResponse */
+/** Khớp com.zenleader.api.common.dtos.response.ApiResponse */
 export type ApiResponse<T> = {
   success: boolean;
   message?: string;
@@ -6,7 +6,7 @@ export type ApiResponse<T> = {
   data?: T;
 };
 
-/** Khớp com.lucy.api.common.dtos.ErrorMessage */
+/** Khớp com.zenleader.api.common.dtos.ErrorMessage */
 export type ApiErrorMessage = {
   errorCode?: string;
   message?: string;

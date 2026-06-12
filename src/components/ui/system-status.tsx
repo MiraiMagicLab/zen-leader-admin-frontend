@@ -6,29 +6,29 @@ import { Shield, Database, Zap, Activity } from 'lucide-react';
 
 const statusItems = [
   {
-    label: 'Server Status',
-    status: 'Online',
+    label: 'Máy chủ API',
+    status: 'Hoạt động',
     color: 'text-green-500',
     icon: Shield,
     percentage: 100,
   },
   {
-    label: 'Database',
-    status: 'Healthy',
+    label: 'Cơ sở dữ liệu',
+    status: 'Ổn định',
     color: 'text-green-500',
     icon: Database,
     percentage: 95,
   },
   {
-    label: 'API Response',
-    status: 'Fast',
+    label: 'Phản hồi API',
+    status: 'Nhanh',
     color: 'text-green-500',
     icon: Zap,
     percentage: 98,
   },
   {
-    label: 'Storage',
-    status: '85% Used',
+    label: 'Lưu trữ (R2)',
+    status: '85% dùng',
     color: 'text-yellow-500',
     icon: Activity,
     percentage: 85,
@@ -38,7 +38,7 @@ const statusItems = [
 export const SystemStatus = memo(() => {
   return (
     <div className="border-border bg-card/40 rounded-xl border p-6">
-      <h3 className="mb-4 text-xl font-semibold">System Status</h3>
+      <h3 className="mb-4 text-xl font-semibold">Trạng thái hệ thống</h3>
       <div className="space-y-4">
         {statusItems.map((item, index) => {
           const Icon = item.icon;
@@ -64,7 +64,7 @@ export const SystemStatus = memo(() => {
                   />
                 </div>
                 <span
-                  className={`text-sm font-medium ${item.color} min-w-[60px] text-right`}
+                  className={`text-sm font-medium ${item.color} min-w-[72px] text-right`}
                 >
                   {item.status}
                 </span>

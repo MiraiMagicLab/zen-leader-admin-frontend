@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { BRAND } from '@/lib/brand/constants';
 import { assertAdminUser, mapAuthUser } from '@/lib/auth/session';
 import type { AuthenticationDto } from '@/services/auth/types';
 
@@ -55,7 +56,7 @@ export const useAuthStore = create<AuthState>()(
     }),
 
     {
-      name: 'lucy-admin-auth',
+      name: BRAND.storageKey,
       partialize: (state) => ({
         user: state.user,
         accessToken: state.accessToken,

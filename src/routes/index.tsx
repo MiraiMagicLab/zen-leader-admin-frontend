@@ -4,15 +4,27 @@ import {
   createBrowserRouter,
 } from 'react-router-dom';
 
+import { AuditLogsPage } from '@/features/audit-logs/audit-logs-page';
 import { LoginPage } from '@/features/authentication';
+import { CourseRunDetailPage } from '@/features/course-runs/course-run-detail-page';
+import { CourseRunsListPage } from '@/features/course-runs/course-runs-list-page';
+import { CourseDetailPage } from '@/features/courses/course-detail-page';
+import { CoursesListPage } from '@/features/courses/courses-list-page';
 import { AdminDashboardPage } from '@/features/dashboard';
+import { EventDetailPage } from '@/features/events/event-detail-page';
+import { EventsListPage } from '@/features/events/events-list-page';
+import { LessonDetailPage } from '@/features/lessons/lesson-detail-page';
+import { LiveSessionsPage } from '@/features/live-sessions/live-sessions-page';
+import { ModerationPage } from '@/features/moderation/moderation-page';
+import { NotificationsPage } from '@/features/notifications/notifications-page';
+import { PaymentsPage } from '@/features/payments/payments-page';
+import { ProgramsListPage } from '@/features/programs/programs-list-page';
+import { SettingsPage } from '@/features/settings/settings-page';
+import { UserDetailPage } from '@/features/users/user-detail-page';
+import { UsersListPage } from '@/features/users/users-list-page';
+import { AdminLayout } from '@/layouts/admin-layout';
+import { ROUTES } from '@/routes/paths';
 import { selectIsAuthenticated, useAuthStore } from '@/stores/auth-store';
-
-/** Đường dẫn app */
-export const ROUTES = {
-  home: '/',
-  login: '/login',
-} as const;
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
@@ -58,8 +70,30 @@ export const appRouter = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
-        path: ROUTES.home,
-        element: <AdminDashboardPage />,
+        element: <AdminLayout />,
+        children: [
+          { path: ROUTES.home, element: <AdminDashboardPage /> },
+          { path: ROUTES.users, element: <UsersListPage /> },
+          { path: '/users/:userId', element: <UserDetailPage /> },
+          { path: ROUTES.programs, element: <ProgramsListPage /> },
+          {
+            path: '/programs/:programId/courses',
+            element: <CoursesListPage />,
+          },
+          { path: ROUTES.courses, element: <CoursesListPage /> },
+          { path: '/courses/:courseId', element: <CourseDetailPage /> },
+          { path: ROUTES.courseRuns, element: <CourseRunsListPage /> },
+          { path: '/course-runs/:runId', element: <CourseRunDetailPage /> },
+          { path: '/lessons/:lessonId', element: <LessonDetailPage /> },
+          { path: ROUTES.events, element: <EventsListPage /> },
+          { path: '/events/:eventId', element: <EventDetailPage /> },
+          { path: ROUTES.payments, element: <PaymentsPage /> },
+          { path: ROUTES.moderation, element: <ModerationPage /> },
+          { path: ROUTES.liveSessions, element: <LiveSessionsPage /> },
+          { path: ROUTES.notifications, element: <NotificationsPage /> },
+          { path: ROUTES.auditLogs, element: <AuditLogsPage /> },
+          { path: ROUTES.settings, element: <SettingsPage /> },
+        ],
       },
     ],
   },
@@ -68,3 +102,5 @@ export const appRouter = createBrowserRouter([
     element: <CatchAllRoute />,
   },
 ]);
+
+export { ROUTES };
