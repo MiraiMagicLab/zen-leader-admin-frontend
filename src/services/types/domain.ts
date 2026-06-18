@@ -264,6 +264,14 @@ export type CreateEventRequest = {
 
 export type UpdateEventRequest = CreateEventRequest;
 
+export type AdminCreateUserRequest = {
+  email: string;
+  displayName: string;
+  passwordHash: string;
+  roles?: string[];
+  verified?: boolean;
+};
+
 export type AdminUpdateUserStatusRequest = {
   isActive: boolean;
 };

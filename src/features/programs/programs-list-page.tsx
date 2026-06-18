@@ -57,7 +57,7 @@ const schema = z.object({
     .trim()
     .min(3, 'Tiêu đề phải có ít nhất 3 ký tự')
     .max(120, 'Tiêu đề tối đa 120 ký tự'),
-  description: z.string().trim().max(2000, 'Mô tả tối đa 2000 ký tự').optional(),
+  description: z.string().trim().max(5000, 'Mô tả tối đa 5000 ký tự').optional(),
 });
 
 type FormState = {
@@ -241,13 +241,13 @@ export function ProgramsListPage() {
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[min(90vh,720px)] max-w-lg flex-col gap-0 overflow-hidden p-0">
+          <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
             <DialogTitle>
               {editing ? 'Sửa chương trình' : 'Thêm chương trình'}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-2">
             <div className="space-y-2">
               <Label htmlFor="code">Mã</Label>
               <Input
@@ -295,10 +295,15 @@ export function ProgramsListPage() {
               <Textarea
                 id="description"
                 value={form.description}
+                rows={5}
+                className="max-h-56"
                 onChange={(e) =>
                   setForm((f) => ({ ...f, description: e.target.value }))
                 }
               />
+              <p className="text-muted-foreground text-xs">
+                {form.description.length}/5000 ký tự
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="thumbnail">Ảnh thumbnail</Label>
@@ -324,7 +329,7 @@ export function ProgramsListPage() {
               <Label>Xuất bản</Label>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0 border-t px-6 py-4">
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               Lưu
             </Button>

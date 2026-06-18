@@ -26,7 +26,7 @@ import {
   getAuthMutationErrorMessage,
   useLoginMutation,
 } from '@/hooks/use-auth-mutations';
-import { BOOTSTRAP_ADMIN, BRAND } from '@/lib/brand/constants';
+import { BRAND } from '@/lib/brand/constants';
 import { ROUTES } from '@/routes/paths';
 import { cn } from '@/lib/utils';
 
@@ -190,7 +190,7 @@ export function LoginPage() {
                         id="email"
                         name="email"
                         type="text"
-                        placeholder={BOOTSTRAP_ADMIN.email}
+                        placeholder="admin@example.com"
                         autoComplete="username"
                         required
                         disabled={isSubmitting}
@@ -239,25 +239,6 @@ export function LoginPage() {
                     ) : null}
                   </Button>
                 </form>
-
-                <div className="bg-muted/50 mt-6 rounded-xl border border-dashed border-border/80 px-4 py-3">
-                  <p className="text-muted-foreground text-center text-xs leading-relaxed">
-                    Tài khoản bootstrap (backend .env)
-                  </p>
-                  <p className="mt-1 text-center text-sm font-medium">
-                    <span className="text-muted-foreground font-normal">
-                      tài khoản{' '}
-                    </span>
-                    {BOOTSTRAP_ADMIN.email}
-                    <span className="text-muted-foreground mx-2 font-normal">
-                      ·
-                    </span>
-                    <span className="text-muted-foreground font-normal">
-                      mật khẩu{' '}
-                    </span>
-                    {BOOTSTRAP_ADMIN.password}
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </motion.div>

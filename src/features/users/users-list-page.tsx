@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { MoreHorizontal, RefreshCw, Search } from 'lucide-react';
+import { MoreHorizontal, Plus, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -49,6 +49,7 @@ import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { UserResponse } from '@/services/types/domain';
 import {
   banUserApi,
+  createUserApi,
   getUsersApi,
   updateUserRolesApi,
   updateUserStatusApi,
@@ -65,6 +66,21 @@ export function UsersListPage() {
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    email: '',
+    displayName: '',
+    password: '',
+    role: 'user',
+  });
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(1);
+      setSearch(keyword.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [keyword]);
 
   const usersQuery = useQuery({
     queryKey: queryKeys.users.list({ page, keyword: search }),
@@ -94,6 +110,24 @@ export function UsersListPage() {
     onSuccess: () => {
       toast.success('Đã cập nhật vai trò.');
       setRolesDialogOpen(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      createUserApi({
+        email: createForm.email.trim(),
+        displayName: createForm.displayName.trim(),
+        passwordHash: createForm.password,
+        roles: [createForm.role],
+        verified: true,
+      }),
+    onSuccess: () => {
+      toast.success('Đã tạo người dùng.');
+      setCreateDialogOpen(false);
+      setCreateForm({ email: '', displayName: '', password: '', role: 'user' });
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -208,41 +242,31 @@ export function UsersListPage() {
         title="Người dùng"
         description="Quản lý tài khoản, trạng thái và phân quyền."
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => void usersQuery.refetch()}
-          >
-            <RefreshCw className="mr-2 size-4" />
-            Làm mới
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="mr-2 size-4" />
+              Thêm người dùng
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void usersQuery.refetch()}
+            >
+              <RefreshCw className="mr-2 size-4" />
+              Làm mới
+            </Button>
+          </div>
         }
       />
 
-      <div className="flex gap-2">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Tìm theo email hoặc tên..."
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                setPage(1);
-                setSearch(keyword.trim());
-              }
-            }}
-          />
-        </div>
-        <Button
-          onClick={() => {
-            setPage(1);
-            setSearch(keyword.trim());
-          }}
-        >
-          Tìm kiếm
-        </Button>
+      <div className="relative max-w-sm">
+        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+        <Input
+          className="pl-9"
+          placeholder="Tìm theo email hoặc tên…"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+        />
       </div>
 
       <DataTable
@@ -275,6 +299,103 @@ export function UsersListPage() {
           </Button>
         </div>
       </div>
+
+      <Dialog
+        open={createDialogOpen}
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (open) {
+            setCreateForm({ email: '', displayName: '', password: '', role: 'user' });
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thêm người dùng</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            autoComplete="off"
+            onSubmit={(e) => {
+              e.preventDefault();
+              createMutation.mutate();
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="create-user-email">Email</Label>
+              <Input
+                id="create-user-email"
+                name="create-user-email"
+                type="email"
+                autoComplete="off"
+                value={createForm.email}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, email: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-user-name">Tên hiển thị</Label>
+              <Input
+                id="create-user-name"
+                name="create-user-name"
+                autoComplete="off"
+                value={createForm.displayName}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, displayName: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-user-password">Mật khẩu</Label>
+              <Input
+                id="create-user-password"
+                name="create-user-password"
+                type="password"
+                autoComplete="new-password"
+                value={createForm.password}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, password: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Vai trò</Label>
+              <Select
+                value={createForm.role}
+                onValueChange={(role) => setCreateForm((f) => ({ ...f, role }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-muted-foreground text-xs">
+              Tài khoản được tạo với trạng thái đã xác minh email, có thể đăng nhập ngay.
+            </p>
+            <DialogFooter>
+              <Button
+                type="submit"
+                disabled={
+                  createMutation.isPending ||
+                  !createForm.email.trim() ||
+                  !createForm.displayName.trim() ||
+                  createForm.password.length < 6
+                }
+              >
+                Tạo tài khoản
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
         <DialogContent>

@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -311,18 +312,16 @@ export function EventDetailPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Bắt đầu</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={editStart}
-                  onChange={(e) => setEditStart(e.target.value)}
+                  onChange={setEditStart}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Kết thúc</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={editEnd}
-                  onChange={(e) => setEditEnd(e.target.value)}
+                  onChange={setEditEnd}
                 />
               </div>
             </div>

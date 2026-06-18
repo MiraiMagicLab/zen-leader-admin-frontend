@@ -1,6 +1,7 @@
-import { apiGet, apiPut } from '@/services/lib/api-request';
+import { apiGet, apiPost, apiPut } from '@/services/lib/api-request';
 import type {
   AdminBanUserRequest,
+  AdminCreateUserRequest,
   AdminUpdateUserRolesRequest,
   AdminUpdateUserStatusRequest,
   UserResponse,
@@ -19,6 +20,13 @@ function normalizeUser(user: UserResponseRaw): UserResponse {
     isVerified: user.isVerified ?? user.verified ?? false,
     roles: user.roles ?? [],
   };
+}
+
+export async function createUserApi(
+  payload: AdminCreateUserRequest,
+): Promise<UserResponse> {
+  const user = await apiPost<UserResponseRaw>('/api/v1/admin/users', payload);
+  return normalizeUser(user);
 }
 
 export async function updateUserStatusApi(

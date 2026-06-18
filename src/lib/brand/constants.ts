@@ -8,9 +8,3 @@ export const BRAND = {
   version: 'v0.0.1',
   storageKey: 'zen-leader-admin-auth',
 } as const;
-
-/** Tài khoản bootstrap mặc định (khớp backend .env: ADMIN_USER_NAME / ADMIN_PASSWORD) */
-export const BOOTSTRAP_ADMIN = {
-  email: 'admin@gmail.com',
-  password: 'admin123',
-} as const;

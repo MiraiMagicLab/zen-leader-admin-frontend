@@ -17,7 +17,7 @@ export const auditLogsApi = {
     if (params.entityType) search.set('entityType', params.entityType);
     if (params.actorUserId) search.set('actorUserId', params.actorUserId);
     return apiGet<SpringPage<AuditLogResponse>>(
-      `/api/v1/audit-logs?${search.toString()}`,
+      `/api/v1/admin/audit-logs?${search.toString()}`,
     );
   },
 };

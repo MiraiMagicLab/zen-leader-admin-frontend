@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -243,22 +244,16 @@ export function EventsListPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Bắt đầu</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.startTime}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, startTime: e.target.value }))
-                  }
+                  onChange={(startTime) => setForm((f) => ({ ...f, startTime }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Kết thúc</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.endTime}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, endTime: e.target.value }))
-                  }
+                  onChange={(endTime) => setForm((f) => ({ ...f, endTime }))}
                 />
               </div>
             </div>
