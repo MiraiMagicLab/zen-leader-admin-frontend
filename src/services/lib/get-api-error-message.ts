@@ -20,8 +20,19 @@ export function getApiErrorMessage(
 
   return (
     payload?.errorMessage?.message ??
+    enrollmentErrorMessage(payload?.errorMessage?.errorCode) ??
     payload?.message ??
     error.message ??
     fallback
   );
+}
+
+const ENROLLMENT_ERROR_MESSAGES: Record<string, string> = {
+  'lms.enrollment_already_exists':
+    'Người này đã được ghi danh vào lớp rồi.',
+};
+
+function enrollmentErrorMessage(errorCode: string | undefined): string | undefined {
+  if (!errorCode) return undefined;
+  return ENROLLMENT_ERROR_MESSAGES[errorCode];
 }

@@ -18,11 +18,40 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/components/rich-text-editor';
 import { queryKeys } from '@/hooks/query-keys';
 import { assetsApi } from '@/services/assets/assets-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { lessonsApi } from '@/services/lms/lms-api';
 import type { LessonUpsertRequest } from '@/services/types/domain';
+
+function readContentField(
+  data: Record<string, unknown>,
+  ...keys: string[]
+): string {
+  for (const key of keys) {
+    const value = data[key];
+    if (value != null && String(value).trim()) {
+      return String(value);
+    }
+  }
+  return '';
+}
+
+function patchContentData(
+  data: Record<string, unknown>,
+  patch: Record<string, string | number | undefined>,
+): Record<string, unknown> {
+  const next = { ...data };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === '' || value === undefined) {
+      delete next[key];
+    } else {
+      next[key] = value;
+    }
+  }
+  return next;
+}
 
 export function LessonDetailPage() {
   const { lessonId } = useParams();
@@ -131,6 +160,37 @@ export function LessonDetailPage() {
   });
 
   const lesson = lessonQuery.data;
+  const contentData = form.contentData ?? {};
+
+  const setContentField = (key: string, value: string | number | undefined) => {
+    setForm((f) => ({
+      ...f,
+      contentData: patchContentData(f.contentData ?? {}, { [key]: value }),
+    }));
+  };
+
+  const lessonType = form.type.toUpperCase();
+  const articleBody = readContentField(contentData, 'body', 'content');
+  const videoUrl = readContentField(
+    contentData,
+    'videoUrl',
+    'video_url',
+    'fileUrl',
+  );
+  const durationMinutes = readContentField(
+    contentData,
+    'durationMinutes',
+    'duration_minutes',
+  );
+  const thumbnailUrl = readContentField(
+    contentData,
+    'thumbnailUrl',
+    'thumbnail_url',
+    'coverUrl',
+    'cover_url',
+  );
+  const quote = readContentField(contentData, 'quote');
+  const imageUrl = readContentField(contentData, 'imageUrl', 'image_url');
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -167,10 +227,12 @@ export function LessonDetailPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Mô tả</Label>
+            <Label>Mô tả ngắn</Label>
             <Textarea
               value={form.description ?? ''}
+              rows={3}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Tóm tắt hiển thị trên danh sách bài học"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -229,7 +291,139 @@ export function LessonDetailPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Nội dung bài học</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Lưu vào <code className="text-xs">contentData</code> — app mobile đọc các
+            field này (API đã hỗ trợ sẵn qua PUT bài học).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {lessonType === 'ARTICLE' || lessonType === 'QUIZ' ? (
+            <>
+              <div className="space-y-2">
+                <Label>
+                  {lessonType === 'QUIZ' ? 'Nội dung / câu hỏi' : 'Nội dung bài viết'}
+                </Label>
+                <RichTextEditor
+                  value={articleBody}
+                  onChange={(body) => {
+                    setForm((f) => ({
+                      ...f,
+                      contentData: patchContentData(f.contentData ?? {}, {
+                        body,
+                        content: body,
+                      }),
+                    }));
+                  }}
+                  placeholder="Soạn nội dung hiển thị trên app (HTML)…"
+                  minHeight="16rem"
+                />
+                <p className="text-muted-foreground text-xs">
+                  Mobile hiển thị <strong>body</strong> trước; nếu trống sẽ fallback sang
+                  mô tả ngắn phía trên.
+                </p>
+              </div>
+              {lessonType === 'ARTICLE' ? (
+                <>
+                  <div className="space-y-2">
+                    <Label>Trích dẫn (quote)</Label>
+                    <Input
+                      value={quote}
+                      onChange={(e) => setContentField('quote', e.target.value)}
+                      placeholder="Câu trích dẫn nổi bật (tuỳ chọn)"
+                    />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Ảnh minh hoạ (imageUrl)</Label>
+                      <Input
+                        value={imageUrl}
+                        onChange={(e) =>
+                          setContentField('imageUrl', e.target.value)
+                        }
+                        placeholder="https://…"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Ảnh bìa (coverUrl / thumbnailUrl)</Label>
+                      <Input
+                        value={thumbnailUrl}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          setForm((f) => ({
+                            ...f,
+                            contentData: patchContentData(f.contentData ?? {}, {
+                              coverUrl: url,
+                              thumbnailUrl: url,
+                            }),
+                          }));
+                        }}
+                        placeholder="https://…"
+                      />
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </>
+          ) : null}
+
+          {lessonType === 'VIDEO' ? (
+            <>
+              <div className="space-y-2">
+                <Label>URL video (videoUrl)</Label>
+                <Input
+                  value={videoUrl}
+                  onChange={(e) => setContentField('videoUrl', e.target.value)}
+                  placeholder="https://… hoặc upload file bên dưới"
+                />
+                <p className="text-muted-foreground text-xs">
+                  Có thể dán link trực tiếp hoặc upload file — app lấy{' '}
+                  <strong>videoUrl</strong> hoặc <strong>fileAttachment.url</strong>.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Thời lượng (phút)</Label>
+                  <Input
+                    type="number"
+                    min={0}
+                    value={durationMinutes}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setContentField(
+                        'durationMinutes',
+                        raw === '' ? undefined : Number(raw),
+                      );
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Thumbnail URL</Label>
+                  <Input
+                    value={thumbnailUrl}
+                    onChange={(e) =>
+                      setContentField('thumbnailUrl', e.target.value)
+                    }
+                    placeholder="https://…"
+                  />
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+            Lưu nội dung
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Upload file bài học</CardTitle>
+          <p className="text-muted-foreground text-sm">
+            Tuỳ chọn — gắn file vào <code className="text-xs">contentData.fileAttachment</code>{' '}
+            (video/PDF…). Không thay thế soạn nội dung ARTICLE ở trên.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input

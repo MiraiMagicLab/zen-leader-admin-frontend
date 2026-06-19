@@ -4,7 +4,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Eye, Pencil, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { UserPicker } from '@/components/admin/user-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { queryKeys } from '@/hooks/query-keys';
+import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
@@ -36,7 +39,7 @@ import {
 } from '@/services/lms/lms-api';
 import { messagingApi } from '@/services/messaging/messaging-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
-import type { EnrollmentImportResponse, EnrollmentResponse } from '@/services/types/domain';
+import type { EnrollmentImportResponse, EnrollmentResponse, UserResponse } from '@/services/types/domain';
 
 type RunSettingsForm = {
   code: string;
@@ -57,7 +60,7 @@ export function CourseRunDetailPage() {
   const [chapterTitle, setChapterTitle] = useState('');
   const [lessonTitle, setLessonTitle] = useState('');
   const [lessonType, setLessonType] = useState('VIDEO');
-  const [userId, setUserId] = useState('');
+  const [enrollUser, setEnrollUser] = useState<UserResponse | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [editEnrollment, setEditEnrollment] = useState<EnrollmentResponse | null>(null);
   const [editStatus, setEditStatus] = useState('ACTIVE');
@@ -166,11 +169,11 @@ export function CourseRunDetailPage() {
 
   const enrollMutation = useMutation({
     mutationFn: () =>
-      enrollmentsApi.manualEnroll({ userId, courseRunId: runId! }),
+      enrollmentsApi.manualEnroll({ userId: enrollUser!.id, courseRunId: runId! }),
     onSuccess: () => {
       toast.success('Đã ghi danh học viên.');
       setEnrollDialog(false);
-      setUserId('');
+      setEnrollUser(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -287,17 +290,11 @@ export function CourseRunDetailPage() {
 
   const openRunSettings = () => {
     if (!run) return;
-    const toLocal = (iso: string | null) => {
-      if (!iso) return '';
-      const d = new Date(iso);
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    };
     setRunSettings({
       code: run.code,
       status: run.status,
-      startsAt: toLocal(run.startsAt),
-      endsAt: toLocal(run.endsAt),
+      startsAt: run.startsAt ? toLocalDateTimeFromIso(run.startsAt) : '',
+      endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
       timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
       capacity: run.capacity != null ? String(run.capacity) : '',
     });
@@ -585,21 +582,19 @@ export function CourseRunDetailPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Bắt đầu</Label>
-                  <Input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={runSettings.startsAt}
-                    onChange={(e) =>
-                      setRunSettings((s) => s && { ...s, startsAt: e.target.value })
+                    onChange={(startsAt) =>
+                      setRunSettings((s) => s && { ...s, startsAt })
                     }
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Kết thúc</Label>
-                  <Input
-                    type="datetime-local"
+                  <DateTimePicker
                     value={runSettings.endsAt}
-                    onChange={(e) =>
-                      setRunSettings((s) => s && { ...s, endsAt: e.target.value })
+                    onChange={(endsAt) =>
+                      setRunSettings((s) => s && { ...s, endsAt })
                     }
                   />
                 </div>
@@ -727,17 +722,29 @@ export function CourseRunDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={enrollDialog} onOpenChange={setEnrollDialog}>
-        <DialogContent>
+      <Dialog
+        open={enrollDialog}
+        onOpenChange={(open) => {
+          setEnrollDialog(open);
+          if (!open) setEnrollUser(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Ghi danh thủ công</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <Label>User ID</Label>
-            <Input value={userId} onChange={(e) => setUserId(e.target.value)} />
-          </div>
+          <UserPicker
+            open={enrollDialog}
+            selectedUser={enrollUser}
+            onSelect={setEnrollUser}
+          />
           <DialogFooter>
-            <Button onClick={() => enrollMutation.mutate()}>Ghi danh</Button>
+            <Button
+              onClick={() => enrollMutation.mutate()}
+              disabled={!enrollUser || enrollMutation.isPending}
+            >
+              Ghi danh
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

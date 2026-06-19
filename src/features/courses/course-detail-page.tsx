@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
+import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
@@ -52,12 +54,6 @@ const emptyRunForm: RunForm = {
   timezone: 'Asia/Ho_Chi_Minh',
   capacity: '',
 };
-
-function toLocalDatetime(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 export function CourseDetailPage() {
   const { courseId } = useParams();
@@ -202,8 +198,8 @@ export function CourseDetailPage() {
     setForm({
       code: run.code,
       status: run.status,
-      startsAt: run.startsAt ? toLocalDatetime(run.startsAt) : '',
-      endsAt: run.endsAt ? toLocalDatetime(run.endsAt) : '',
+      startsAt: run.startsAt ? toLocalDateTimeFromIso(run.startsAt) : '',
+      endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
       timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
       capacity: run.capacity != null ? String(run.capacity) : '',
     });
@@ -372,18 +368,16 @@ export function CourseDetailPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Bắt đầu</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.startsAt}
-                  onChange={(e) => setForm((f) => ({ ...f, startsAt: e.target.value }))}
+                  onChange={(startsAt) => setForm((f) => ({ ...f, startsAt }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Kết thúc</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.endsAt}
-                  onChange={(e) => setForm((f) => ({ ...f, endsAt: e.target.value }))}
+                  onChange={(endsAt) => setForm((f) => ({ ...f, endsAt }))}
                 />
               </div>
             </div>
@@ -521,18 +515,16 @@ export function CourseDetailPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Bắt đầu</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.startsAt}
-                  onChange={(e) => setForm((f) => ({ ...f, startsAt: e.target.value }))}
+                  onChange={(startsAt) => setForm((f) => ({ ...f, startsAt }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Kết thúc</Label>
-                <Input
-                  type="datetime-local"
+                <DateTimePicker
                   value={form.endsAt}
-                  onChange={(e) => setForm((f) => ({ ...f, endsAt: e.target.value }))}
+                  onChange={(endsAt) => setForm((f) => ({ ...f, endsAt }))}
                 />
               </div>
             </div>
