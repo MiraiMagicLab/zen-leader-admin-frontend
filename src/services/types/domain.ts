@@ -45,6 +45,7 @@ export type CourseResponse = {
   programCode: string | null;
   orderIndex: number;
   tags: string[];
+  syllabusSections: SyllabusSectionResponse[];
   courseRuns: CourseRunResponse[];
   createdAt: string;
   updatedAt: string;
@@ -62,28 +63,27 @@ export type CourseRunResponse = {
   enrollmentStartDate: string | null;
   enrollmentEndDate: string | null;
   capacity: number | null;
-  prerequisiteCourseRunId: string | null;
-  chapters: ChapterResponse[];
+  sessions: SessionResponse[];
   createdAt: string;
   updatedAt: string;
 };
 
-export type ChapterResponse = {
+export type SyllabusSectionResponse = {
   id: string;
-  courseRunId: string;
-  courseRunCode: string;
+  courseId: string;
+  courseTitle: string;
   title: string;
   description: string | null;
   orderIndex: number;
-  lessons: LessonResponse[];
+  items: SyllabusItemResponse[];
   createdAt: string;
   updatedAt: string;
 };
 
-export type LessonResponse = {
+export type SyllabusItemResponse = {
   id: string;
-  chapterId: string;
-  chapterTitle: string;
+  syllabusSectionId: string;
+  syllabusSectionTitle: string;
   type: string;
   title: string;
   description: string | null;
@@ -91,6 +91,23 @@ export type LessonResponse = {
   isHidden: boolean;
   isOptional: boolean;
   contentData: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SessionResponse = {
+  id: string;
+  courseRunId: string;
+  courseRunCode: string;
+  title: string;
+  description: string | null;
+  sessionNumber: number;
+  orderIndex: number;
+  scheduledAt: string | null;
+  durationMinutes: number | null;
+  meetingRoomId: string | null;
+  status: string;
+  recordingUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -214,18 +231,17 @@ export type CourseRunUpsertRequest = {
   enrollmentStartDate?: string | null;
   enrollmentEndDate?: string | null;
   capacity?: number | null;
-  prerequisiteCourseRunId?: string | null;
 };
 
-export type ChapterUpsertRequest = {
-  courseRunId: string;
+export type SyllabusSectionUpsertRequest = {
+  courseId: string;
   title: string;
   description?: string | null;
   orderIndex: number;
 };
 
-export type LessonUpsertRequest = {
-  chapterId: string;
+export type SyllabusItemUpsertRequest = {
+  syllabusSectionId: string;
   type: string;
   title: string;
   description?: string | null;
@@ -235,6 +251,18 @@ export type LessonUpsertRequest = {
   contentData?: Record<string, unknown>;
 };
 
+export type SessionUpsertRequest = {
+  courseRunId: string;
+  title: string;
+  description?: string | null;
+  sessionNumber: number;
+  orderIndex: number;
+  scheduledAt?: string | null;
+  durationMinutes?: number | null;
+  meetingRoomId?: string | null;
+  status?: string;
+};
+
 export type ManualEnrollmentRequest = {
   userId: string;
   courseRunId: string;
@@ -242,7 +270,7 @@ export type ManualEnrollmentRequest = {
 
 export type EnrollmentUpdateRequest = {
   status?: 'ACTIVE' | 'SUSPENDED';
-  role?: 'STUDENT' | 'TEACHER' | 'ADMIN' | 'NO_ROLE';
+  role?: 'STUDENT' | 'LECTURE' | 'ADMIN' | 'NO_ROLE';
   enrolmentMethod?: string;
   lastAccessedAt?: string;
   completedAt?: string;
@@ -371,19 +399,31 @@ export type NotificationResponse = {
 export type CourseRunProgressSummaryResponse = {
   courseRunId: string;
   enrollmentId: string;
-  totalLessons: number;
-  completedLessons: number;
-  progressPercent: number | null;
+  totalSyllabusItems: number;
+  completedSyllabusItems: number;
+  syllabusProgressPercent: number | null;
+  totalSessions: number;
+  attendedSessions: number;
+  sessionProgressPercent: number | null;
   lastUpdatedAt: string | null;
 };
 
-export type LessonProgressResponse = {
-  lessonId: string;
-  lessonTitle: string;
+export type SyllabusProgressResponse = {
+  syllabusItemId: string;
+  syllabusItemTitle: string;
   status: string;
   progressPercent: number | null;
   lastAccessedAt: string | null;
   completedAt: string | null;
+};
+
+export type SessionAttendanceResponse = {
+  sessionId: string;
+  sessionTitle: string;
+  sessionNumber: number;
+  scheduledAt: string | null;
+  status: string;
+  attendedAt: string | null;
 };
 
 export type StreakSummaryResponse = {
@@ -438,7 +478,7 @@ export type ChatMessageResponse = {
   isEdited: boolean | null;
 };
 
-export type LessonFileAttachmentResponse = {
+export type SyllabusItemFileAttachmentResponse = {
   provider: string;
   fileName: string;
   mimeType: string;
@@ -448,9 +488,9 @@ export type LessonFileAttachmentResponse = {
   resourceType: string;
 };
 
-export type LessonFileUploadResponse = {
-  lessonId: string;
-  attachment: LessonFileAttachmentResponse;
+export type SyllabusItemFileUploadResponse = {
+  syllabusItemId: string;
+  attachment: SyllabusItemFileAttachmentResponse;
 };
 
 export type MeetingTokenResponse = {

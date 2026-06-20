@@ -7,54 +7,77 @@ import {
   apiGetBlob,
 } from '@/services/lib/api-request';
 import type {
-  ChapterResponse,
-  ChapterUpsertRequest,
+  SyllabusSectionResponse,
+  SyllabusSectionUpsertRequest,
   EnrollmentImportResponse,
   EnrollmentResponse,
   EnrollmentUpdateRequest,
-  LessonFileUploadResponse,
-  LessonResponse,
-  LessonUpsertRequest,
+  SyllabusItemFileUploadResponse,
+  SyllabusItemResponse,
+  SyllabusItemUpsertRequest,
+  SessionResponse,
+  SessionUpsertRequest,
   ManualEnrollmentRequest,
 } from '@/services/types/domain';
 import type { PagingResponse } from '@/services/types/pagination';
 
-export const chaptersApi = {
-  getAll: (courseRunId?: string) =>
-    apiGet<ChapterResponse[]>(
-      courseRunId
-        ? `/api/v1/chapters?courseRunId=${encodeURIComponent(courseRunId)}`
-        : '/api/v1/chapters',
+export const syllabusSectionsApi = {
+  getAll: (courseId?: string) =>
+    apiGet<SyllabusSectionResponse[]>(
+      courseId
+        ? `/api/v1/syllabus-sections?courseId=${encodeURIComponent(courseId)}`
+        : '/api/v1/syllabus-sections',
     ),
-  getById: (id: string) => apiGet<ChapterResponse>(`/api/v1/chapters/${id}`),
-  create: (payload: ChapterUpsertRequest) =>
-    apiPost<ChapterResponse>('/api/v1/chapters', payload),
-  update: (id: string, payload: ChapterUpsertRequest) =>
-    apiPut<ChapterResponse>(`/api/v1/chapters/${id}`, payload),
-  remove: (id: string) => apiDelete<string>(`/api/v1/chapters/${id}`),
+  getById: (id: string) =>
+    apiGet<SyllabusSectionResponse>(`/api/v1/syllabus-sections/${id}`),
+  create: (payload: SyllabusSectionUpsertRequest) =>
+    apiPost<SyllabusSectionResponse>('/api/v1/syllabus-sections', payload),
+  update: (id: string, payload: SyllabusSectionUpsertRequest) =>
+    apiPut<SyllabusSectionResponse>(`/api/v1/syllabus-sections/${id}`, payload),
+  remove: (id: string) =>
+    apiDelete<string>(`/api/v1/syllabus-sections/${id}`),
 };
 
-export const lessonsApi = {
-  getAll: (chapterId?: string) =>
-    apiGet<LessonResponse[]>(
-      chapterId
-        ? `/api/v1/lessons?chapterId=${encodeURIComponent(chapterId)}`
-        : '/api/v1/lessons',
+export const syllabusItemsApi = {
+  getAll: (syllabusSectionId?: string) =>
+    apiGet<SyllabusItemResponse[]>(
+      syllabusSectionId
+        ? `/api/v1/syllabus-items?syllabusSectionId=${encodeURIComponent(syllabusSectionId)}`
+        : '/api/v1/syllabus-items',
     ),
-  getById: (id: string) => apiGet<LessonResponse>(`/api/v1/lessons/${id}`),
-  create: (payload: LessonUpsertRequest) =>
-    apiPost<LessonResponse>('/api/v1/lessons', payload),
-  update: (id: string, payload: LessonUpsertRequest) =>
-    apiPut<LessonResponse>(`/api/v1/lessons/${id}`, payload),
-  remove: (id: string) => apiDelete<string>(`/api/v1/lessons/${id}`),
-  uploadFile: (lessonId: string, file: File) => {
+  getById: (id: string) =>
+    apiGet<SyllabusItemResponse>(`/api/v1/syllabus-items/${id}`),
+  create: (payload: SyllabusItemUpsertRequest) =>
+    apiPost<SyllabusItemResponse>('/api/v1/syllabus-items', payload),
+  update: (id: string, payload: SyllabusItemUpsertRequest) =>
+    apiPut<SyllabusItemResponse>(`/api/v1/syllabus-items/${id}`, payload),
+  remove: (id: string) =>
+    apiDelete<string>(`/api/v1/syllabus-items/${id}`),
+  uploadFile: (syllabusItemId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return apiPostForm<LessonFileUploadResponse>(
-      `/api/v1/lessons/${lessonId}/files`,
+    return apiPostForm<SyllabusItemFileUploadResponse>(
+      `/api/v1/syllabus-items/${syllabusItemId}/files`,
       form,
     );
   },
+};
+
+export const sessionsApi = {
+  getAll: (courseRunId?: string) =>
+    apiGet<SessionResponse[]>(
+      courseRunId
+        ? `/api/v1/sessions?courseRunId=${encodeURIComponent(courseRunId)}`
+        : '/api/v1/sessions',
+    ),
+  getById: (id: string) =>
+    apiGet<SessionResponse>(`/api/v1/sessions/${id}`),
+  create: (payload: SessionUpsertRequest) =>
+    apiPost<SessionResponse>('/api/v1/sessions', payload),
+  update: (id: string, payload: SessionUpsertRequest) =>
+    apiPut<SessionResponse>(`/api/v1/sessions/${id}`, payload),
+  remove: (id: string) =>
+    apiDelete<string>(`/api/v1/sessions/${id}`),
 };
 
 export const enrollmentsApi = {

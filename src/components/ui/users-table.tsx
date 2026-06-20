@@ -38,7 +38,7 @@ const users = [
     name: 'Lê Minh Cường',
     email: 'le.minh.cuong@zenleader.online',
     avatar: 'https://i.pravatar.cc/150?u=zen3',
-    role: 'Giảng viên',
+    role: 'Học viên',
     status: 'inactive',
     joinDate: '2025-01-08',
     location: 'Đà Nẵng, VN',
@@ -104,9 +104,7 @@ export const UsersTable = memo(({ onAddUser }: UsersTableProps) => {
                     className={`rounded-full px-2 py-1 text-xs font-medium ${
                       user.role === 'Admin'
                         ? 'bg-purple-500/10 text-purple-500'
-                        : user.role === 'Giảng viên'
-                          ? 'bg-blue-500/10 text-blue-500'
-                          : 'bg-gray-500/10 text-gray-500'
+                        : 'bg-gray-500/10 text-gray-500'
                     }`}
                   >
                     {user.role}

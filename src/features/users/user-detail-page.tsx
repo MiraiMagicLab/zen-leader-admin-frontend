@@ -35,7 +35,7 @@ import {
   updateUserStatusApi,
 } from '@/services/users/users-api';
 
-const ROLE_OPTIONS = ['admin', 'user', 'teacher'];
+const ROLE_OPTIONS = ['admin', 'user'];
 
 export function UserDetailPage() {
   const { userId } = useParams();
@@ -92,9 +92,15 @@ export function UserDetailPage() {
     enabled: Boolean(userId && progressRunId),
   });
 
-  const progressLessonsQuery = useQuery({
-    queryKey: queryKeys.progress.lessons(userId ?? '', progressRunId),
-    queryFn: () => progressApi.getLessons(userId!, progressRunId),
+  const progressSyllabusQuery = useQuery({
+    queryKey: queryKeys.progress.syllabus(userId ?? '', progressRunId),
+    queryFn: () => progressApi.getSyllabus(userId!, progressRunId),
+    enabled: Boolean(userId && progressRunId),
+  });
+
+  const progressSessionsQuery = useQuery({
+    queryKey: queryKeys.progress.sessions(userId ?? '', progressRunId),
+    queryFn: () => progressApi.getSessions(userId!, progressRunId),
     enabled: Boolean(userId && progressRunId),
   });
 
@@ -286,18 +292,25 @@ export function UserDetailPage() {
           </div>
           {progressSummaryQuery.data ? (
             <Card>
-              <CardContent className="grid gap-4 pt-6 sm:grid-cols-3">
+              <CardContent className="grid gap-4 pt-6 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
-                  <p className="text-muted-foreground text-sm">Hoàn thành</p>
+                  <p className="text-muted-foreground text-sm">Giáo trình</p>
                   <p className="text-2xl font-semibold">
-                    {progressSummaryQuery.data.completedLessons}/
-                    {progressSummaryQuery.data.totalLessons}
+                    {progressSummaryQuery.data.completedSyllabusItems}/
+                    {progressSummaryQuery.data.totalSyllabusItems}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {progressSummaryQuery.data.syllabusProgressPercent ?? 0}%
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-sm">Phần trăm</p>
+                  <p className="text-muted-foreground text-sm">Buổi học</p>
                   <p className="text-2xl font-semibold">
-                    {progressSummaryQuery.data.progressPercent ?? 0}%
+                    {progressSummaryQuery.data.attendedSessions}/
+                    {progressSummaryQuery.data.totalSessions}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {progressSummaryQuery.data.sessionProgressPercent ?? 0}%
                   </p>
                 </div>
                 <div>
@@ -315,11 +328,24 @@ export function UserDetailPage() {
           ) : (
             <p className="text-muted-foreground text-sm">Chọn lớp để xem tiến độ.</p>
           )}
-          {(progressLessonsQuery.data ?? []).length > 0 && (
+          {(progressSyllabusQuery.data ?? []).length > 0 && (
             <div className="space-y-2">
-              {progressLessonsQuery.data?.map((lp) => (
-                <div key={lp.lessonId} className="rounded-md border p-3 text-sm">
-                  {lp.lessonTitle} · {lp.status} · {lp.progressPercent ?? 0}%
+              <p className="text-sm font-medium">Mục giáo trình</p>
+              {progressSyllabusQuery.data?.map((sp) => (
+                <div key={sp.syllabusItemId} className="rounded-md border p-3 text-sm">
+                  {sp.syllabusItemTitle} · {sp.status} · {sp.progressPercent ?? 0}%
+                </div>
+              ))}
+            </div>
+          )}
+          {(progressSessionsQuery.data ?? []).length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Buổi học</p>
+              {progressSessionsQuery.data?.map((sa) => (
+                <div key={sa.sessionId} className="rounded-md border p-3 text-sm">
+                  #{sa.sessionNumber} {sa.sessionTitle} · {sa.status}
+                  {sa.scheduledAt && ` · ${formatDateTime(sa.scheduledAt)}`}
+                  {sa.attendedAt && ` · Điểm danh: ${formatDateTime(sa.attendedAt)}`}
                 </div>
               ))}
             </div>
@@ -430,15 +456,10 @@ export function UserDetailPage() {
             {ROLE_OPTIONS.map((role) => (
               <label key={role} className="flex items-center gap-2">
                 <input
-                  type="checkbox"
-                  checked={selectedRoles.includes(role)}
-                  onChange={(e) => {
-                    setSelectedRoles((prev) =>
-                      e.target.checked
-                        ? [...prev, role]
-                        : prev.filter((r) => r !== role),
-                    );
-                  }}
+                  type="radio"
+                  name="user-role"
+                  checked={selectedRoles[0] === role}
+                  onChange={() => setSelectedRoles([role])}
                 />
                 <span>{role}</span>
               </label>

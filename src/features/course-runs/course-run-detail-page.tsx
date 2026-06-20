@@ -33,9 +33,10 @@ import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import {
-  chaptersApi,
+  syllabusSectionsApi,
   enrollmentsApi,
-  lessonsApi,
+  syllabusItemsApi,
+  sessionsApi,
 } from '@/services/lms/lms-api';
 import { messagingApi } from '@/services/messaging/messaging-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
@@ -50,16 +51,40 @@ type RunSettingsForm = {
   capacity: string;
 };
 
+type SessionForm = {
+  title: string;
+  description: string;
+  sessionNumber: string;
+  scheduledAt: string;
+  durationMinutes: string;
+  status: string;
+};
+
+const emptySessionForm: SessionForm = {
+  title: '',
+  description: '',
+  sessionNumber: '1',
+  scheduledAt: '',
+  durationMinutes: '60',
+  status: 'SCHEDULED',
+};
+
 export function CourseRunDetailPage() {
   const { runId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [chapterDialog, setChapterDialog] = useState(false);
-  const [lessonDialog, setLessonDialog] = useState<string | null>(null);
+  const [sectionDialog, setSectionDialog] = useState(false);
+  const [itemDialog, setItemDialog] = useState<string | null>(null);
+  const [sessionDialog, setSessionDialog] = useState(false);
+  const [editSession, setEditSession] = useState<{
+    id: string;
+    form: SessionForm;
+  } | null>(null);
   const [enrollDialog, setEnrollDialog] = useState(false);
-  const [chapterTitle, setChapterTitle] = useState('');
-  const [lessonTitle, setLessonTitle] = useState('');
-  const [lessonType, setLessonType] = useState('VIDEO');
+  const [sectionTitle, setSectionTitle] = useState('');
+  const [itemTitle, setItemTitle] = useState('');
+  const [itemType, setItemType] = useState('VIDEO');
+  const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm);
   const [enrollUser, setEnrollUser] = useState<UserResponse | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [editEnrollment, setEditEnrollment] = useState<EnrollmentResponse | null>(null);
@@ -67,7 +92,7 @@ export function CourseRunDetailPage() {
   const [editRole, setEditRole] = useState('STUDENT');
   const [messagePage, setMessagePage] = useState(1);
   const [enrollmentPage, setEnrollmentPage] = useState(1);
-  const [editChapter, setEditChapter] = useState<{
+  const [editSection, setEditSection] = useState<{
     id: string;
     title: string;
     orderIndex: number;
@@ -82,9 +107,15 @@ export function CourseRunDetailPage() {
     enabled: Boolean(runId),
   });
 
-  const chaptersQuery = useQuery({
-    queryKey: queryKeys.chapters.list(runId ?? ''),
-    queryFn: () => chaptersApi.getAll(runId!),
+  const sectionsQuery = useQuery({
+    queryKey: queryKeys.syllabusSections.list(runQuery.data?.courseId ?? ''),
+    queryFn: () => syllabusSectionsApi.getAll(runQuery.data!.courseId),
+    enabled: Boolean(runQuery.data?.courseId),
+  });
+
+  const sessionsQuery = useQuery({
+    queryKey: queryKeys.sessions.list(runId ?? ''),
+    queryFn: () => sessionsApi.getAll(runId!),
     enabled: Boolean(runId),
   });
 
@@ -131,18 +162,18 @@ export function CourseRunDetailPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const createChapterMutation = useMutation({
+  const createSectionMutation = useMutation({
     mutationFn: () =>
-      chaptersApi.create({
-        courseRunId: runId!,
-        title: chapterTitle,
-        orderIndex: chaptersQuery.data?.length ?? 0,
+      syllabusSectionsApi.create({
+        courseId: runQuery.data!.courseId,
+        title: sectionTitle,
+        orderIndex: sectionsQuery.data?.length ?? 0,
       }),
     onSuccess: () => {
       toast.success('Đã thêm chương.');
-      setChapterDialog(false);
-      setChapterTitle('');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.chapters.all });
+      setSectionDialog(false);
+      setSectionTitle('');
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
       void queryClient.invalidateQueries({
         queryKey: queryKeys.courseRuns.detail(runId!),
       });
@@ -150,19 +181,77 @@ export function CourseRunDetailPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const createLessonMutation = useMutation({
-    mutationFn: (chapterId: string) =>
-      lessonsApi.create({
-        chapterId,
-        type: lessonType,
-        title: lessonTitle,
+  const createItemMutation = useMutation({
+    mutationFn: (syllabusSectionId: string) =>
+      syllabusItemsApi.create({
+        syllabusSectionId,
+        type: itemType,
+        title: itemTitle,
         orderIndex: 0,
       }),
     onSuccess: () => {
-      toast.success('Đã thêm bài học.');
-      setLessonDialog(null);
-      setLessonTitle('');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.chapters.all });
+      toast.success('Đã thêm mục giáo trình.');
+      setItemDialog(null);
+      setItemTitle('');
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const createSessionMutation = useMutation({
+    mutationFn: () =>
+      sessionsApi.create({
+        courseRunId: runId!,
+        title: sessionForm.title,
+        description: sessionForm.description || undefined,
+        sessionNumber: Number(sessionForm.sessionNumber),
+        orderIndex: sessionsQuery.data?.length ?? 0,
+        scheduledAt: sessionForm.scheduledAt
+          ? new Date(sessionForm.scheduledAt).toISOString()
+          : undefined,
+        durationMinutes: sessionForm.durationMinutes
+          ? Number(sessionForm.durationMinutes)
+          : undefined,
+        status: sessionForm.status,
+      }),
+    onSuccess: () => {
+      toast.success('Đã thêm buổi học.');
+      setSessionDialog(false);
+      setSessionForm(emptySessionForm);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const updateSessionMutation = useMutation({
+    mutationFn: () =>
+      sessionsApi.update(editSession!.id, {
+        courseRunId: runId!,
+        title: editSession!.form.title,
+        description: editSession!.form.description || undefined,
+        sessionNumber: Number(editSession!.form.sessionNumber),
+        orderIndex: 0,
+        scheduledAt: editSession!.form.scheduledAt
+          ? new Date(editSession!.form.scheduledAt).toISOString()
+          : undefined,
+        durationMinutes: editSession!.form.durationMinutes
+          ? Number(editSession!.form.durationMinutes)
+          : undefined,
+        status: editSession!.form.status,
+      }),
+    onSuccess: () => {
+      toast.success('Đã cập nhật buổi học.');
+      setEditSession(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const deleteSessionMutation = useMutation({
+    mutationFn: (sessionId: string) => sessionsApi.remove(sessionId),
+    onSuccess: () => {
+      toast.success('Đã xóa buổi học.');
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -196,7 +285,7 @@ export function CourseRunDetailPage() {
     mutationFn: () =>
       enrollmentsApi.update(editEnrollment!.id, {
         status: editStatus as 'ACTIVE' | 'SUSPENDED',
-        role: editRole as 'STUDENT' | 'TEACHER' | 'ADMIN' | 'NO_ROLE',
+        role: editRole as 'STUDENT' | 'LECTURE' | 'ADMIN' | 'NO_ROLE',
       }),
     onSuccess: () => {
       toast.success('Đã cập nhật ghi danh.');
@@ -215,35 +304,35 @@ export function CourseRunDetailPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const updateChapterMutation = useMutation({
+  const updateSectionMutation = useMutation({
     mutationFn: () =>
-      chaptersApi.update(editChapter!.id, {
-        courseRunId: runId!,
-        title: editChapter!.title,
-        orderIndex: editChapter!.orderIndex,
+      syllabusSectionsApi.update(editSection!.id, {
+        courseId: runQuery.data!.courseId,
+        title: editSection!.title,
+        orderIndex: editSection!.orderIndex,
       }),
     onSuccess: () => {
       toast.success('Đã cập nhật chương.');
-      setEditChapter(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.chapters.all });
+      setEditSection(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const deleteChapterMutation = useMutation({
-    mutationFn: (chapterId: string) => chaptersApi.remove(chapterId),
+  const deleteSectionMutation = useMutation({
+    mutationFn: (sectionId: string) => syllabusSectionsApi.remove(sectionId),
     onSuccess: () => {
       toast.success('Đã xóa chương.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.chapters.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const deleteLessonMutation = useMutation({
-    mutationFn: (lessonId: string) => lessonsApi.remove(lessonId),
+  const deleteItemMutation = useMutation({
+    mutationFn: (itemId: string) => syllabusItemsApi.remove(itemId),
     onSuccess: () => {
-      toast.success('Đã xóa bài học.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.chapters.all });
+      toast.success('Đã xóa mục giáo trình.');
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -300,6 +389,20 @@ export function CourseRunDetailPage() {
     });
   };
 
+  const openEditSession = (session: { id: string; title: string; description: string | null; sessionNumber: number; scheduledAt: string | null; durationMinutes: number | null; status: string }) => {
+    setEditSession({
+      id: session.id,
+      form: {
+        title: session.title,
+        description: session.description ?? '',
+        sessionNumber: String(session.sessionNumber),
+        scheduledAt: session.scheduledAt ? toLocalDateTimeFromIso(session.scheduledAt) : '',
+        durationMinutes: session.durationMinutes != null ? String(session.durationMinutes) : '',
+        status: session.status,
+      },
+    });
+  };
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Button variant="ghost" size="sm" asChild>
@@ -328,8 +431,11 @@ export function CourseRunDetailPage() {
         }
       />
 
-      <Tabs defaultValue="syllabus">
+      <Tabs defaultValue="sessions">
         <TabsList>
+          <TabsTrigger value="sessions">
+            Buổi học ({sessionsQuery.data?.length ?? run?.sessions?.length ?? 0})
+          </TabsTrigger>
           <TabsTrigger value="syllabus">Giáo trình</TabsTrigger>
           <TabsTrigger value="enrollments">
             Ghi danh ({enrollmentsQuery.data?.totalElement ?? 0})
@@ -338,26 +444,74 @@ export function CourseRunDetailPage() {
           <TabsTrigger value="chat">Chat lớp</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="sessions" className="space-y-4">
+          <div className="flex justify-end">
+            <Button onClick={() => setSessionDialog(true)}>
+              <Plus className="mr-2 size-4" />
+              Thêm buổi học
+            </Button>
+          </div>
+          {(sessionsQuery.data ?? run?.sessions ?? []).map((session) => (
+            <Card key={session.id}>
+              <CardContent className="flex items-center justify-between py-4">
+                <div>
+                  <p className="font-medium">
+                    #{session.sessionNumber} — {session.title}
+                  </p>
+                  <p className="text-muted-foreground text-xs">
+                    {session.scheduledAt
+                      ? formatDateTime(session.scheduledAt)
+                      : 'Chưa lên lịch'}
+                    {session.durationMinutes != null &&
+                      ` · ${session.durationMinutes} phút`}
+                    {' · '}{session.status}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => openEditSession(session)}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive"
+                    onClick={() => deleteSessionMutation.mutate(session.id)}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {(sessionsQuery.data ?? run?.sessions ?? []).length === 0 && (
+            <p className="text-muted-foreground text-sm">Chưa có buổi học.</p>
+          )}
+        </TabsContent>
+
         <TabsContent value="syllabus" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setChapterDialog(true)}>
+            <Button onClick={() => setSectionDialog(true)}>
               <Plus className="mr-2 size-4" />
               Thêm chương
             </Button>
           </div>
-          {(chaptersQuery.data ?? run?.chapters ?? []).map((chapter) => (
-            <Card key={chapter.id}>
+          {(sectionsQuery.data ?? []).map((section) => (
+            <Card key={section.id}>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">{chapter.title}</CardTitle>
+                <CardTitle className="text-base">{section.title}</CardTitle>
                 <div className="flex gap-1">
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={() =>
-                      setEditChapter({
-                        id: chapter.id,
-                        title: chapter.title,
-                        orderIndex: chapter.orderIndex,
+                      setEditSection({
+                        id: section.id,
+                        title: section.title,
+                        orderIndex: section.orderIndex,
                       })
                     }
                   >
@@ -367,42 +521,42 @@ export function CourseRunDetailPage() {
                     variant="ghost"
                     size="icon"
                     className="text-destructive"
-                    onClick={() => deleteChapterMutation.mutate(chapter.id)}
+                    onClick={() => deleteSectionMutation.mutate(section.id)}
                   >
                     <Trash2 className="size-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setLessonDialog(chapter.id)}
+                    onClick={() => setItemDialog(section.id)}
                   >
                     <Plus className="mr-2 size-4" />
-                    Bài học
+                    Mục
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                {(chapter.lessons ?? []).length === 0 ? (
-                  <p className="text-muted-foreground text-sm">Chưa có bài học.</p>
+                {(section.items ?? []).length === 0 ? (
+                  <p className="text-muted-foreground text-sm">Chưa có mục giáo trình.</p>
                 ) : (
-                  chapter.lessons.map((lesson) => (
+                  section.items.map((item) => (
                     <div
-                      key={lesson.id}
+                      key={item.id}
                       className="flex items-center justify-between rounded-md border p-3"
                     >
                       <div>
-                        <p className="font-medium">{lesson.title}</p>
-                        <p className="text-muted-foreground text-xs">{lesson.type}</p>
+                        <p className="font-medium">{item.title}</p>
+                        <p className="text-muted-foreground text-xs">{item.type}</p>
                       </div>
                       <div className="flex gap-1">
                         <Button variant="outline" size="sm" asChild>
-                          <Link to={ROUTES.lessonDetail(lesson.id)}>Sửa</Link>
+                          <Link to={ROUTES.syllabusItemDetail(item.id)}>Sửa</Link>
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="text-destructive"
-                          onClick={() => deleteLessonMutation.mutate(lesson.id)}
+                          onClick={() => deleteItemMutation.mutate(item.id)}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -413,6 +567,9 @@ export function CourseRunDetailPage() {
               </CardContent>
             </Card>
           ))}
+          {(sectionsQuery.data ?? []).length === 0 && (
+            <p className="text-muted-foreground text-sm">Chưa có chương trình dạy.</p>
+          )}
         </TabsContent>
 
         <TabsContent value="enrollments" className="space-y-4">
@@ -673,34 +830,225 @@ export function CourseRunDetailPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={chapterDialog} onOpenChange={setChapterDialog}>
+      <Dialog open={sessionDialog} onOpenChange={setSessionDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Thêm buổi học</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Tiêu đề</Label>
+              <Input
+                value={sessionForm.title}
+                onChange={(e) =>
+                  setSessionForm((f) => ({ ...f, title: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Mô tả</Label>
+              <Input
+                value={sessionForm.description}
+                onChange={(e) =>
+                  setSessionForm((f) => ({ ...f, description: e.target.value }))
+                }
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Số buổi</Label>
+                <Input
+                  type="number"
+                  value={sessionForm.sessionNumber}
+                  onChange={(e) =>
+                    setSessionForm((f) => ({
+                      ...f,
+                      sessionNumber: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Thời lượng (phút)</Label>
+                <Input
+                  type="number"
+                  value={sessionForm.durationMinutes}
+                  onChange={(e) =>
+                    setSessionForm((f) => ({
+                      ...f,
+                      durationMinutes: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Lịch học</Label>
+              <DateTimePicker
+                value={sessionForm.scheduledAt}
+                onChange={(scheduledAt) =>
+                  setSessionForm((f) => ({ ...f, scheduledAt }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Trạng thái</Label>
+              <Select
+                value={sessionForm.status}
+                onValueChange={(value) =>
+                  setSessionForm((f) => ({ ...f, status: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
+                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => createSessionMutation.mutate()}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(editSession)} onOpenChange={() => setEditSession(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sửa buổi học</DialogTitle>
+          </DialogHeader>
+          {editSession && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Tiêu đề</Label>
+                <Input
+                  value={editSession.form.title}
+                  onChange={(e) =>
+                    setEditSession((s) =>
+                      s && { ...s, form: { ...s.form, title: e.target.value } },
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mô tả</Label>
+                <Input
+                  value={editSession.form.description}
+                  onChange={(e) =>
+                    setEditSession((s) =>
+                      s && {
+                        ...s,
+                        form: { ...s.form, description: e.target.value },
+                      },
+                    )
+                  }
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Số buổi</Label>
+                  <Input
+                    type="number"
+                    value={editSession.form.sessionNumber}
+                    onChange={(e) =>
+                      setEditSession((s) =>
+                        s && {
+                          ...s,
+                          form: { ...s.form, sessionNumber: e.target.value },
+                        },
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Thời lượng (phút)</Label>
+                  <Input
+                    type="number"
+                    value={editSession.form.durationMinutes}
+                    onChange={(e) =>
+                      setEditSession((s) =>
+                        s && {
+                          ...s,
+                          form: { ...s.form, durationMinutes: e.target.value },
+                        },
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Lịch học</Label>
+                <DateTimePicker
+                  value={editSession.form.scheduledAt}
+                  onChange={(scheduledAt) =>
+                    setEditSession((s) =>
+                      s && { ...s, form: { ...s.form, scheduledAt } },
+                    )
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Trạng thái</Label>
+                <Select
+                  value={editSession.form.status}
+                  onValueChange={(value) =>
+                    setEditSession((s) =>
+                      s && { ...s, form: { ...s.form, status: value } },
+                    )
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
+                    <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => updateSessionMutation.mutate()}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={sectionDialog} onOpenChange={setSectionDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Thêm chương</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             <Label>Tiêu đề</Label>
-            <Input value={chapterTitle} onChange={(e) => setChapterTitle(e.target.value)} />
+            <Input value={sectionTitle} onChange={(e) => setSectionTitle(e.target.value)} />
           </div>
           <DialogFooter>
-            <Button onClick={() => createChapterMutation.mutate()}>Lưu</Button>
+            <Button onClick={() => createSectionMutation.mutate()}>Lưu</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(lessonDialog)} onOpenChange={() => setLessonDialog(null)}>
+      <Dialog open={Boolean(itemDialog)} onOpenChange={() => setItemDialog(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Thêm bài học</DialogTitle>
+            <DialogTitle>Thêm mục giáo trình</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Tiêu đề</Label>
-              <Input value={lessonTitle} onChange={(e) => setLessonTitle(e.target.value)} />
+              <Input value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Loại</Label>
-              <Select value={lessonType} onValueChange={setLessonType}>
+              <Select value={itemType} onValueChange={setItemType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -714,7 +1062,7 @@ export function CourseRunDetailPage() {
           </div>
           <DialogFooter>
             <Button
-              onClick={() => lessonDialog && createLessonMutation.mutate(lessonDialog)}
+              onClick={() => itemDialog && createItemMutation.mutate(itemDialog)}
             >
               Lưu
             </Button>
@@ -749,7 +1097,7 @@ export function CourseRunDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={Boolean(editChapter)} onOpenChange={() => setEditChapter(null)}>
+      <Dialog open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Sửa chương</DialogTitle>
@@ -757,14 +1105,14 @@ export function CourseRunDetailPage() {
           <div className="space-y-2">
             <Label>Tiêu đề</Label>
             <Input
-              value={editChapter?.title ?? ''}
+              value={editSection?.title ?? ''}
               onChange={(e) =>
-                setEditChapter((c) => c && { ...c, title: e.target.value })
+                setEditSection((c) => c && { ...c, title: e.target.value })
               }
             />
           </div>
           <DialogFooter>
-            <Button onClick={() => updateChapterMutation.mutate()}>Lưu</Button>
+            <Button onClick={() => updateSectionMutation.mutate()}>Lưu</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -817,7 +1165,7 @@ export function CourseRunDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="STUDENT">STUDENT</SelectItem>
-                  <SelectItem value="TEACHER">TEACHER</SelectItem>
+                  <SelectItem value="LECTURE">LECTURE</SelectItem>
                   <SelectItem value="ADMIN">ADMIN</SelectItem>
                   <SelectItem value="NO_ROLE">NO_ROLE</SelectItem>
                 </SelectContent>

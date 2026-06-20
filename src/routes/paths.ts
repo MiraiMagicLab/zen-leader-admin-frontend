@@ -8,7 +8,7 @@ export const ROUTES = {
   courseDetail: (courseId: string) => `/courses/${courseId}`,
   courseRuns: '/course-runs',
   courseRunDetail: (runId: string) => `/course-runs/${runId}`,
-  lessonDetail: (lessonId: string) => `/lessons/${lessonId}`,
+  syllabusItemDetail: (itemId: string) => `/syllabus-items/${itemId}`,
   events: '/events',
   eventDetail: (eventId: string) => `/events/${eventId}`,
   userDetail: (userId: string) => `/users/${userId}`,

@@ -22,8 +22,8 @@ import { RichTextEditor } from '@/components/rich-text-editor';
 import { queryKeys } from '@/hooks/query-keys';
 import { assetsApi } from '@/services/assets/assets-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
-import { lessonsApi } from '@/services/lms/lms-api';
-import type { LessonUpsertRequest } from '@/services/types/domain';
+import { syllabusItemsApi } from '@/services/lms/lms-api';
+import type { SyllabusItemUpsertRequest } from '@/services/types/domain';
 
 function readContentField(
   data: Record<string, unknown>,
@@ -53,20 +53,20 @@ function patchContentData(
   return next;
 }
 
-export function LessonDetailPage() {
-  const { lessonId } = useParams();
+export function SyllabusItemDetailPage() {
+  const { itemId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [uploadFile, setUploadFile] = useState<File | null>(null);
 
-  const lessonQuery = useQuery({
-    queryKey: queryKeys.lessons.detail(lessonId ?? ''),
-    queryFn: () => lessonsApi.getById(lessonId!),
-    enabled: Boolean(lessonId),
+  const itemQuery = useQuery({
+    queryKey: queryKeys.syllabusItems.detail(itemId ?? ''),
+    queryFn: () => syllabusItemsApi.getById(itemId!),
+    enabled: Boolean(itemId),
   });
 
-  const [form, setForm] = useState<LessonUpsertRequest>({
-    chapterId: '',
+  const [form, setForm] = useState<SyllabusItemUpsertRequest>({
+    syllabusSectionId: '',
     type: 'VIDEO',
     title: '',
     description: '',
@@ -77,47 +77,47 @@ export function LessonDetailPage() {
   });
 
   useEffect(() => {
-    const lesson = lessonQuery.data;
-    if (lesson) {
+    const item = itemQuery.data;
+    if (item) {
       setForm({
-        chapterId: lesson.chapterId,
-        type: lesson.type,
-        title: lesson.title,
-        description: lesson.description ?? '',
-        orderIndex: lesson.orderIndex,
-        isHidden: lesson.isHidden,
-        isOptional: lesson.isOptional,
-        contentData: lesson.contentData ?? {},
+        syllabusSectionId: item.syllabusSectionId,
+        type: item.type,
+        title: item.title,
+        description: item.description ?? '',
+        orderIndex: item.orderIndex,
+        isHidden: item.isHidden,
+        isOptional: item.isOptional,
+        contentData: item.contentData ?? {},
       });
     }
-  }, [lessonQuery.data]);
+  }, [itemQuery.data]);
 
   const updateMutation = useMutation({
-    mutationFn: () => lessonsApi.update(lessonId!, form),
+    mutationFn: () => syllabusItemsApi.update(itemId!, form),
     onSuccess: () => {
-      toast.success('Đã cập nhật bài học.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.lessons.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.chapters.all });
+      toast.success('Đã cập nhật mục giáo trình.');
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusItems.all });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => lessonsApi.remove(lessonId!),
+    mutationFn: () => syllabusItemsApi.remove(itemId!),
     onSuccess: () => {
-      toast.success('Đã xóa bài học.');
+      toast.success('Đã xóa mục giáo trình.');
       navigate(-1);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const uploadMutation = useMutation({
-    mutationFn: () => lessonsApi.uploadFile(lessonId!, uploadFile!),
+    mutationFn: () => syllabusItemsApi.uploadFile(itemId!, uploadFile!),
     onSuccess: () => {
       toast.success('Đã upload file.');
       setUploadFile(null);
       void queryClient.invalidateQueries({
-        queryKey: queryKeys.lessons.detail(lessonId!),
+        queryKey: queryKeys.syllabusItems.detail(itemId!),
       });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -139,7 +139,7 @@ export function LessonDetailPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const fileAttachment = lessonQuery.data?.contentData?.fileAttachment as
+  const fileAttachment = itemQuery.data?.contentData?.fileAttachment as
     | { publicId?: string; fileName?: string; url?: string }
     | undefined;
 
@@ -159,7 +159,7 @@ export function LessonDetailPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const lesson = lessonQuery.data;
+  const item = itemQuery.data;
   const contentData = form.contentData ?? {};
 
   const setContentField = (key: string, value: string | number | undefined) => {
@@ -169,7 +169,7 @@ export function LessonDetailPage() {
     }));
   };
 
-  const lessonType = form.type.toUpperCase();
+  const itemType = form.type.toUpperCase();
   const articleBody = readContentField(contentData, 'body', 'content');
   const videoUrl = readContentField(
     contentData,
@@ -200,8 +200,8 @@ export function LessonDetailPage() {
       </Button>
 
       <PageHeader
-        title={lesson?.title ?? 'Bài học'}
-        description={lesson?.chapterTitle}
+        title={item?.title ?? 'Mục giáo trình'}
+        description={item?.syllabusSectionTitle}
         actions={
           <Button
             variant="destructive"
@@ -216,7 +216,7 @@ export function LessonDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Thông tin bài học</CardTitle>
+          <CardTitle className="text-base">Thông tin mục giáo trình</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -232,7 +232,7 @@ export function LessonDetailPage() {
               value={form.description ?? ''}
               rows={3}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="Tóm tắt hiển thị trên danh sách bài học"
+              placeholder="Tóm tắt hiển thị trên danh sách"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -271,7 +271,7 @@ export function LessonDetailPage() {
                   setForm((f) => ({ ...f, isHidden: checked }))
                 }
               />
-              Ẩn bài học
+              Ẩn mục
             </label>
             <label className="flex items-center gap-2">
               <Switch
@@ -291,18 +291,18 @@ export function LessonDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Nội dung bài học</CardTitle>
+          <CardTitle className="text-base">Nội dung</CardTitle>
           <p className="text-muted-foreground text-sm">
             Lưu vào <code className="text-xs">contentData</code> — app mobile đọc các
-            field này (API đã hỗ trợ sẵn qua PUT bài học).
+            field này (API đã hỗ trợ sẵn qua PUT syllabus-item).
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {lessonType === 'ARTICLE' || lessonType === 'QUIZ' ? (
+          {itemType === 'ARTICLE' || itemType === 'QUIZ' ? (
             <>
               <div className="space-y-2">
                 <Label>
-                  {lessonType === 'QUIZ' ? 'Nội dung / câu hỏi' : 'Nội dung bài viết'}
+                  {itemType === 'QUIZ' ? 'Nội dung / câu hỏi' : 'Nội dung bài viết'}
                 </Label>
                 <RichTextEditor
                   value={articleBody}
@@ -323,7 +323,7 @@ export function LessonDetailPage() {
                   mô tả ngắn phía trên.
                 </p>
               </div>
-              {lessonType === 'ARTICLE' ? (
+              {itemType === 'ARTICLE' ? (
                 <>
                   <div className="space-y-2">
                     <Label>Trích dẫn (quote)</Label>
@@ -367,7 +367,7 @@ export function LessonDetailPage() {
             </>
           ) : null}
 
-          {lessonType === 'VIDEO' ? (
+          {itemType === 'VIDEO' ? (
             <>
               <div className="space-y-2">
                 <Label>URL video (videoUrl)</Label>
@@ -419,7 +419,7 @@ export function LessonDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Upload file bài học</CardTitle>
+          <CardTitle className="text-base">Upload file</CardTitle>
           <p className="text-muted-foreground text-sm">
             Tuỳ chọn — gắn file vào <code className="text-xs">contentData.fileAttachment</code>{' '}
             (video/PDF…). Không thay thế soạn nội dung ARTICLE ở trên.
@@ -486,11 +486,11 @@ export function LessonDetailPage() {
                 ) : null}
               </div>
             </div>
-          ) : lesson?.contentData?.url ? (
+          ) : item?.contentData?.url ? (
             <p className="text-muted-foreground text-sm">
               File hiện tại:{' '}
-              <Link to={String(lesson.contentData.url)} target="_blank" className="underline">
-                {String(lesson.contentData.url)}
+              <Link to={String(item.contentData.url)} target="_blank" className="underline">
+                {String(item.contentData.url)}
               </Link>
             </p>
           ) : null}

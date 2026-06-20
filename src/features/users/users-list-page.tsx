@@ -55,7 +55,7 @@ import {
   updateUserStatusApi,
 } from '@/services/users/users-api';
 
-const ROLE_OPTIONS = ['admin', 'user', 'teacher'];
+const ROLE_OPTIONS = ['admin', 'user'];
 
 export function UsersListPage() {
   const queryClient = useQueryClient();

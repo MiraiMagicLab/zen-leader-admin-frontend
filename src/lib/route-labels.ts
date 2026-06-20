@@ -20,7 +20,7 @@ const prefixLabels: { prefix: string; label: string }[] = [
   { prefix: '/programs/', label: 'Khóa học chương trình' },
   { prefix: '/courses/', label: 'Chi tiết khóa học' },
   { prefix: '/course-runs/', label: 'Chi tiết lớp chạy' },
-  { prefix: '/lessons/', label: 'Chi tiết bài học' },
+  { prefix: '/syllabus-items/', label: 'Chi tiết mục giáo trình' },
   { prefix: '/events/', label: 'Chi tiết sự kiện' },
 ];
 

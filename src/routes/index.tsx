@@ -13,7 +13,7 @@ import { CoursesListPage } from '@/features/courses/courses-list-page';
 import { AdminDashboardPage } from '@/features/dashboard';
 import { EventDetailPage } from '@/features/events/event-detail-page';
 import { EventsListPage } from '@/features/events/events-list-page';
-import { LessonDetailPage } from '@/features/lessons/lesson-detail-page';
+import { SyllabusItemDetailPage } from '@/features/syllabus-items/syllabus-item-detail-page';
 import { LiveSessionsPage } from '@/features/live-sessions/live-sessions-page';
 import { ModerationPage } from '@/features/moderation/moderation-page';
 import { NotificationsPage } from '@/features/notifications/notifications-page';
@@ -84,7 +84,7 @@ export const appRouter = createBrowserRouter([
           { path: '/courses/:courseId', element: <CourseDetailPage /> },
           { path: ROUTES.courseRuns, element: <CourseRunsListPage /> },
           { path: '/course-runs/:runId', element: <CourseRunDetailPage /> },
-          { path: '/lessons/:lessonId', element: <LessonDetailPage /> },
+          { path: '/syllabus-items/:itemId', element: <SyllabusItemDetailPage /> },
           { path: ROUTES.events, element: <EventsListPage /> },
           { path: '/events/:eventId', element: <EventDetailPage /> },
           { path: ROUTES.payments, element: <PaymentsPage /> },

@@ -31,23 +31,32 @@ export const queryKeys = {
     detail: (id: string) =>
       [...queryKeys.courseRuns.all, 'detail', id] as const,
   },
-  chapters: {
-    all: ['chapters'] as const,
-    list: (courseRunId: string) =>
-      [...queryKeys.chapters.all, 'list', courseRunId] as const,
+  syllabusSections: {
+    all: ['syllabus-sections'] as const,
+    list: (courseId: string) =>
+      [...queryKeys.syllabusSections.all, 'list', courseId] as const,
   },
-  lessons: {
-    all: ['lessons'] as const,
-    list: (chapterId: string) =>
-      [...queryKeys.lessons.all, 'list', chapterId] as const,
-    detail: (id: string) => [...queryKeys.lessons.all, 'detail', id] as const,
+  syllabusItems: {
+    all: ['syllabus-items'] as const,
+    list: (syllabusSectionId: string) =>
+      [...queryKeys.syllabusItems.all, 'list', syllabusSectionId] as const,
+    detail: (id: string) =>
+      [...queryKeys.syllabusItems.all, 'detail', id] as const,
+  },
+  sessions: {
+    all: ['sessions'] as const,
+    list: (courseRunId: string) =>
+      [...queryKeys.sessions.all, 'list', courseRunId] as const,
+    detail: (id: string) => [...queryKeys.sessions.all, 'detail', id] as const,
   },
   progress: {
     all: ['progress'] as const,
     summary: (userId: string, courseRunId: string) =>
       [...queryKeys.progress.all, 'summary', userId, courseRunId] as const,
-    lessons: (userId: string, courseRunId: string) =>
-      [...queryKeys.progress.all, 'lessons', userId, courseRunId] as const,
+    syllabus: (userId: string, courseRunId: string) =>
+      [...queryKeys.progress.all, 'syllabus', userId, courseRunId] as const,
+    sessions: (userId: string, courseRunId: string) =>
+      [...queryKeys.progress.all, 'sessions', userId, courseRunId] as const,
   },
   enrollments: {
     all: ['enrollments'] as const,
