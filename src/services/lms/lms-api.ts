@@ -28,6 +28,12 @@ export const syllabusSectionsApi = {
         ? `/api/v1/syllabus-sections?courseId=${encodeURIComponent(courseId)}`
         : '/api/v1/syllabus-sections',
     ),
+  getPage: (page: number, pageSize: number, courseId?: string) =>
+    apiGet<PagingResponse<SyllabusSectionResponse>>(
+      courseId
+        ? `/api/v1/syllabus-sections/paged?page=${page}&pageSize=${pageSize}&courseId=${encodeURIComponent(courseId)}`
+        : `/api/v1/syllabus-sections/paged?page=${page}&pageSize=${pageSize}`,
+    ),
   getById: (id: string) =>
     apiGet<SyllabusSectionResponse>(`/api/v1/syllabus-sections/${id}`),
   create: (payload: SyllabusSectionUpsertRequest) =>
@@ -44,6 +50,12 @@ export const syllabusItemsApi = {
       syllabusSectionId
         ? `/api/v1/syllabus-items?syllabusSectionId=${encodeURIComponent(syllabusSectionId)}`
         : '/api/v1/syllabus-items',
+    ),
+  getPage: (page: number, pageSize: number, syllabusSectionId?: string) =>
+    apiGet<PagingResponse<SyllabusItemResponse>>(
+      syllabusSectionId
+        ? `/api/v1/syllabus-items/paged?page=${page}&pageSize=${pageSize}&syllabusSectionId=${encodeURIComponent(syllabusSectionId)}`
+        : `/api/v1/syllabus-items/paged?page=${page}&pageSize=${pageSize}`,
     ),
   getById: (id: string) =>
     apiGet<SyllabusItemResponse>(`/api/v1/syllabus-items/${id}`),
@@ -69,6 +81,12 @@ export const sessionsApi = {
       courseRunId
         ? `/api/v1/sessions?courseRunId=${encodeURIComponent(courseRunId)}`
         : '/api/v1/sessions',
+    ),
+  getPage: (page: number, pageSize: number, courseRunId?: string) =>
+    apiGet<PagingResponse<SessionResponse>>(
+      courseRunId
+        ? `/api/v1/sessions/paged?page=${page}&pageSize=${pageSize}&courseRunId=${encodeURIComponent(courseRunId)}`
+        : `/api/v1/sessions/paged?page=${page}&pageSize=${pageSize}`,
     ),
   getById: (id: string) =>
     apiGet<SessionResponse>(`/api/v1/sessions/${id}`),

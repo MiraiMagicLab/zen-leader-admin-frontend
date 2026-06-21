@@ -79,13 +79,13 @@ export const queryKeys = {
   },
   payments: {
     all: ['payments'] as const,
-    list: (page: number, status?: string) =>
-      [...queryKeys.payments.all, 'list', page, status ?? 'all'] as const,
+    list: (page: number, status?: string, keyword?: string) =>
+      [...queryKeys.payments.all, 'list', page, status ?? 'all', keyword ?? ''] as const,
   },
   safety: {
     all: ['safety'] as const,
-    reports: (page: number, status?: string) =>
-      [...queryKeys.safety.all, 'reports', page, status ?? 'all'] as const,
+    reports: (page: number, status?: string, keyword?: string) =>
+      [...queryKeys.safety.all, 'reports', page, status ?? 'all', keyword ?? ''] as const,
   },
   liveSessions: {
     all: ['live-sessions'] as const,

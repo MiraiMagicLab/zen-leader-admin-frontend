@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { RefreshCw, Search } from 'lucide-react';
@@ -34,14 +34,24 @@ export function ModerationPage() {
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [search, setSearch] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState('');
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(0);
+      setSearchKeyword(search.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const reportsQuery = useQuery({
-    queryKey: queryKeys.safety.reports(page, statusFilter),
+    queryKey: queryKeys.safety.reports(page, statusFilter, searchKeyword),
     queryFn: () =>
       safetyApi.listReports(
         page,
         20,
         statusFilter === 'all' ? undefined : statusFilter,
+        searchKeyword || undefined,
       ),
   });
 
@@ -176,18 +186,7 @@ export function ModerationPage() {
 
       <DataTable
         columns={columns}
-        data={reportsQuery.data?.data?.filter((r) => {
-          if (search.trim()) {
-            const q = search.toLowerCase();
-            return (
-              r.reason.toLowerCase().includes(q) ||
-              r.reporterDisplayName.toLowerCase().includes(q) ||
-              r.reporterEmail.toLowerCase().includes(q) ||
-              r.targetUserDisplayName.toLowerCase().includes(q)
-            );
-          }
-          return true;
-        }) ?? []}
+        data={reportsQuery.data?.data ?? []}
         isLoading={reportsQuery.isLoading}
         emptyMessage="Không có báo cáo nào."
         showRowIndex

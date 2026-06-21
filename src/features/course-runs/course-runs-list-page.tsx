@@ -31,16 +31,17 @@ import type { CourseRunResponse } from '@/services/types/domain';
 const STATUS_OPTIONS = ['all', 'DRAFT', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
 export function CourseRunsListPage() {
+  const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const runsQuery = useQuery({
-    queryKey: queryKeys.courseRuns.list(),
-    queryFn: () => courseRunsApi.getAll(),
+    queryKey: [...queryKeys.courseRuns.list(), page],
+    queryFn: () => courseRunsApi.getPage(page, 20),
   });
 
   const filteredData = useMemo(() => {
-    const data = runsQuery.data ?? [];
+    const data = runsQuery.data?.data ?? [];
     return data.filter((run) => {
       if (statusFilter !== 'all' && run.status !== statusFilter) return false;
       if (search.trim()) {
@@ -136,7 +137,27 @@ export function CourseRunsListPage() {
         data={filteredData}
         isLoading={runsQuery.isLoading}
         showRowIndex
+        pageOffset={page * 20}
       />
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 0}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Trang trước
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page + 1 >= (runsQuery.data?.totalPages ?? 1)}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Trang sau
+        </Button>
+      </div>
     </div>
   );
 }

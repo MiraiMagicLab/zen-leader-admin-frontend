@@ -3,12 +3,13 @@ import type { UgcReportResponse } from '@/services/types/domain';
 import type { PagingResponse } from '@/services/types/pagination';
 
 export const safetyApi = {
-  listReports: (page = 0, pageSize = 20, status?: string) => {
+  listReports: (page = 0, pageSize = 20, status?: string, keyword?: string) => {
     const params = new URLSearchParams({
       page: String(page),
       pageSize: String(pageSize),
     });
     if (status) params.set('status', status);
+    if (keyword) params.set('keyword', keyword);
     return apiGet<PagingResponse<UgcReportResponse>>(
       `/api/v1/admin/safety/reports?${params.toString()}`,
     );

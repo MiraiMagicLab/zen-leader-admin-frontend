@@ -69,16 +69,16 @@ export function AdminDashboardPage() {
     queryFn: async () => {
       const [users, programs, courses, runs, events] = await Promise.all([
         getUsersApi({ page: 1, size: 1 }),
-        programsApi.getAll(),
-        coursesApi.getAll(),
-        courseRunsApi.getAll(),
+        programsApi.getPage(0, 1),
+        coursesApi.getPage(0, 1),
+        courseRunsApi.getPage(0, 1),
         eventsApi.getAll(0, 1, true),
       ]);
       return {
         users: users.totalElement,
-        programs: programs.length,
-        courses: courses.length,
-        runs: runs.length,
+        programs: programs.totalElement,
+        courses: courses.totalElement,
+        runs: runs.totalElement,
         events: events.totalElement,
       };
     },

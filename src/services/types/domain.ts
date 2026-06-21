@@ -63,7 +63,8 @@ export type CourseRunResponse = {
   enrollmentStartDate: string | null;
   enrollmentEndDate: string | null;
   capacity: number | null;
-  sessions: SessionResponse[];
+  courseSessions: SessionResponse[];
+  sessions?: SessionResponse[];
   createdAt: string;
   updatedAt: string;
 };
@@ -334,6 +335,26 @@ export type AdminPaymentOrderResponse = {
   userId: string;
   userEmail: string;
   userDisplayName: string;
+  provider: string;
+  status: string;
+  amount: number;
+  currency: string;
+  paymentUrl: string | null;
+  qrCode: string | null;
+  courseRunId: string;
+  courseRunCode: string;
+  expiresAt: string;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  enrollmentActive: boolean | null;
+  enrollmentFailureCode: string | null;
+  enrollmentFailureMessage: string | null;
+  enrollmentRetryCount: number;
+};
+
+export type PaymentOrderResponse = {
+  orderId: string;
   provider: string;
   status: string;
   amount: number;

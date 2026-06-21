@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { RefreshCw, Search } from 'lucide-react';
@@ -29,6 +29,8 @@ const STATUS_OPTIONS = [
   { value: 'ENROLL_FAILED', label: 'ENROLL_FAILED' },
   { value: 'EXPIRED', label: 'EXPIRED' },
   { value: 'CANCELLED', label: 'CANCELLED' },
+  { value: 'REFUND_PENDING', label: 'REFUND_PENDING' },
+  { value: 'REFUNDED', label: 'REFUNDED' },
 ];
 
 export function PaymentsPage() {
@@ -36,14 +38,24 @@ export function PaymentsPage() {
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [searchKeyword, setSearchKeyword] = useState('');
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(0);
+      setSearchKeyword(search.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const ordersQuery = useQuery({
-    queryKey: queryKeys.payments.list(page, statusFilter),
+    queryKey: queryKeys.payments.list(page, statusFilter, searchKeyword),
     queryFn: () =>
       paymentsApi.listOrders(
         page,
         20,
         statusFilter === 'all' ? undefined : statusFilter,
+        searchKeyword || undefined,
       ),
   });
 
@@ -170,18 +182,7 @@ export function PaymentsPage() {
 
       <DataTable
         columns={columns}
-        data={ordersQuery.data?.data?.filter((o) => {
-          if (search.trim()) {
-            const q = search.toLowerCase();
-            return (
-              o.userDisplayName.toLowerCase().includes(q) ||
-              o.userEmail.toLowerCase().includes(q) ||
-              o.orderId.toLowerCase().includes(q) ||
-              o.courseRunCode.toLowerCase().includes(q)
-            );
-          }
-          return true;
-        }) ?? []}
+        data={ordersQuery.data?.data ?? []}
         isLoading={ordersQuery.isLoading}
         emptyMessage="Chưa có đơn thanh toán."
         showRowIndex

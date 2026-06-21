@@ -16,7 +16,7 @@ import type { PagingResponse } from '@/services/types/pagination';
 export const eventsApi = {
   getAll: (page = 0, size = 10, includeDrafts = true) =>
     apiGet<PagingResponse<EventResponse>>(
-      `/api/v1/events?page=${page}&size=${size}&includeDrafts=${includeDrafts}`,
+      `/api/v1/events/web/feed?page=${page}&size=${size}&includeDrafts=${includeDrafts}`,
     ),
   getById: (id: string) => apiGet<EventResponse>(`/api/v1/events/${id}`),
   create: (payload: CreateEventRequest) =>

@@ -8,6 +8,7 @@ import type {
   CourseRunResponse,
   CourseRunUpsertRequest,
 } from '@/services/types/domain';
+import type { PagingResponse } from '@/services/types/pagination';
 
 export const courseRunsApi = {
   getAll: (courseId?: string) =>
@@ -15,6 +16,12 @@ export const courseRunsApi = {
       courseId
         ? `/api/v1/course-runs?courseId=${encodeURIComponent(courseId)}`
         : '/api/v1/course-runs',
+    ),
+  getPage: (page = 0, pageSize = 20, courseId?: string) =>
+    apiGet<PagingResponse<CourseRunResponse>>(
+      courseId
+        ? `/api/v1/course-runs/paged?page=${page}&pageSize=${pageSize}&courseId=${encodeURIComponent(courseId)}`
+        : `/api/v1/course-runs/paged?page=${page}&pageSize=${pageSize}`,
     ),
   getById: (id: string) =>
     apiGet<CourseRunResponse>(`/api/v1/course-runs/${id}`),

@@ -63,7 +63,7 @@ export async function updateUserRolesApi(
 }
 
 export async function getUserByIdApi(userId: string): Promise<UserResponse> {
-  const user = await apiGet<UserResponseRaw>(`/api/v1/users/${userId}`);
+  const user = await apiGet<UserResponseRaw>(`/api/v1/admin/users/${userId}`);
   return normalizeUser(user);
 }
 
@@ -73,6 +73,8 @@ export async function getUsersApi(params: {
   field?: string;
   direction?: string;
   keyword?: string;
+  role?: string;
+  status?: string;
 }) {
   const search = new URLSearchParams();
   search.set('page', String(params.page ?? 1));
@@ -80,9 +82,11 @@ export async function getUsersApi(params: {
   if (params.field) search.set('field', params.field);
   if (params.direction) search.set('direction', params.direction);
   if (params.keyword) search.set('keyword', params.keyword);
+  if (params.role && params.role !== 'all') search.set('role', params.role);
+  if (params.status && params.status !== 'all') search.set('status', params.status);
   const page = await apiGet<
     import('@/services/types/pagination').PagingResponse<UserResponseRaw>
-  >(`/api/v1/users?${search.toString()}`);
+  >(`/api/v1/admin/users?${search.toString()}`);
   return {
     ...page,
     data: page.data.map(normalizeUser),

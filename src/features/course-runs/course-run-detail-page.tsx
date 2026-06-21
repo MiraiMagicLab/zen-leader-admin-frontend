@@ -69,6 +69,8 @@ const emptySessionForm: SessionForm = {
   status: 'SCHEDULED',
 };
 
+const DETAIL_PAGE_SIZE = 100;
+
 export function CourseRunDetailPage() {
   const { runId } = useParams();
   const navigate = useNavigate();
@@ -109,13 +111,14 @@ export function CourseRunDetailPage() {
 
   const sectionsQuery = useQuery({
     queryKey: queryKeys.syllabusSections.list(runQuery.data?.courseId ?? ''),
-    queryFn: () => syllabusSectionsApi.getAll(runQuery.data!.courseId),
+    queryFn: () =>
+      syllabusSectionsApi.getPage(0, DETAIL_PAGE_SIZE, runQuery.data!.courseId),
     enabled: Boolean(runQuery.data?.courseId),
   });
 
   const sessionsQuery = useQuery({
     queryKey: queryKeys.sessions.list(runId ?? ''),
-    queryFn: () => sessionsApi.getAll(runId!),
+    queryFn: () => sessionsApi.getPage(0, DETAIL_PAGE_SIZE, runId!),
     enabled: Boolean(runId),
   });
 
@@ -167,7 +170,7 @@ export function CourseRunDetailPage() {
       syllabusSectionsApi.create({
         courseId: runQuery.data!.courseId,
         title: sectionTitle,
-        orderIndex: sectionsQuery.data?.length ?? 0,
+        orderIndex: sectionsQuery.data?.data.length ?? 0,
       }),
     onSuccess: () => {
       toast.success('Đã thêm chương.');
@@ -205,7 +208,7 @@ export function CourseRunDetailPage() {
         title: sessionForm.title,
         description: sessionForm.description || undefined,
         sessionNumber: Number(sessionForm.sessionNumber),
-        orderIndex: sessionsQuery.data?.length ?? 0,
+        orderIndex: sessionsQuery.data?.data.length ?? 0,
         scheduledAt: sessionForm.scheduledAt
           ? new Date(sessionForm.scheduledAt).toISOString()
           : undefined,
@@ -434,7 +437,7 @@ export function CourseRunDetailPage() {
       <Tabs defaultValue="sessions">
         <TabsList>
           <TabsTrigger value="sessions">
-            Buổi học ({sessionsQuery.data?.length ?? run?.sessions?.length ?? 0})
+            Buổi học ({sessionsQuery.data?.data.length ?? run?.courseSessions?.length ?? 0})
           </TabsTrigger>
           <TabsTrigger value="syllabus">Giáo trình</TabsTrigger>
           <TabsTrigger value="enrollments">
@@ -451,7 +454,7 @@ export function CourseRunDetailPage() {
               Thêm buổi học
             </Button>
           </div>
-          {(sessionsQuery.data ?? run?.sessions ?? []).map((session) => (
+          {(sessionsQuery.data?.data ?? run?.courseSessions ?? []).map((session) => (
             <Card key={session.id}>
               <CardContent className="flex items-center justify-between py-4">
                 <div>
@@ -487,7 +490,7 @@ export function CourseRunDetailPage() {
               </CardContent>
             </Card>
           ))}
-          {(sessionsQuery.data ?? run?.sessions ?? []).length === 0 && (
+          {(sessionsQuery.data?.data ?? run?.courseSessions ?? []).length === 0 && (
             <p className="text-muted-foreground text-sm">Chưa có buổi học.</p>
           )}
         </TabsContent>
@@ -499,7 +502,7 @@ export function CourseRunDetailPage() {
               Thêm chương
             </Button>
           </div>
-          {(sectionsQuery.data ?? []).map((section) => (
+          {(sectionsQuery.data?.data ?? []).map((section) => (
             <Card key={section.id}>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-base">{section.title}</CardTitle>
@@ -567,7 +570,7 @@ export function CourseRunDetailPage() {
               </CardContent>
             </Card>
           ))}
-          {(sectionsQuery.data ?? []).length === 0 && (
+          {(sectionsQuery.data?.data ?? []).length === 0 && (
             <p className="text-muted-foreground text-sm">Chưa có chương trình dạy.</p>
           )}
         </TabsContent>

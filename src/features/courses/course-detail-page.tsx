@@ -116,7 +116,7 @@ export function CourseDetailPage() {
 
   const runsQuery = useQuery({
     queryKey: queryKeys.courseRuns.list(courseId),
-    queryFn: () => courseRunsApi.getAll(courseId),
+    queryFn: () => courseRunsApi.getPage(0, 100, courseId),
     enabled: Boolean(courseId),
   });
 
@@ -357,7 +357,7 @@ export function CourseDetailPage() {
 
       <DataTable
         columns={columns}
-        data={runsQuery.data ?? courseQuery.data?.courseRuns ?? []}
+        data={runsQuery.data?.data ?? courseQuery.data?.courseRuns ?? []}
         isLoading={runsQuery.isLoading || courseQuery.isLoading}
         emptyMessage="Chưa có đợt học nào."
       />

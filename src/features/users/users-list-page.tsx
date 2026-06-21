@@ -85,7 +85,12 @@ export function UsersListPage() {
   }, [keyword]);
 
   const usersQuery = useQuery({
-    queryKey: queryKeys.users.list({ page, keyword: search }),
+    queryKey: queryKeys.users.list({
+      page,
+      keyword: search,
+      role: roleFilter,
+      status: statusFilter,
+    }),
     queryFn: () =>
       getUsersApi({
         page,
@@ -93,6 +98,8 @@ export function UsersListPage() {
         direction: 'DESC',
         field: 'createdAt',
         keyword: search || undefined,
+        role: roleFilter,
+        status: statusFilter,
       }),
   });
 
@@ -331,13 +338,7 @@ export function UsersListPage() {
 
       <DataTable
         columns={columns}
-        data={usersQuery.data?.data?.filter((u) => {
-          if (roleFilter !== 'all' && !u.roles.includes(roleFilter)) return false;
-          if (statusFilter === 'active' && !u.isActive) return false;
-          if (statusFilter === 'inactive' && u.isActive) return false;
-          if (statusFilter === 'banned' && !u.bannedUntil) return false;
-          return true;
-        }) ?? []}
+        data={usersQuery.data?.data ?? []}
         isLoading={usersQuery.isLoading}
         emptyMessage="Không tìm thấy người dùng."
         showRowIndex

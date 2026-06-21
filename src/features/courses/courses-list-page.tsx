@@ -81,6 +81,7 @@ export function CoursesListPage() {
   const { programId } = useParams();
   const queryClient = useQueryClient();
   const isProgramScope = Boolean(programId);
+  const [page, setPage] = useState(0);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CourseResponse | null>(null);
@@ -97,9 +98,9 @@ export function CoursesListPage() {
   });
 
   const coursesQuery = useQuery({
-    queryKey: queryKeys.courses.list(programId),
+    queryKey: [...queryKeys.courses.list(programId), page],
     queryFn: () =>
-      isProgramScope ? coursesApi.getAll(programId) : coursesApi.getAll(),
+      isProgramScope ? coursesApi.getPage(page, 20, programId) : coursesApi.getPage(page, 20),
   });
 
   const saveMutation = useMutation({
@@ -296,7 +297,7 @@ export function CoursesListPage() {
 
       <DataTable
         columns={columns}
-        data={coursesQuery.data?.filter((c) => {
+        data={coursesQuery.data?.data?.filter((c) => {
           if (levelFilter !== 'all' && (c.level ?? '').toLowerCase() !== levelFilter) return false;
           if (search.trim()) {
             const q = search.toLowerCase();
@@ -309,12 +310,32 @@ export function CoursesListPage() {
         }) ?? []}
         isLoading={coursesQuery.isLoading}
         showRowIndex
+        pageOffset={page * 20}
         emptyMessage={
           isProgramScope
             ? 'Chưa có khóa học. Bấm "Thêm khóa học" để tạo mới.'
             : 'Chưa có khóa học nào.'
         }
       />
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 0}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Trang trước
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page + 1 >= (coursesQuery.data?.totalPages ?? 1)}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Trang sau
+        </Button>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg">

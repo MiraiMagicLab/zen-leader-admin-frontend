@@ -87,6 +87,7 @@ const emptyForm: FormState = {
 
 export function ProgramsListPage() {
   const queryClient = useQueryClient();
+  const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ProgramResponse | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -96,8 +97,8 @@ export function ProgramsListPage() {
   const [publishedFilter, setPublishedFilter] = useState('all');
 
   const programsQuery = useQuery({
-    queryKey: queryKeys.programs.list(),
-    queryFn: programsApi.getAll,
+    queryKey: [...queryKeys.programs.list(), page],
+    queryFn: () => programsApi.getPage(page, 20),
   });
 
   const saveMutation = useMutation({
@@ -260,7 +261,7 @@ export function ProgramsListPage() {
 
       <DataTable
         columns={columns}
-        data={programsQuery.data?.filter((p) => {
+        data={programsQuery.data?.data?.filter((p) => {
           if (publishedFilter === 'published' && !p.isPublished) return false;
           if (publishedFilter === 'draft' && p.isPublished) return false;
           if (search.trim()) {
@@ -274,7 +275,27 @@ export function ProgramsListPage() {
         }) ?? []}
         isLoading={programsQuery.isLoading}
         showRowIndex
+        pageOffset={page * 20}
       />
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 0}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          Trang trước
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page + 1 >= (programsQuery.data?.totalPages ?? 1)}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          Trang sau
+        </Button>
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="flex max-h-[min(90vh,720px)] max-w-lg flex-col gap-0 overflow-hidden p-0">
