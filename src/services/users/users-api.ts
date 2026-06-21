@@ -14,11 +14,16 @@ type UserResponseRaw = UserResponse & {
 };
 
 function normalizeUser(user: UserResponseRaw): UserResponse {
+  const roles = Array.isArray(user.roles)
+    ? user.roles.filter(
+        (role): role is string => typeof role === 'string' && role.trim().length > 0,
+      )
+    : [];
   return {
     ...user,
     isActive: user.isActive ?? user.active ?? false,
     isVerified: user.isVerified ?? user.verified ?? false,
-    roles: user.roles ?? [],
+    roles: roles.length > 0 ? roles : ['user'],
   };
 }
 

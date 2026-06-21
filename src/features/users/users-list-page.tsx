@@ -1,7 +1,6 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link } from 'react-router-dom';
 import {
   Ban,
   MoreHorizontal,
@@ -43,7 +42,6 @@ import {
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
-import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { UserResponse } from '@/services/types/domain';
 import {
@@ -57,9 +55,13 @@ import {
 const ROLE_OPTIONS = ['admin', 'user'];
 
 function getDefaultBanDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 7);
-  return d.toISOString().slice(0, 10);
+  const date = new Date();
+  date.setDate(date.getDate() + 7);
+  return date.toISOString().slice(0, 10);
+}
+
+function getDisplayRoles(user: UserResponse): string[] {
+  return user.roles.length > 0 ? user.roles : ['user'];
 }
 
 export function UsersListPage() {
@@ -169,15 +171,17 @@ export function UsersListPage() {
 
   const openRolesDialog = (user: UserResponse) => {
     setSelectedUser(user);
-    setSelectedRoles(user.roles);
+    setSelectedRoles(getDisplayRoles(user));
     setRolesDialogOpen(true);
   };
 
   const handleBanSubmit = () => {
-    if (!selectedUser) return;
+    if (!selectedUser) {
+      return;
+    }
     const bannedUntil = banPermanent
       ? new Date('2099-12-31T23:59:59Z').toISOString()
-      : new Date(banDate + 'T23:59:59Z').toISOString();
+      : new Date(`${banDate}T23:59:59Z`).toISOString();
     banMutation.mutate({ userId: selectedUser.id, bannedUntil });
   };
 
@@ -198,7 +202,7 @@ export function UsersListPage() {
         header: 'Vai trò',
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
-            {row.original.roles.map((role) => (
+            {getDisplayRoles(row.original).map((role) => (
               <Badge key={role} variant="secondary">
                 {role}
               </Badge>
@@ -229,11 +233,9 @@ export function UsersListPage() {
         header: 'Ban',
         cell: ({ row }) =>
           row.original.bannedUntil ? (
-            <Badge variant="destructive">
-              {formatDateTime(row.original.bannedUntil)}
-            </Badge>
+            <Badge variant="destructive">{formatDateTime(row.original.bannedUntil)}</Badge>
           ) : (
-            <span className="text-muted-foreground text-xs">—</span>
+            <span className="text-muted-foreground text-xs">-</span>
           ),
       },
       {
@@ -252,12 +254,7 @@ export function UsersListPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link to={ROUTES.userDetail(row.original.id)}>Xem chi tiết</Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => openRolesDialog(row.original)}
-              >
+              <DropdownMenuItem onClick={() => openRolesDialog(row.original)}>
                 Sửa vai trò
               </DropdownMenuItem>
               {row.original.isActive ? (
@@ -310,25 +307,21 @@ export function UsersListPage() {
         ),
       },
     ],
-    [statusMutation, banMutation],
+    [banMutation, statusMutation],
   );
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Người dùng"
-        description="Quản lý tài khoản, trạng thái và phân quyền."
+        description="Quản lý tài khoản, vai trò và trạng thái vận hành ngay trên một bảng duy nhất."
         actions={
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
               <Plus className="mr-2 size-4" />
               Thêm người dùng
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void usersQuery.refetch()}
-            >
+            <Button variant="outline" size="sm" onClick={() => void usersQuery.refetch()}>
               <RefreshCw className="mr-2 size-4" />
               Làm mới
             </Button>
@@ -341,13 +334,13 @@ export function UsersListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Tìm theo email hoặc tên…"
+            placeholder="Tìm theo email hoặc tên..."
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={(event) => setKeyword(event.target.value)}
           />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -387,7 +380,7 @@ export function UsersListPage() {
             variant="outline"
             size="sm"
             disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
+            onClick={() => setPage((current) => current - 1)}
           >
             Trang trước
           </Button>
@@ -395,7 +388,7 @@ export function UsersListPage() {
             variant="outline"
             size="sm"
             disabled={page >= (usersQuery.data?.totalPages ?? 1)}
-            onClick={() => setPage((p) => p + 1)}
+            onClick={() => setPage((current) => current + 1)}
           >
             Trang sau
           </Button>
@@ -418,8 +411,8 @@ export function UsersListPage() {
           <form
             className="space-y-4"
             autoComplete="off"
-            onSubmit={(e) => {
-              e.preventDefault();
+            onSubmit={(event) => {
+              event.preventDefault();
               createMutation.mutate();
             }}
           >
@@ -431,8 +424,8 @@ export function UsersListPage() {
                 type="email"
                 autoComplete="off"
                 value={createForm.email}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, email: e.target.value }))
+                onChange={(event) =>
+                  setCreateForm((current) => ({ ...current, email: event.target.value }))
                 }
               />
             </div>
@@ -443,8 +436,11 @@ export function UsersListPage() {
                 name="create-user-name"
                 autoComplete="off"
                 value={createForm.displayName}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, displayName: e.target.value }))
+                onChange={(event) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    displayName: event.target.value,
+                  }))
                 }
               />
             </div>
@@ -456,8 +452,8 @@ export function UsersListPage() {
                 type="password"
                 autoComplete="new-password"
                 value={createForm.password}
-                onChange={(e) =>
-                  setCreateForm((f) => ({ ...f, password: e.target.value }))
+                onChange={(event) =>
+                  setCreateForm((current) => ({ ...current, password: event.target.value }))
                 }
               />
             </div>
@@ -465,7 +461,9 @@ export function UsersListPage() {
               <Label>Vai trò</Label>
               <Select
                 value={createForm.role}
-                onValueChange={(role) => setCreateForm((f) => ({ ...f, role }))}
+                onValueChange={(role) =>
+                  setCreateForm((current) => ({ ...current, role }))
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -480,7 +478,7 @@ export function UsersListPage() {
               </Select>
             </div>
             <p className="text-muted-foreground text-xs">
-              Tài khoản được tạo với trạng thái đã xác minh email, có thể đăng nhập ngay.
+              Tài khoản được tạo ở trạng thái đã xác minh email và có thể đăng nhập ngay.
             </p>
             <DialogFooter>
               <Button
@@ -530,7 +528,9 @@ export function UsersListPage() {
           <DialogFooter>
             <Button
               onClick={() => {
-                if (!selectedUser) return;
+                if (!selectedUser) {
+                  return;
+                }
                 rolesMutation.mutate({
                   userId: selectedUser.id,
                   roles: selectedRoles,
@@ -563,7 +563,7 @@ export function UsersListPage() {
                 Ban vĩnh viễn
               </Label>
             </div>
-            {!banPermanent && (
+            {!banPermanent ? (
               <div className="space-y-2">
                 <Label htmlFor="ban-date">Ngày hết hạn ban</Label>
                 <Input
@@ -571,21 +571,17 @@ export function UsersListPage() {
                   type="date"
                   value={banDate}
                   min={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setBanDate(e.target.value)}
+                  onChange={(event) => setBanDate(event.target.value)}
                 />
               </div>
-            )}
-            {banPermanent && (
+            ) : (
               <p className="text-muted-foreground text-xs">
                 Người dùng sẽ bị ban cho đến khi admin gỡ ban thủ công.
               </p>
             )}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setBanDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
               Hủy
             </Button>
             <Button

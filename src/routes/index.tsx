@@ -17,7 +17,6 @@ import { SyllabusItemDetailPage } from '@/features/syllabus-items/syllabus-item-
 import { ModerationPage } from '@/features/moderation/moderation-page';
 import { PaymentsPage } from '@/features/payments/payments-page';
 import { ProgramsListPage } from '@/features/programs/programs-list-page';
-import { UserDetailPage } from '@/features/users/user-detail-page';
 import { UsersListPage } from '@/features/users/users-list-page';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { ROUTES } from '@/routes/paths';
@@ -71,7 +70,6 @@ export const appRouter = createBrowserRouter([
         children: [
           { path: ROUTES.home, element: <AdminDashboardPage /> },
           { path: ROUTES.users, element: <UsersListPage /> },
-          { path: '/users/:userId', element: <UserDetailPage /> },
           { path: ROUTES.programs, element: <ProgramsListPage /> },
           {
             path: '/programs/:programId/courses',
