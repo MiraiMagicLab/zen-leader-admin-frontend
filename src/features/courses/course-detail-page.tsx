@@ -2,7 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+  ArrowLeft,
+  Image as ImageIcon,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  ShoppingBag,
+  Trash2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
@@ -13,6 +21,12 @@ import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -34,6 +48,7 @@ import { queryKeys } from '@/hooks/query-keys';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
+import { assetsApi } from '@/services/assets/assets-api';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import { coursesApi } from '@/services/courses/courses-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
@@ -50,6 +65,15 @@ type RunForm = {
   enrollmentEndDate: string;
 };
 
+type CourseForm = {
+  code: string;
+  title: string;
+  description: string;
+  orderIndex: string;
+  thumbnailUrl: string;
+  thumbnailFile: File | null;
+};
+
 const emptyRunForm: RunForm = {
   code: '',
   status: 'DRAFT',
@@ -61,20 +85,24 @@ const emptyRunForm: RunForm = {
   enrollmentEndDate: '',
 };
 
+const emptyCourseForm: CourseForm = {
+  code: '',
+  title: '',
+  description: '',
+  orderIndex: '0',
+  thumbnailUrl: '',
+  thumbnailFile: null,
+};
+
 export function CourseDetailPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [createRunOpen, setCreateRunOpen] = useState(false);
   const [editCourseOpen, setEditCourseOpen] = useState(false);
   const [editingRun, setEditingRun] = useState<CourseRunResponse | null>(null);
-  const [form, setForm] = useState<RunForm>(emptyRunForm);
-  const [courseForm, setCourseForm] = useState({
-    code: '',
-    title: '',
-    description: '',
-    orderIndex: '0',
-  });
+  const [runForm, setRunForm] = useState<RunForm>(emptyRunForm);
+  const [courseForm, setCourseForm] = useState<CourseForm>(emptyCourseForm);
   const [appleProductId, setAppleProductId] = useState('');
   const [androidProductId, setAndroidProductId] = useState('');
 
@@ -84,62 +112,88 @@ export function CourseDetailPage() {
     enabled: Boolean(courseId),
   });
 
-  const iapMutation = useMutation({
-    mutationFn: () =>
-      coursesApi.updateIapMapping(courseId!, {
-        appleProductId: appleProductId || null,
-        androidProductId: androidProductId || null,
-      }),
-    onSuccess: () => {
-      toast.success('Đã cập nhật IAP mapping.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const course = courseQuery.data;
-
-  useEffect(() => {
-    if (course) {
-      setAppleProductId(course.appleProductId ?? '');
-      setAndroidProductId(course.androidProductId ?? '');
-      setCourseForm({
-        code: course.code,
-        title: course.title,
-        description: course.description ?? '',
-        orderIndex: String(course.orderIndex ?? 0),
-      });
-    }
-  }, [course]);
-
   const runsQuery = useQuery({
     queryKey: queryKeys.courseRuns.list(courseId),
     queryFn: () => courseRunsApi.getPage(0, 100, courseId),
     enabled: Boolean(courseId),
   });
 
+  const course = courseQuery.data;
+  const courseRuns = runsQuery.data?.data ?? course?.courseRuns ?? [];
+  const syllabusSections = course?.syllabusSections ?? [];
+  const totalSyllabusItems = syllabusSections.reduce(
+    (count, section) => count + (section.items?.length ?? 0),
+    0,
+  );
+  const totalSessions = courseRuns.reduce(
+    (count, run) => count + (run.courseSessions?.length ?? 0),
+    0,
+  );
+
+  useEffect(() => {
+    if (!course) {
+      return;
+    }
+
+    setAppleProductId(course.appleProductId ?? '');
+    setAndroidProductId(course.androidProductId ?? '');
+    setCourseForm({
+      code: course.code,
+      title: course.title,
+      description: course.description ?? '',
+      orderIndex: String(course.orderIndex ?? 0),
+      thumbnailUrl: course.thumbnailUrl ?? '',
+      thumbnailFile: null,
+    });
+  }, [course]);
+
+  const invalidateCourseQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.all }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.courses.detail(courseId ?? ''),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.courseRuns.list(courseId),
+      }),
+    ]);
+  };
+
+  const iapMutation = useMutation({
+    mutationFn: () =>
+      coursesApi.updateIapMapping(courseId!, {
+        appleProductId: appleProductId || null,
+        androidProductId: androidProductId || null,
+      }),
+    onSuccess: async () => {
+      toast.success('Đã cập nhật IAP mapping.');
+      await invalidateCourseQueries();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
   const createRunMutation = useMutation({
     mutationFn: () =>
       courseRunsApi.create({
         courseId: courseId!,
-        code: form.code,
-        status: form.status,
-        startsAt: new Date(form.startsAt).toISOString(),
-        endsAt: new Date(form.endsAt).toISOString(),
-        timezone: form.timezone,
-        capacity: form.capacity ? Number(form.capacity) : null,
-        enrollmentStartDate: form.enrollmentStartDate
-          ? new Date(form.enrollmentStartDate).toISOString()
+        code: runForm.code,
+        status: runForm.status,
+        startsAt: new Date(runForm.startsAt).toISOString(),
+        endsAt: new Date(runForm.endsAt).toISOString(),
+        timezone: runForm.timezone,
+        capacity: runForm.capacity ? Number(runForm.capacity) : null,
+        enrollmentStartDate: runForm.enrollmentStartDate
+          ? new Date(runForm.enrollmentStartDate).toISOString()
           : null,
-        enrollmentEndDate: form.enrollmentEndDate
-          ? new Date(form.enrollmentEndDate).toISOString()
+        enrollmentEndDate: runForm.enrollmentEndDate
+          ? new Date(runForm.enrollmentEndDate).toISOString()
           : null,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Đã tạo đợt học.');
-      setDialogOpen(false);
-      setForm(emptyRunForm);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
+      setCreateRunOpen(false);
+      setRunForm(emptyRunForm);
+      await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -148,54 +202,65 @@ export function CourseDetailPage() {
     mutationFn: () =>
       courseRunsApi.update(editingRun!.id, {
         courseId: courseId!,
-        code: form.code,
-        status: form.status,
-        startsAt: new Date(form.startsAt).toISOString(),
-        endsAt: new Date(form.endsAt).toISOString(),
-        timezone: form.timezone,
-        capacity: form.capacity ? Number(form.capacity) : null,
-        enrollmentStartDate: form.enrollmentStartDate
-          ? new Date(form.enrollmentStartDate).toISOString()
+        code: runForm.code,
+        status: runForm.status,
+        startsAt: new Date(runForm.startsAt).toISOString(),
+        endsAt: new Date(runForm.endsAt).toISOString(),
+        timezone: runForm.timezone,
+        capacity: runForm.capacity ? Number(runForm.capacity) : null,
+        enrollmentStartDate: runForm.enrollmentStartDate
+          ? new Date(runForm.enrollmentStartDate).toISOString()
           : null,
-        enrollmentEndDate: form.enrollmentEndDate
-          ? new Date(form.enrollmentEndDate).toISOString()
+        enrollmentEndDate: runForm.enrollmentEndDate
+          ? new Date(runForm.enrollmentEndDate).toISOString()
           : null,
       }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Đã cập nhật đợt học.');
       setEditingRun(null);
-      setForm(emptyRunForm);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
+      setRunForm(emptyRunForm);
+      await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const deleteRunMutation = useMutation({
     mutationFn: (runId: string) => courseRunsApi.remove(runId),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Đã xóa đợt học.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
+      await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const updateCourseMutation = useMutation({
-    mutationFn: () =>
-      coursesApi.update(courseId!, {
-        programId: course!.programId,
+    mutationFn: async () => {
+      if (!course) {
+        throw new Error('Không tìm thấy khóa học.');
+      }
+
+      let thumbnailUrl = courseForm.thumbnailUrl || null;
+      if (courseForm.thumbnailFile) {
+        const uploaded = await assetsApi.uploadViaPresigned(courseForm.thumbnailFile);
+        thumbnailUrl = uploaded.downloadUrl;
+      }
+
+      return coursesApi.update(courseId!, {
+        programId: course.programId,
         code: courseForm.code,
         title: courseForm.title,
         description: courseForm.description || null,
-        thumbnailUrl: course!.thumbnailUrl ?? null,
+        thumbnailUrl,
         orderIndex: Number(courseForm.orderIndex) || 0,
-        tags: course!.tags ?? [],
+        tags: course.tags ?? [],
         appleProductId: appleProductId || null,
         androidProductId: androidProductId || null,
-      }),
-    onSuccess: () => {
+      });
+    },
+    onSuccess: async () => {
       toast.success('Đã cập nhật khóa học.');
       setEditCourseOpen(false);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+      await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -211,7 +276,7 @@ export function CourseDetailPage() {
 
   const openEditRun = (run: CourseRunResponse) => {
     setEditingRun(run);
-    setForm({
+    setRunForm({
       code: run.code,
       status: run.status,
       startsAt: run.startsAt ? toLocalDateTimeFromIso(run.startsAt) : '',
@@ -236,42 +301,67 @@ export function CourseDetailPage() {
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
       },
       {
-        accessorKey: 'startsAt',
-        header: 'Bắt đầu',
-        cell: ({ row }) => formatDateTime(row.original.startsAt),
+        id: 'schedule',
+        header: 'Lịch học',
+        cell: ({ row }) => (
+          <div className="space-y-1 text-sm">
+            <p>{formatDateTime(row.original.startsAt)}</p>
+            <p className="text-muted-foreground">{formatDateTime(row.original.endsAt)}</p>
+          </div>
+        ),
       },
       {
-        accessorKey: 'endsAt',
-        header: 'Kết thúc',
-        cell: ({ row }) => formatDateTime(row.original.endsAt),
+        id: 'enrollmentWindow',
+        header: 'Đăng ký',
+        cell: ({ row }) => (
+          <div className="space-y-1 text-sm">
+            <p>{formatDateTime(row.original.enrollmentStartDate)}</p>
+            <p className="text-muted-foreground">
+              {formatDateTime(row.original.enrollmentEndDate)}
+            </p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'capacity',
+        header: 'Sức chứa',
+        cell: ({ row }) => row.original.capacity ?? '—',
+      },
+      {
+        id: 'sessions',
+        header: 'Buổi học',
+        cell: ({ row }) => row.original.courseSessions?.length ?? 0,
       },
       {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex gap-1">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={ROUTES.courseRunDetail(row.original.id)}>Quản lý</Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => openEditRun(row.original)}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-destructive"
-              onClick={() => {
-                if (window.confirm('Xóa đợt học này?')) {
-                  deleteRunMutation.mutate(row.original.id);
-                }
-              }}
-            >
-              <Trash2 className="size-4" />
-            </Button>
+          <div className="flex justify-end">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to={ROUTES.courseRunDetail(row.original.id)}>Quản lý lớp</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openEditRun(row.original)}>
+                  Sửa đợt học
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => {
+                    if (window.confirm('Xóa đợt học này?')) {
+                      deleteRunMutation.mutate(row.original.id);
+                    }
+                  }}
+                >
+                  Xóa đợt học
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         ),
       },
@@ -279,26 +369,31 @@ export function CourseDetailPage() {
     [deleteRunMutation],
   );
 
+  if (!courseId) {
+    return null;
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Button variant="ghost" size="sm" asChild>
-        <Link to={ROUTES.courses}>
+        <Link to={course?.programId ? ROUTES.programCourses(course.programId) : ROUTES.courses}>
           <ArrowLeft className="mr-2 size-4" />
-          Quay lại khóa học
+          {course?.programId ? 'Quay lại danh sách khóa học' : 'Quay lại khóa học'}
         </Link>
       </Button>
 
       <PageHeader
-        title={courseQuery.data?.title ?? 'Khóa học'}
-        description={stripHtml(courseQuery.data?.description) || undefined}
+        title={course?.title ?? 'Khóa học'}
+        description={stripHtml(course?.description) || 'Quản lý nội dung, đợt học và cấu hình bán khóa học.'}
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setEditCourseOpen(true)}>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setEditCourseOpen(true)} disabled={!course}>
               <Pencil className="mr-2 size-4" />
               Sửa khóa học
             </Button>
             <Button
               variant="destructive"
+              disabled={deleteCourseMutation.isPending || !course}
               onClick={() => {
                 if (window.confirm('Xóa khóa học này?')) {
                   deleteCourseMutation.mutate();
@@ -308,7 +403,7 @@ export function CourseDetailPage() {
               <Trash2 className="mr-2 size-4" />
               Xóa
             </Button>
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button onClick={() => setCreateRunOpen(true)} disabled={!course}>
               <Plus className="mr-2 size-4" />
               Thêm đợt học
             </Button>
@@ -316,60 +411,139 @@ export function CourseDetailPage() {
         }
       />
 
-      {course && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">IAP Product Mapping</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Apple Product ID</Label>
-              <Input
-                value={appleProductId}
-                onChange={(e) => setAppleProductId(e.target.value)}
-                placeholder="com.zenleader.course.xxx"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Android Product ID</Label>
-              <Input
-                value={androidProductId}
-                onChange={(e) => setAndroidProductId(e.target.value)}
-                placeholder="course_xxx"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <Button
-                variant="secondary"
-                disabled={iapMutation.isPending}
-                onClick={() => iapMutation.mutate()}
-              >
-                Lưu IAP mapping
+      {course ? (
+        <>
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <Card>
+              <CardContent className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
+                <div className="bg-muted/30 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border">
+                  {course.thumbnailUrl ? (
+                    <img
+                      src={course.thumbnailUrl}
+                      alt={course.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground flex flex-col items-center gap-2 text-sm">
+                      <ImageIcon className="size-8" />
+                      <span>Chưa có thumbnail</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">{course.code}</Badge>
+                    {course.programId ? (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={ROUTES.programCourses(course.programId)}>
+                          Chương trình {course.programCode ?? course.programId.slice(0, 8)}
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <p className="text-muted-foreground text-sm">Thứ tự</p>
+                      <p className="font-medium">{course.orderIndex ?? 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm">Ngày cập nhật</p>
+                      <p className="font-medium">{formatDateTime(course.updatedAt)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm">Chương</p>
+                      <p className="font-medium">{syllabusSections.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm">Mục giáo trình</p>
+                      <p className="font-medium">{totalSyllabusItems}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm">Đợt học</p>
+                      <p className="font-medium">{courseRuns.length}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-sm">Tổng buổi học</p>
+                      <p className="font-medium">{totalSessions}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ShoppingBag className="size-4" />
+                  Cấu hình bán khóa học
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Apple Product ID</Label>
+                  <Input
+                    value={appleProductId}
+                    onChange={(e) => setAppleProductId(e.target.value)}
+                    placeholder="com.zenleader.course.xxx"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Android Product ID</Label>
+                  <Input
+                    value={androidProductId}
+                    onChange={(e) => setAndroidProductId(e.target.value)}
+                    placeholder="course_xxx"
+                  />
+                </div>
+                <Button
+                  variant="secondary"
+                  disabled={iapMutation.isPending}
+                  onClick={() => iapMutation.mutate()}
+                >
+                  Lưu IAP mapping
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Mô tả khóa học</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RichTextPreview value={course.description} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base">Đợt học</CardTitle>
+              <Button size="sm" onClick={() => setCreateRunOpen(true)}>
+                <Plus className="mr-2 size-4" />
+                Tạo đợt học
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {course && (
+            </CardHeader>
+            <CardContent className="pt-0">
+              <DataTable
+                columns={columns}
+                data={courseRuns}
+                isLoading={runsQuery.isLoading || courseQuery.isLoading}
+                emptyMessage="Chưa có đợt học nào."
+              />
+            </CardContent>
+          </Card>
+        </>
+      ) : (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Mô tả khóa học</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RichTextPreview value={course.description} />
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Đang tải chi tiết khóa học...
           </CardContent>
         </Card>
       )}
 
-      <DataTable
-        columns={columns}
-        data={runsQuery.data?.data ?? courseQuery.data?.courseRuns ?? []}
-        isLoading={runsQuery.isLoading || courseQuery.isLoading}
-        emptyMessage="Chưa có đợt học nào."
-      />
-
-      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Sheet open={createRunOpen} onOpenChange={setCreateRunOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Tạo đợt học mới</SheetTitle>
@@ -378,15 +552,15 @@ export function CourseDetailPage() {
             <div className="space-y-2">
               <Label>Mã lớp</Label>
               <Input
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                value={runForm.code}
+                onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Trạng thái</Label>
               <Select
-                value={form.status}
-                onValueChange={(value) => setForm((f) => ({ ...f, status: value }))}
+                value={runForm.status}
+                onValueChange={(value) => setRunForm((prev) => ({ ...prev, status: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -404,15 +578,15 @@ export function CourseDetailPage() {
               <div className="space-y-2">
                 <Label>Bắt đầu</Label>
                 <DateTimePicker
-                  value={form.startsAt}
-                  onChange={(startsAt) => setForm((f) => ({ ...f, startsAt }))}
+                  value={runForm.startsAt}
+                  onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Kết thúc</Label>
                 <DateTimePicker
-                  value={form.endsAt}
-                  onChange={(endsAt) => setForm((f) => ({ ...f, endsAt }))}
+                  value={runForm.endsAt}
+                  onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
                 />
               </div>
             </div>
@@ -420,15 +594,19 @@ export function CourseDetailPage() {
               <div className="space-y-2">
                 <Label>Mở đăng ký</Label>
                 <DateTimePicker
-                  value={form.enrollmentStartDate}
-                  onChange={(v) => setForm((f) => ({ ...f, enrollmentStartDate: v }))}
+                  value={runForm.enrollmentStartDate}
+                  onChange={(value) =>
+                    setRunForm((prev) => ({ ...prev, enrollmentStartDate: value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label>Đóng đăng ký</Label>
                 <DateTimePicker
-                  value={form.enrollmentEndDate}
-                  onChange={(v) => setForm((f) => ({ ...f, enrollmentEndDate: v }))}
+                  value={runForm.enrollmentEndDate}
+                  onChange={(value) =>
+                    setRunForm((prev) => ({ ...prev, enrollmentEndDate: value }))
+                  }
                 />
               </div>
             </div>
@@ -436,8 +614,8 @@ export function CourseDetailPage() {
               <Label>Sức chứa</Label>
               <Input
                 type="number"
-                value={form.capacity}
-                onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))}
+                value={runForm.capacity}
+                onChange={(e) => setRunForm((prev) => ({ ...prev, capacity: e.target.value }))}
               />
             </div>
           </div>
@@ -462,28 +640,50 @@ export function CourseDetailPage() {
               <Label>Mã</Label>
               <Input
                 value={courseForm.code}
-                onChange={(e) =>
-                  setCourseForm((f) => ({ ...f, code: e.target.value }))
-                }
+                onChange={(e) => setCourseForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Tiêu đề</Label>
               <Input
                 value={courseForm.title}
+                onChange={(e) => setCourseForm((prev) => ({ ...prev, title: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Thumbnail URL</Label>
+              <Input
+                value={courseForm.thumbnailUrl}
+                placeholder="https://..."
                 onChange={(e) =>
-                  setCourseForm((f) => ({ ...f, title: e.target.value }))
+                  setCourseForm((prev) => ({ ...prev, thumbnailUrl: e.target.value }))
                 }
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Upload thumbnail mới</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) =>
+                  setCourseForm((prev) => ({
+                    ...prev,
+                    thumbnailFile: e.target.files?.[0] ?? null,
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Nếu chọn file mới, ảnh sẽ được upload bằng presigned URL và ghi đè thumbnail hiện tại.
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Mô tả</Label>
               <RichTextEditor
                 value={courseForm.description}
                 minHeight="14rem"
-                placeholder="Nhập mô tả khóa học với định dạng phong phú…"
+                placeholder="Nhập mô tả khóa học với định dạng phong phú..."
                 onChange={(description) =>
-                  setCourseForm((f) => ({ ...f, description }))
+                  setCourseForm((prev) => ({ ...prev, description }))
                 }
               />
             </div>
@@ -499,7 +699,7 @@ export function CourseDetailPage() {
                 type="number"
                 value={courseForm.orderIndex}
                 onChange={(e) =>
-                  setCourseForm((f) => ({ ...f, orderIndex: e.target.value }))
+                  setCourseForm((prev) => ({ ...prev, orderIndex: e.target.value }))
                 }
               />
             </div>
@@ -519,7 +719,7 @@ export function CourseDetailPage() {
         open={Boolean(editingRun)}
         onOpenChange={() => {
           setEditingRun(null);
-          setForm(emptyRunForm);
+          setRunForm(emptyRunForm);
         }}
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
@@ -530,15 +730,15 @@ export function CourseDetailPage() {
             <div className="space-y-2">
               <Label>Mã lớp</Label>
               <Input
-                value={form.code}
-                onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
+                value={runForm.code}
+                onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Trạng thái</Label>
               <Select
-                value={form.status}
-                onValueChange={(value) => setForm((f) => ({ ...f, status: value }))}
+                value={runForm.status}
+                onValueChange={(value) => setRunForm((prev) => ({ ...prev, status: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -556,15 +756,15 @@ export function CourseDetailPage() {
               <div className="space-y-2">
                 <Label>Bắt đầu</Label>
                 <DateTimePicker
-                  value={form.startsAt}
-                  onChange={(startsAt) => setForm((f) => ({ ...f, startsAt }))}
+                  value={runForm.startsAt}
+                  onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Kết thúc</Label>
                 <DateTimePicker
-                  value={form.endsAt}
-                  onChange={(endsAt) => setForm((f) => ({ ...f, endsAt }))}
+                  value={runForm.endsAt}
+                  onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
                 />
               </div>
             </div>
@@ -572,15 +772,19 @@ export function CourseDetailPage() {
               <div className="space-y-2">
                 <Label>Mở đăng ký</Label>
                 <DateTimePicker
-                  value={form.enrollmentStartDate}
-                  onChange={(v) => setForm((f) => ({ ...f, enrollmentStartDate: v }))}
+                  value={runForm.enrollmentStartDate}
+                  onChange={(value) =>
+                    setRunForm((prev) => ({ ...prev, enrollmentStartDate: value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label>Đóng đăng ký</Label>
                 <DateTimePicker
-                  value={form.enrollmentEndDate}
-                  onChange={(v) => setForm((f) => ({ ...f, enrollmentEndDate: v }))}
+                  value={runForm.enrollmentEndDate}
+                  onChange={(value) =>
+                    setRunForm((prev) => ({ ...prev, enrollmentEndDate: value }))
+                  }
                 />
               </div>
             </div>
@@ -588,8 +792,8 @@ export function CourseDetailPage() {
               <Label>Sức chứa</Label>
               <Input
                 type="number"
-                value={form.capacity}
-                onChange={(e) => setForm((f) => ({ ...f, capacity: e.target.value }))}
+                value={runForm.capacity}
+                onChange={(e) => setRunForm((prev) => ({ ...prev, capacity: e.target.value }))}
               />
             </div>
           </div>
