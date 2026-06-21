@@ -16,6 +16,7 @@ export type UserResponse = {
   acceptedTermsAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
 };
 
 export type ProgramResponse = {

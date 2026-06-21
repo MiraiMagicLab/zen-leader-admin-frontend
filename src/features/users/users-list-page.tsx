@@ -64,6 +64,20 @@ function getDisplayRoles(user: UserResponse): string[] {
   return user.roles.length > 0 ? user.roles : ['user'];
 }
 
+function isDeletedUser(user: UserResponse): boolean {
+  return Boolean(user.deletedAt);
+}
+
+function renderStatus(user: UserResponse) {
+  if (isDeletedUser(user)) {
+    return { label: 'Đã xóa', variant: 'destructive' as const };
+  }
+  if (user.isActive) {
+    return { label: 'Hoạt động', variant: 'default' as const };
+  }
+  return { label: 'Đã khóa', variant: 'outline' as const };
+}
+
 export function UsersListPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -212,12 +226,11 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'isActive',
-        header: 'Hoạt động',
-        cell: ({ row }) => (
-          <Badge variant={row.original.isActive ? 'default' : 'outline'}>
-            {row.original.isActive ? 'Hoạt động' : 'Đã khóa'}
-          </Badge>
-        ),
+        header: 'Trạng thái',
+        cell: ({ row }) => {
+          const status = renderStatus(row.original);
+          return <Badge variant={status.variant}>{status.label}</Badge>;
+        },
       },
       {
         accessorKey: 'isVerified',
@@ -234,6 +247,16 @@ export function UsersListPage() {
         cell: ({ row }) =>
           row.original.bannedUntil ? (
             <Badge variant="destructive">{formatDateTime(row.original.bannedUntil)}</Badge>
+          ) : (
+            <span className="text-muted-foreground text-xs">-</span>
+          ),
+      },
+      {
+        accessorKey: 'deletedAt',
+        header: 'Xóa lúc',
+        cell: ({ row }) =>
+          row.original.deletedAt ? (
+            <Badge variant="destructive">{formatDateTime(row.original.deletedAt)}</Badge>
           ) : (
             <span className="text-muted-foreground text-xs">-</span>
           ),
@@ -257,51 +280,53 @@ export function UsersListPage() {
               <DropdownMenuItem onClick={() => openRolesDialog(row.original)}>
                 Sửa vai trò
               </DropdownMenuItem>
-              {row.original.isActive ? (
-                <DropdownMenuItem
-                  onClick={() =>
-                    statusMutation.mutate({
-                      userId: row.original.id,
-                      isActive: false,
-                    })
-                  }
-                >
-                  <ShieldOff className="mr-2 size-4" />
-                  Khóa tài khoản
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() =>
-                    statusMutation.mutate({
-                      userId: row.original.id,
-                      isActive: true,
-                    })
-                  }
-                >
-                  <ShieldCheck className="mr-2 size-4" />
-                  Mở khóa tài khoản
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              {row.original.bannedUntil ? (
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() =>
-                    banMutation.mutate({ userId: row.original.id, bannedUntil: null })
-                  }
-                >
-                  <Ban className="mr-2 size-4" />
-                  Gỡ ban
-                </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => openBanDialog(row.original)}
-                >
-                  <Ban className="mr-2 size-4" />
-                  Ban người dùng
-                </DropdownMenuItem>
-              )}
+              {!isDeletedUser(row.original) &&
+                (row.original.isActive ? (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      statusMutation.mutate({
+                        userId: row.original.id,
+                        isActive: false,
+                      })
+                    }
+                  >
+                    <ShieldOff className="mr-2 size-4" />
+                    Khóa tài khoản
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      statusMutation.mutate({
+                        userId: row.original.id,
+                        isActive: true,
+                      })
+                    }
+                  >
+                    <ShieldCheck className="mr-2 size-4" />
+                    Mở khóa tài khoản
+                  </DropdownMenuItem>
+                ))}
+              {!isDeletedUser(row.original) && <DropdownMenuSeparator />}
+              {!isDeletedUser(row.original) &&
+                (row.original.bannedUntil ? (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() =>
+                      banMutation.mutate({ userId: row.original.id, bannedUntil: null })
+                    }
+                  >
+                    <Ban className="mr-2 size-4" />
+                    Gỡ ban
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => openBanDialog(row.original)}
+                  >
+                    <Ban className="mr-2 size-4" />
+                    Ban người dùng
+                  </DropdownMenuItem>
+                ))}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
@@ -314,7 +339,7 @@ export function UsersListPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Người dùng"
-        description="Quản lý tài khoản, vai trò và trạng thái vận hành ngay trên một bảng duy nhất."
+        description="Hiển thị cả tài khoản đang hoạt động lẫn tài khoản đã tự xóa để admin theo dõi đầy đủ vòng đời người dùng."
         actions={
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
@@ -350,7 +375,7 @@ export function UsersListPage() {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-44">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -358,6 +383,7 @@ export function UsersListPage() {
             <SelectItem value="active">Hoạt động</SelectItem>
             <SelectItem value="inactive">Bị khóa</SelectItem>
             <SelectItem value="banned">Đang bị ban</SelectItem>
+            <SelectItem value="deleted">Đã xóa</SelectItem>
           </SelectContent>
         </Select>
       </div>
