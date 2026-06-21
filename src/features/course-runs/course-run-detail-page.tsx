@@ -49,6 +49,8 @@ type RunSettingsForm = {
   endsAt: string;
   timezone: string;
   capacity: string;
+  enrollmentStartDate: string;
+  enrollmentEndDate: string;
 };
 
 type SessionForm = {
@@ -80,6 +82,7 @@ export function CourseRunDetailPage() {
   const [sessionDialog, setSessionDialog] = useState(false);
   const [editSession, setEditSession] = useState<{
     id: string;
+    orderIndex: number;
     form: SessionForm;
   } | null>(null);
   const [enrollDialog, setEnrollDialog] = useState(false);
@@ -185,13 +188,18 @@ export function CourseRunDetailPage() {
   });
 
   const createItemMutation = useMutation({
-    mutationFn: (syllabusSectionId: string) =>
-      syllabusItemsApi.create({
+    mutationFn: (syllabusSectionId: string) => {
+      const section = sectionsQuery.data?.data.find(
+        (entry) => entry.id === syllabusSectionId,
+      );
+      const nextOrderIndex = section?.syllabusItems?.length ?? 0;
+      return syllabusItemsApi.create({
         syllabusSectionId,
         type: itemType,
         title: itemTitle,
-        orderIndex: 0,
-      }),
+        orderIndex: nextOrderIndex,
+      });
+    },
     onSuccess: () => {
       toast.success('Đã thêm mục giáo trình.');
       setItemDialog(null);
@@ -233,7 +241,7 @@ export function CourseRunDetailPage() {
         title: editSession!.form.title,
         description: editSession!.form.description || undefined,
         sessionNumber: Number(editSession!.form.sessionNumber),
-        orderIndex: 0,
+        orderIndex: editSession!.orderIndex,
         scheduledAt: editSession!.form.scheduledAt
           ? new Date(editSession!.form.scheduledAt).toISOString()
           : undefined,
@@ -287,7 +295,7 @@ export function CourseRunDetailPage() {
   const updateEnrollmentMutation = useMutation({
     mutationFn: () =>
       enrollmentsApi.update(editEnrollment!.id, {
-        status: editStatus as 'ACTIVE' | 'SUSPENDED',
+        status: editStatus as 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED',
         role: editRole as 'STUDENT' | 'LECTURE' | 'ADMIN' | 'NO_ROLE',
       }),
     onSuccess: () => {
@@ -360,6 +368,12 @@ export function CourseRunDetailPage() {
         endsAt: new Date(r.endsAt).toISOString(),
         timezone: r.timezone,
         capacity: r.capacity ? Number(r.capacity) : null,
+        enrollmentStartDate: r.enrollmentStartDate
+          ? new Date(r.enrollmentStartDate).toISOString()
+          : null,
+        enrollmentEndDate: r.enrollmentEndDate
+          ? new Date(r.enrollmentEndDate).toISOString()
+          : null,
       });
     },
     onSuccess: () => {
@@ -389,12 +403,19 @@ export function CourseRunDetailPage() {
       endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
       timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
       capacity: run.capacity != null ? String(run.capacity) : '',
+      enrollmentStartDate: run.enrollmentStartDate
+        ? toLocalDateTimeFromIso(run.enrollmentStartDate)
+        : '',
+      enrollmentEndDate: run.enrollmentEndDate
+        ? toLocalDateTimeFromIso(run.enrollmentEndDate)
+        : '',
     });
   };
 
-  const openEditSession = (session: { id: string; title: string; description: string | null; sessionNumber: number; scheduledAt: string | null; durationMinutes: number | null; status: string }) => {
+  const openEditSession = (session: { id: string; title: string; description: string | null; sessionNumber: number; orderIndex: number; scheduledAt: string | null; durationMinutes: number | null; status: string }) => {
     setEditSession({
       id: session.id,
+      orderIndex: session.orderIndex,
       form: {
         title: session.title,
         description: session.description ?? '',
@@ -726,7 +747,9 @@ export function CourseRunDetailPage() {
                     <SelectContent>
                       <SelectItem value="DRAFT">DRAFT</SelectItem>
                       <SelectItem value="OPEN">OPEN</SelectItem>
-                      <SelectItem value="CLOSED">CLOSED</SelectItem>
+                      <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                      <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                      <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -755,6 +778,24 @@ export function CourseRunDetailPage() {
                     value={runSettings.endsAt}
                     onChange={(endsAt) =>
                       setRunSettings((s) => s && { ...s, endsAt })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Má»Ÿ Ä‘Äƒng kÃ½</Label>
+                  <DateTimePicker
+                    value={runSettings.enrollmentStartDate}
+                    onChange={(enrollmentStartDate) =>
+                      setRunSettings((s) => s && { ...s, enrollmentStartDate })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>ÄÃ³ng Ä‘Äƒng kÃ½</Label>
+                  <DateTimePicker
+                    value={runSettings.enrollmentEndDate}
+                    onChange={(enrollmentEndDate) =>
+                      setRunSettings((s) => s && { ...s, enrollmentEndDate })
                     }
                   />
                 </div>
@@ -1157,6 +1198,8 @@ export function CourseRunDetailPage() {
                 <SelectContent>
                   <SelectItem value="ACTIVE">ACTIVE</SelectItem>
                   <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
+                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                 </SelectContent>
               </Select>
             </div>
