@@ -64,7 +64,7 @@ const emptyForm: EventForm = {
   content: '',
   startTime: '',
   endTime: '',
-  publishImmediately: false,
+  publishImmediately: true,
   isOfficial: false,
   thumbnailFile: null,
 };
