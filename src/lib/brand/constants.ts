@@ -7,4 +7,6 @@ export const BRAND = {
   copyright: 'Zen Leader',
   version: 'v0.0.1',
   storageKey: 'zen-leader-admin-auth',
+  logoPath: '/brand/logo-zenleader.webp',
+  logoFallbackPath: '/brand/logo-zenleader.png',
 } as const;

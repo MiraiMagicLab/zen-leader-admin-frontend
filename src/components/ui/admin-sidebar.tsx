@@ -25,6 +25,7 @@ import {
   Layers,
   ShieldAlert,
 } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/brand-logo';
 import { BRAND } from '@/lib/brand/constants';
 import { ROUTES } from '@/routes/paths';
 
@@ -89,9 +90,11 @@ export const AdminSidebar = memo(() => {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <NavLink to={ROUTES.home}>
-                <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg shadow-sm shadow-primary/25">
-                  <GraduationCap className="size-4" />
-                </div>
+                <BrandLogo
+                  className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5"
+                  imageClassName="h-8 w-8 object-contain"
+                  alt={`${BRAND.adminTitle} logo`}
+                />
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{BRAND.adminTitle}</span>
                   <span className="text-muted-foreground truncate text-xs">

@@ -36,9 +36,7 @@ export type CourseResponse = {
   code: string;
   title: string;
   description: string | null;
-  level: string | null;
   thumbnailUrl: string | null;
-  category: string | null;
   appleProductId: string | null;
   androidProductId: string | null;
   programId: string;
@@ -211,9 +209,7 @@ export type CourseUpsertRequest = {
   code: string;
   title: string;
   description?: string | null;
-  level?: string | null;
   thumbnailUrl?: string | null;
-  category?: string | null;
   appleProductId?: string | null;
   androidProductId?: string | null;
   programId: string;

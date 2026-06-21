@@ -11,6 +11,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { BrandLogo } from '@/components/brand/brand-logo';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -99,9 +100,11 @@ export function LoginPage() {
           />
 
           <div className="relative">
-            <div className="bg-primary text-primary-foreground mb-8 flex size-12 items-center justify-center rounded-2xl shadow-lg shadow-primary/25">
-              <GraduationCap className="size-6" />
-            </div>
+            <BrandLogo
+              className="mb-8 flex size-16 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5"
+              imageClassName="h-12 w-12 object-contain"
+              alt={`${BRAND.adminTitle} logo`}
+            />
             <h1 className="text-3xl font-bold tracking-tight xl:text-4xl">
               {BRAND.adminTitle}
             </h1>
@@ -149,9 +152,11 @@ export function LoginPage() {
             className="w-full max-w-[420px]"
           >
             <div className="mb-8 flex items-center gap-3 lg:hidden">
-              <div className="bg-primary text-primary-foreground flex size-10 items-center justify-center rounded-xl shadow-md shadow-primary/20">
-                <GraduationCap className="size-5" />
-              </div>
+              <BrandLogo
+                className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-white shadow-md ring-1 ring-black/5"
+                imageClassName="h-9 w-9 object-contain"
+                alt={`${BRAND.adminTitle} logo`}
+              />
               <div>
                 <p className="font-semibold">{BRAND.adminTitle}</p>
                 <p className="text-muted-foreground text-xs">{BRAND.adminSubtitle}</p>

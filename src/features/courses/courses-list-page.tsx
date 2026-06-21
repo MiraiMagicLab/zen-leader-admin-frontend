@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { RichTextEditor } from '@/components/rich-text-editor';
+import { RichTextPreview } from '@/components/rich-text-preview';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -35,14 +37,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { stripHtml } from '@/lib/html';
 import { queryKeys } from '@/hooks/query-keys';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
@@ -61,8 +56,6 @@ type FormState = {
   code: string;
   title: string;
   description: string;
-  level: string;
-  category: string;
   orderIndex: number;
   thumbnailFile: File | null;
 };
@@ -71,8 +64,6 @@ const emptyForm: FormState = {
   code: '',
   title: '',
   description: '',
-  level: '',
-  category: '',
   orderIndex: 0,
   thumbnailFile: null,
 };
@@ -89,7 +80,6 @@ export function CoursesListPage() {
   const [deleteTarget, setDeleteTarget] = useState<CourseResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
-  const [levelFilter, setLevelFilter] = useState('all');
 
   const programQuery = useQuery({
     queryKey: queryKeys.programs.detail(programId ?? ''),
@@ -126,8 +116,6 @@ export function CoursesListPage() {
         code: parsed.data.code,
         title: parsed.data.title,
         description: form.description || null,
-        level: form.level || null,
-        category: form.category || null,
         thumbnailUrl,
         programId: targetProgramId,
         orderIndex: parsed.data.orderIndex,
@@ -169,8 +157,6 @@ export function CoursesListPage() {
       code: course.code,
       title: course.title,
       description: course.description ?? '',
-      level: course.level ?? '',
-      category: course.category ?? '',
       orderIndex: course.orderIndex,
       thumbnailFile: null,
     });
@@ -182,7 +168,15 @@ export function CoursesListPage() {
     const base: ColumnDef<CourseResponse>[] = [
       { accessorKey: 'code', header: 'Mã' },
       { accessorKey: 'title', header: 'Tiêu đề' },
-      { accessorKey: 'level', header: 'Cấp độ' },
+      {
+        accessorKey: 'description',
+        header: 'Mô tả',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground line-clamp-2 max-w-md text-sm">
+            {stripHtml(row.original.description) || 'Chưa có mô tả'}
+          </span>
+        ),
+      },
       {
         accessorKey: 'courseRuns',
         header: 'Đợt học',
@@ -282,28 +276,17 @@ export function CoursesListPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tất cả cấp độ</SelectItem>
-            <SelectItem value="beginner">Beginner</SelectItem>
-            <SelectItem value="intermediate">Intermediate</SelectItem>
-            <SelectItem value="advanced">Advanced</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       <DataTable
         columns={columns}
         data={coursesQuery.data?.data?.filter((c) => {
-          if (levelFilter !== 'all' && (c.level ?? '').toLowerCase() !== levelFilter) return false;
           if (search.trim()) {
             const q = search.toLowerCase();
             return (
               c.code.toLowerCase().includes(q) ||
-              c.title.toLowerCase().includes(q)
+              c.title.toLowerCase().includes(q) ||
+              stripHtml(c.description).toLowerCase().includes(q)
             );
           }
           return true;
@@ -408,27 +391,19 @@ export function CoursesListPage() {
             </div>
             <div className="space-y-2">
               <Label>Mô tả</Label>
-              <Textarea
+              <RichTextEditor
                 value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
+                minHeight="14rem"
+                placeholder="Nhập mô tả khóa học với định dạng phong phú…"
+                onChange={(description) =>
+                  setForm((f) => ({ ...f, description }))
                 }
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Cấp độ</Label>
-                <Input
-                  value={form.level}
-                  onChange={(e) => setForm((f) => ({ ...f, level: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Danh mục</Label>
-                <Input
-                  value={form.category}
-                  onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                />
+            <div className="space-y-2">
+              <Label>Xem trước mô tả</Label>
+              <div className="rounded-md border bg-muted/20 p-4">
+                <RichTextPreview value={form.description} />
               </div>
             </div>
             <div className="space-y-2">

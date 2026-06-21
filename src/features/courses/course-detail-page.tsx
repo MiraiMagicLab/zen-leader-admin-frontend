@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { RichTextEditor } from '@/components/rich-text-editor';
+import { RichTextPreview } from '@/components/rich-text-preview';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -27,7 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { stripHtml } from '@/lib/html';
 import { queryKeys } from '@/hooks/query-keys';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
@@ -71,8 +73,6 @@ export function CourseDetailPage() {
     code: '',
     title: '',
     description: '',
-    level: '',
-    category: '',
     orderIndex: '0',
   });
   const [appleProductId, setAppleProductId] = useState('');
@@ -107,8 +107,6 @@ export function CourseDetailPage() {
         code: course.code,
         title: course.title,
         description: course.description ?? '',
-        level: course.level ?? '',
-        category: course.category ?? '',
         orderIndex: String(course.orderIndex ?? 0),
       });
     }
@@ -188,8 +186,6 @@ export function CourseDetailPage() {
         code: courseForm.code,
         title: courseForm.title,
         description: courseForm.description || null,
-        level: courseForm.level || null,
-        category: courseForm.category || null,
         thumbnailUrl: course!.thumbnailUrl ?? null,
         orderIndex: Number(courseForm.orderIndex) || 0,
         tags: course!.tags ?? [],
@@ -294,7 +290,7 @@ export function CourseDetailPage() {
 
       <PageHeader
         title={courseQuery.data?.title ?? 'Khóa học'}
-        description={courseQuery.data?.description ?? undefined}
+        description={stripHtml(courseQuery.data?.description) || undefined}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setEditCourseOpen(true)}>
@@ -351,6 +347,17 @@ export function CourseDetailPage() {
                 Lưu IAP mapping
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {course && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Mô tả khóa học</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <RichTextPreview value={course.description} />
           </CardContent>
         </Card>
       )}
@@ -471,32 +478,19 @@ export function CourseDetailPage() {
             </div>
             <div className="space-y-2">
               <Label>Mô tả</Label>
-              <Textarea
+              <RichTextEditor
                 value={courseForm.description}
-                onChange={(e) =>
-                  setCourseForm((f) => ({ ...f, description: e.target.value }))
+                minHeight="14rem"
+                placeholder="Nhập mô tả khóa học với định dạng phong phú…"
+                onChange={(description) =>
+                  setCourseForm((f) => ({ ...f, description }))
                 }
-                rows={3}
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Cấp độ</Label>
-                <Input
-                  value={courseForm.level}
-                  onChange={(e) =>
-                    setCourseForm((f) => ({ ...f, level: e.target.value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Danh mục</Label>
-                <Input
-                  value={courseForm.category}
-                  onChange={(e) =>
-                    setCourseForm((f) => ({ ...f, category: e.target.value }))
-                  }
-                />
+            <div className="space-y-2">
+              <Label>Xem trước mô tả</Label>
+              <div className="rounded-md border bg-muted/20 p-4">
+                <RichTextPreview value={courseForm.description} />
               </div>
             </div>
             <div className="space-y-2">

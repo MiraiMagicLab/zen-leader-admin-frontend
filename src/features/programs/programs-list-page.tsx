@@ -7,6 +7,8 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { RichTextEditor } from '@/components/rich-text-editor';
+import { RichTextPreview } from '@/components/rich-text-preview';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -44,7 +46,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDate } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
@@ -349,18 +350,23 @@ export function ProgramsListPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Mô tả</Label>
-              <Textarea
-                id="description"
+              <RichTextEditor
                 value={form.description}
-                rows={5}
-                className="max-h-56"
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
+                minHeight="14rem"
+                placeholder="Nhập mô tả chương trình với định dạng phong phú…"
+                onChange={(description) =>
+                  setForm((f) => ({ ...f, description }))
                 }
               />
               <p className="text-muted-foreground text-xs">
                 {form.description.length}/5000 ký tự
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Xem trước mô tả</Label>
+              <div className="rounded-md border bg-muted/20 p-4">
+                <RichTextPreview value={form.description} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="thumbnail">Ảnh thumbnail</Label>
