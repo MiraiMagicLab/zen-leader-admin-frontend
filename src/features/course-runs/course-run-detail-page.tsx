@@ -1,7 +1,20 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Eye, Pencil, Plus, Trash2, Upload } from 'lucide-react';
+import {
+  ArrowLeft,
+  BookOpen,
+  CalendarDays,
+  Eye,
+  FileSpreadsheet,
+  MessageSquare,
+  MoreHorizontal,
+  Plus,
+  Settings2,
+  Trash2,
+  Upload,
+  Users,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
@@ -11,12 +24,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -26,21 +38,37 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
+import { coursesApi } from '@/services/courses/courses-api';
+import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import {
-  syllabusSectionsApi,
   enrollmentsApi,
-  syllabusItemsApi,
   sessionsApi,
+  syllabusItemsApi,
+  syllabusSectionsApi,
 } from '@/services/lms/lms-api';
 import { messagingApi } from '@/services/messaging/messaging-api';
-import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
-import type { EnrollmentImportResponse, EnrollmentResponse, UserResponse } from '@/services/types/domain';
+import type {
+  CourseRunResponse,
+  EnrollmentImportResponse,
+  EnrollmentResponse,
+  SessionResponse,
+  SyllabusSectionResponse,
+  UserResponse,
+} from '@/services/types/domain';
 
 type RunSettingsForm = {
   code: string;
@@ -62,6 +90,14 @@ type SessionForm = {
   status: string;
 };
 
+type SectionForm = {
+  id: string;
+  title: string;
+  orderIndex: number;
+};
+
+const DETAIL_PAGE_SIZE = 100;
+
 const emptySessionForm: SessionForm = {
   title: '',
   description: '',
@@ -71,21 +107,50 @@ const emptySessionForm: SessionForm = {
   status: 'SCHEDULED',
 };
 
-const DETAIL_PAGE_SIZE = 100;
+function toRunSettingsForm(run: CourseRunResponse): RunSettingsForm {
+  return {
+    code: run.code,
+    status: run.status,
+    startsAt: run.startsAt ? toLocalDateTimeFromIso(run.startsAt) : '',
+    endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
+    timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
+    capacity: run.capacity != null ? String(run.capacity) : '',
+    enrollmentStartDate: run.enrollmentStartDate
+      ? toLocalDateTimeFromIso(run.enrollmentStartDate)
+      : '',
+    enrollmentEndDate: run.enrollmentEndDate
+      ? toLocalDateTimeFromIso(run.enrollmentEndDate)
+      : '',
+  };
+}
+
+function toSessionForm(session: SessionResponse): SessionForm {
+  return {
+    title: session.title,
+    description: session.description ?? '',
+    sessionNumber: String(session.sessionNumber),
+    scheduledAt: session.scheduledAt ? toLocalDateTimeFromIso(session.scheduledAt) : '',
+    durationMinutes: session.durationMinutes != null ? String(session.durationMinutes) : '',
+    status: session.status,
+  };
+}
 
 export function CourseRunDetailPage() {
   const { runId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [sectionDialog, setSectionDialog] = useState(false);
-  const [itemDialog, setItemDialog] = useState<string | null>(null);
-  const [sessionDialog, setSessionDialog] = useState(false);
+
+  const [createSectionOpen, setCreateSectionOpen] = useState(false);
+  const [createItemSectionId, setCreateItemSectionId] = useState<string | null>(null);
+  const [createSessionOpen, setCreateSessionOpen] = useState(false);
   const [editSession, setEditSession] = useState<{
     id: string;
     orderIndex: number;
     form: SessionForm;
   } | null>(null);
-  const [enrollDialog, setEnrollDialog] = useState(false);
+  const [enrollOpen, setEnrollOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [runSettingsOpen, setRunSettingsOpen] = useState(false);
   const [sectionTitle, setSectionTitle] = useState('');
   const [itemTitle, setItemTitle] = useState('');
   const [itemType, setItemType] = useState('VIDEO');
@@ -97,11 +162,7 @@ export function CourseRunDetailPage() {
   const [editRole, setEditRole] = useState('STUDENT');
   const [messagePage, setMessagePage] = useState(1);
   const [enrollmentPage, setEnrollmentPage] = useState(1);
-  const [editSection, setEditSection] = useState<{
-    id: string;
-    title: string;
-    orderIndex: number;
-  } | null>(null);
+  const [editSection, setEditSection] = useState<SectionForm | null>(null);
   const [viewEnrollmentId, setViewEnrollmentId] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<EnrollmentImportResponse | null>(null);
   const [runSettings, setRunSettings] = useState<RunSettingsForm | null>(null);
@@ -110,6 +171,12 @@ export function CourseRunDetailPage() {
     queryKey: queryKeys.courseRuns.detail(runId ?? ''),
     queryFn: () => courseRunsApi.getById(runId!),
     enabled: Boolean(runId),
+  });
+
+  const courseQuery = useQuery({
+    queryKey: queryKeys.courses.detail(runQuery.data?.courseId ?? ''),
+    queryFn: () => coursesApi.getById(runQuery.data!.courseId),
+    enabled: Boolean(runQuery.data?.courseId),
   });
 
   const sectionsQuery = useQuery({
@@ -150,20 +217,54 @@ export function CourseRunDetailPage() {
   });
 
   const messagesQuery = useQuery({
-    queryKey: queryKeys.messaging.messages(
-      conversationQuery.data?.id ?? '',
-      messagePage,
-    ),
-    queryFn: () =>
-      messagingApi.getMessages(conversationQuery.data!.id, messagePage, 50),
+    queryKey: queryKeys.messaging.messages(conversationQuery.data?.id ?? '', messagePage),
+    queryFn: () => messagingApi.getMessages(conversationQuery.data!.id, messagePage, 50),
     enabled: Boolean(conversationQuery.data?.id),
   });
 
+  const run = runQuery.data;
+  const course = courseQuery.data;
+  const sessions = sessionsQuery.data?.data ?? run?.courseSessions ?? [];
+  const sections = sectionsQuery.data?.data ?? [];
+  const enrollments = enrollmentsQuery.data?.data ?? [];
+  const totalSyllabusItems = sections.reduce(
+    (count, section) => count + (section.items?.length ?? 0),
+    0,
+  );
+
+  const invalidateRunQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.detail(runId ?? '') }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.courses.detail(run?.courseId ?? ''),
+      }),
+    ]);
+  };
+
+  const invalidateSections = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(run?.courseId ?? '') }),
+    ]);
+  };
+
+  const invalidateSessions = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.detail(runId ?? '') }),
+    ]);
+  };
+
+  const invalidateEnrollments = async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.all });
+  };
+
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: string) => messagingApi.deleteMessage(messageId),
-    onSuccess: () => {
-      toast.success('Đã xóa tin nhắn.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.messaging.all });
+    onSuccess: async () => {
+      toast.success('Da xoa tin nhan.');
+      await queryClient.invalidateQueries({ queryKey: queryKeys.messaging.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -171,40 +272,35 @@ export function CourseRunDetailPage() {
   const createSectionMutation = useMutation({
     mutationFn: () =>
       syllabusSectionsApi.create({
-        courseId: runQuery.data!.courseId,
+        courseId: run!.courseId,
         title: sectionTitle,
-        orderIndex: sectionsQuery.data?.data.length ?? 0,
+        orderIndex: sections.length,
       }),
-    onSuccess: () => {
-      toast.success('Đã thêm chương.');
-      setSectionDialog(false);
+    onSuccess: async () => {
+      toast.success('Da them chuong.');
+      setCreateSectionOpen(false);
       setSectionTitle('');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.courseRuns.detail(runId!),
-      });
+      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const createItemMutation = useMutation({
     mutationFn: (syllabusSectionId: string) => {
-      const section = sectionsQuery.data?.data.find(
-        (entry) => entry.id === syllabusSectionId,
-      );
-      const nextOrderIndex = section?.items?.length ?? 0;
+      const section = sections.find((entry) => entry.id === syllabusSectionId);
       return syllabusItemsApi.create({
         syllabusSectionId,
         type: itemType,
         title: itemTitle,
-        orderIndex: nextOrderIndex,
+        orderIndex: section?.items?.length ?? 0,
       });
     },
-    onSuccess: () => {
-      toast.success('Đã thêm mục giáo trình.');
-      setItemDialog(null);
+    onSuccess: async () => {
+      toast.success('Da them muc giao trinh.');
+      setCreateItemSectionId(null);
       setItemTitle('');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
+      setItemType('VIDEO');
+      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -216,7 +312,7 @@ export function CourseRunDetailPage() {
         title: sessionForm.title,
         description: sessionForm.description || undefined,
         sessionNumber: Number(sessionForm.sessionNumber),
-        orderIndex: sessionsQuery.data?.data.length ?? 0,
+        orderIndex: sessions.length,
         scheduledAt: sessionForm.scheduledAt
           ? new Date(sessionForm.scheduledAt).toISOString()
           : undefined,
@@ -225,11 +321,11 @@ export function CourseRunDetailPage() {
           : undefined,
         status: sessionForm.status,
       }),
-    onSuccess: () => {
-      toast.success('Đã thêm buổi học.');
-      setSessionDialog(false);
+    onSuccess: async () => {
+      toast.success('Da them buoi hoc.');
+      setCreateSessionOpen(false);
       setSessionForm(emptySessionForm);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+      await invalidateSessions();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -250,19 +346,19 @@ export function CourseRunDetailPage() {
           : undefined,
         status: editSession!.form.status,
       }),
-    onSuccess: () => {
-      toast.success('Đã cập nhật buổi học.');
+    onSuccess: async () => {
+      toast.success('Da cap nhat buoi hoc.');
       setEditSession(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+      await invalidateSessions();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const deleteSessionMutation = useMutation({
     mutationFn: (sessionId: string) => sessionsApi.remove(sessionId),
-    onSuccess: () => {
-      toast.success('Đã xóa buổi học.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions.all });
+    onSuccess: async () => {
+      toast.success('Da xoa buoi hoc.');
+      await invalidateSessions();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -270,24 +366,23 @@ export function CourseRunDetailPage() {
   const enrollMutation = useMutation({
     mutationFn: () =>
       enrollmentsApi.manualEnroll({ userId: enrollUser!.id, courseRunId: runId! }),
-    onSuccess: () => {
-      toast.success('Đã ghi danh học viên.');
-      setEnrollDialog(false);
+    onSuccess: async () => {
+      toast.success('Da ghi danh hoc vien.');
+      setEnrollOpen(false);
       setEnrollUser(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.all });
+      await invalidateEnrollments();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const importMutation = useMutation({
     mutationFn: () => enrollmentsApi.importByExcel(runId!, importFile!, false),
-    onSuccess: (result) => {
-      toast.success(
-        `Import xong: ${result.successCount} thành công, ${result.failedCount} lỗi.`,
-      );
+    onSuccess: async (result) => {
+      toast.success(`Import xong: ${result.successCount} thanh cong, ${result.failedCount} loi.`);
       setImportFile(null);
       setImportPreview(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.all });
+      setImportOpen(false);
+      await invalidateEnrollments();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -298,19 +393,19 @@ export function CourseRunDetailPage() {
         status: editStatus as 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED',
         role: editRole as 'STUDENT' | 'LECTURE' | 'ADMIN' | 'NO_ROLE',
       }),
-    onSuccess: () => {
-      toast.success('Đã cập nhật ghi danh.');
+    onSuccess: async () => {
+      toast.success('Da cap nhat ghi danh.');
       setEditEnrollment(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.all });
+      await invalidateEnrollments();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const deleteEnrollmentMutation = useMutation({
     mutationFn: (enrollmentId: string) => enrollmentsApi.remove(enrollmentId),
-    onSuccess: () => {
-      toast.success('Đã xóa ghi danh.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.all });
+    onSuccess: async () => {
+      toast.success('Da xoa ghi danh.');
+      await invalidateEnrollments();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -318,32 +413,32 @@ export function CourseRunDetailPage() {
   const updateSectionMutation = useMutation({
     mutationFn: () =>
       syllabusSectionsApi.update(editSection!.id, {
-        courseId: runQuery.data!.courseId,
+        courseId: run!.courseId,
         title: editSection!.title,
         orderIndex: editSection!.orderIndex,
       }),
-    onSuccess: () => {
-      toast.success('Đã cập nhật chương.');
+    onSuccess: async () => {
+      toast.success('Da cap nhat chuong.');
       setEditSection(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
+      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const deleteSectionMutation = useMutation({
     mutationFn: (sectionId: string) => syllabusSectionsApi.remove(sectionId),
-    onSuccess: () => {
-      toast.success('Đã xóa chương.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
+    onSuccess: async () => {
+      toast.success('Da xoa chuong.');
+      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const deleteItemMutation = useMutation({
     mutationFn: (itemId: string) => syllabusItemsApi.remove(itemId),
-    onSuccess: () => {
-      toast.success('Đã xóa mục giáo trình.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
+    onSuccess: async () => {
+      toast.success('Da xoa muc giao trinh.');
+      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -352,33 +447,34 @@ export function CourseRunDetailPage() {
     mutationFn: () => enrollmentsApi.importByExcel(runId!, importFile!, true),
     onSuccess: (result) => {
       setImportPreview(result);
-      toast.success('Đã xem trước import.');
+      toast.success('Da xem truoc import.');
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const updateRunMutation = useMutation({
     mutationFn: () => {
-      const r = runSettings!;
+      const settings = runSettings!;
       return courseRunsApi.update(runId!, {
         courseId: run!.courseId,
-        code: r.code,
-        status: r.status,
-        startsAt: new Date(r.startsAt).toISOString(),
-        endsAt: new Date(r.endsAt).toISOString(),
-        timezone: r.timezone,
-        capacity: r.capacity ? Number(r.capacity) : null,
-        enrollmentStartDate: r.enrollmentStartDate
-          ? new Date(r.enrollmentStartDate).toISOString()
+        code: settings.code,
+        status: settings.status,
+        startsAt: new Date(settings.startsAt).toISOString(),
+        endsAt: new Date(settings.endsAt).toISOString(),
+        timezone: settings.timezone,
+        capacity: settings.capacity ? Number(settings.capacity) : null,
+        enrollmentStartDate: settings.enrollmentStartDate
+          ? new Date(settings.enrollmentStartDate).toISOString()
           : null,
-        enrollmentEndDate: r.enrollmentEndDate
-          ? new Date(r.enrollmentEndDate).toISOString()
+        enrollmentEndDate: settings.enrollmentEndDate
+          ? new Date(settings.enrollmentEndDate).toISOString()
           : null,
       });
     },
-    onSuccess: () => {
-      toast.success('Đã cập nhật đợt học.');
-      void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
+    onSuccess: async () => {
+      toast.success('Da cap nhat dot hoc.');
+      setRunSettingsOpen(false);
+      await invalidateRunQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -386,561 +482,702 @@ export function CourseRunDetailPage() {
   const deleteRunMutation = useMutation({
     mutationFn: () => courseRunsApi.remove(runId!),
     onSuccess: () => {
-      toast.success('Đã xóa đợt học.');
-      navigate(ROUTES.courseRuns);
+      toast.success('Da xoa dot hoc.');
+      navigate(run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  const run = runQuery.data;
-
   const openRunSettings = () => {
-    if (!run) return;
-    setRunSettings({
-      code: run.code,
-      status: run.status,
-      startsAt: run.startsAt ? toLocalDateTimeFromIso(run.startsAt) : '',
-      endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
-      timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
-      capacity: run.capacity != null ? String(run.capacity) : '',
-      enrollmentStartDate: run.enrollmentStartDate
-        ? toLocalDateTimeFromIso(run.enrollmentStartDate)
-        : '',
-      enrollmentEndDate: run.enrollmentEndDate
-        ? toLocalDateTimeFromIso(run.enrollmentEndDate)
-        : '',
-    });
+    if (!run) {
+      return;
+    }
+
+    setRunSettings(toRunSettingsForm(run));
+    setRunSettingsOpen(true);
   };
 
-  const openEditSession = (session: { id: string; title: string; description: string | null; sessionNumber: number; orderIndex: number; scheduledAt: string | null; durationMinutes: number | null; status: string }) => {
+  const openEditSession = (session: SessionResponse) => {
     setEditSession({
       id: session.id,
       orderIndex: session.orderIndex,
-      form: {
-        title: session.title,
-        description: session.description ?? '',
-        sessionNumber: String(session.sessionNumber),
-        scheduledAt: session.scheduledAt ? toLocalDateTimeFromIso(session.scheduledAt) : '',
-        durationMinutes: session.durationMinutes != null ? String(session.durationMinutes) : '',
-        status: session.status,
-      },
+      form: toSessionForm(session),
     });
   };
+
+  const openEditSection = (section: SyllabusSectionResponse) => {
+    setEditSection({
+      id: section.id,
+      title: section.title,
+      orderIndex: section.orderIndex,
+    });
+  };
+
+  if (!runId) {
+    return null;
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Button variant="ghost" size="sm" asChild>
-        <Link to={ROUTES.courseRuns}>
+        <Link to={run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns}>
           <ArrowLeft className="mr-2 size-4" />
-          Quay lại đợt học
+          {run?.courseId ? 'Quay lai khoa hoc' : 'Quay lai dot hoc'}
         </Link>
       </Button>
 
       <PageHeader
-        title={run?.code ?? 'Đợt học'}
+        title={run?.code ?? 'Dot hoc'}
         description={
           run
-            ? `${formatDateTime(run.startsAt)} → ${formatDateTime(run.endsAt)}`
-            : undefined
+            ? `${course?.title ?? 'Khoa hoc'} · ${formatDateTime(run.startsAt)} -> ${formatDateTime(run.endsAt)}`
+            : 'Quan ly buoi hoc, giao trinh, ghi danh va chat lop.'
         }
         actions={
           run ? (
-            <div className="flex gap-2">
-              <Badge variant="secondary">{run.status}</Badge>
-              <Button variant="outline" size="sm" onClick={openRunSettings}>
-                Cài đặt lớp
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={openRunSettings}>
+                <Settings2 className="mr-2 size-4" />
+                Cai dat dot hoc
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={deleteRunMutation.isPending}
+                onClick={() => {
+                  if (window.confirm('Xoa dot hoc nay?')) {
+                    deleteRunMutation.mutate();
+                  }
+                }}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Xoa
               </Button>
             </div>
           ) : undefined
         }
       />
 
-      <Tabs defaultValue="sessions">
-        <TabsList>
-          <TabsTrigger value="sessions">
-            Buổi học ({sessionsQuery.data?.data.length ?? run?.courseSessions?.length ?? 0})
-          </TabsTrigger>
-          <TabsTrigger value="syllabus">Giáo trình</TabsTrigger>
-          <TabsTrigger value="enrollments">
-            Ghi danh ({enrollmentsQuery.data?.totalElement ?? 0})
-          </TabsTrigger>
-          <TabsTrigger value="settings">Cài đặt</TabsTrigger>
-          <TabsTrigger value="chat">Chat lớp</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="sessions" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => setSessionDialog(true)}>
-              <Plus className="mr-2 size-4" />
-              Thêm buổi học
-            </Button>
-          </div>
-          {(sessionsQuery.data?.data ?? run?.courseSessions ?? []).map((session) => (
-            <Card key={session.id}>
-              <CardContent className="flex items-center justify-between py-4">
-                <div>
-                  <p className="font-medium">
-                    #{session.sessionNumber} — {session.title}
-                  </p>
-                  <p className="text-muted-foreground text-xs">
-                    {session.scheduledAt
-                      ? formatDateTime(session.scheduledAt)
-                      : 'Chưa lên lịch'}
-                    {session.durationMinutes != null &&
-                      ` · ${session.durationMinutes} phút`}
-                    {' · '}{session.status}
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => openEditSession(session)}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => deleteSessionMutation.mutate(session.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-          {(sessionsQuery.data?.data ?? run?.courseSessions ?? []).length === 0 && (
-            <p className="text-muted-foreground text-sm">Chưa có buổi học.</p>
-          )}
-        </TabsContent>
-
-        <TabsContent value="syllabus" className="space-y-4">
-          <div className="flex justify-end">
-            <Button onClick={() => setSectionDialog(true)}>
-              <Plus className="mr-2 size-4" />
-              Thêm chương
-            </Button>
-          </div>
-          {(sectionsQuery.data?.data ?? []).map((section) => (
-            <Card key={section.id}>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-base">{section.title}</CardTitle>
-                <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() =>
-                      setEditSection({
-                        id: section.id,
-                        title: section.title,
-                        orderIndex: section.orderIndex,
-                      })
-                    }
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive"
-                    onClick={() => deleteSectionMutation.mutate(section.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setItemDialog(section.id)}
-                  >
-                    <Plus className="mr-2 size-4" />
-                    Mục
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {(section.items ?? []).length === 0 ? (
-                  <p className="text-muted-foreground text-sm">Chưa có mục giáo trình.</p>
-                ) : (
-                  section.items.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded-md border p-3"
-                    >
-                      <div>
-                        <p className="font-medium">{item.title}</p>
-                        <p className="text-muted-foreground text-xs">{item.type}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link to={ROUTES.syllabusItemDetail(item.id)}>Sửa</Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive"
-                          onClick={() => deleteItemMutation.mutate(item.id)}
-                        >
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          ))}
-          {(sectionsQuery.data?.data ?? []).length === 0 && (
-            <p className="text-muted-foreground text-sm">Chưa có chương trình dạy.</p>
-          )}
-        </TabsContent>
-
-        <TabsContent value="enrollments" className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => setEnrollDialog(true)}>
-              <Plus className="mr-2 size-4" />
-              Ghi danh thủ công
-            </Button>
-            <Button variant="outline" asChild>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  void enrollmentsApi.downloadImportTemplate().then((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'enrollment-template.xlsx';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  });
-                }}
-              >
-                Tải mẫu Excel
-              </a>
-            </Button>
-            <Input
-              type="file"
-              accept=".xlsx,.xls"
-              className="max-w-xs"
-              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-            />
-            <Button
-              variant="outline"
-              disabled={!importFile || previewImportMutation.isPending}
-              onClick={() => importFile && previewImportMutation.mutate()}
-            >
-              <Eye className="mr-2 size-4" />
-              Xem trước
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!importFile || importMutation.isPending}
-              onClick={() => importFile && importMutation.mutate()}
-            >
-              <Upload className="mr-2 size-4" />
-              Import Excel
-            </Button>
-          </div>
-
-          {importPreview && (
+      {run ? (
+        <>
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <Card>
-              <CardContent className="py-4 text-sm">
-                Xem trước: {importPreview.successCount} OK, {importPreview.failedCount}{' '}
-                lỗi, {importPreview.skippedCount} bỏ qua / {importPreview.totalRows} dòng
+              <CardContent className="grid gap-6 p-6 md:grid-cols-2">
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary">{run.status}</Badge>
+                    {course ? (
+                      <Button variant="outline" size="sm" asChild>
+                        <Link to={ROUTES.courseDetail(course.id)}>
+                          Mo khoa hoc {course.code}
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Khoa hoc lien ket</p>
+                    <p className="font-medium">{course?.title ?? 'Dang tai...'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Mua gio</p>
+                    <p className="font-medium">{run.timezone ?? 'Asia/Ho_Chi_Minh'}</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-muted-foreground text-sm">Bat dau</p>
+                    <p className="font-medium">{formatDateTime(run.startsAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Ket thuc</p>
+                    <p className="font-medium">{formatDateTime(run.endsAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Mo dang ky</p>
+                    <p className="font-medium">{formatDateTime(run.enrollmentStartDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Dong dang ky</p>
+                    <p className="font-medium">{formatDateTime(run.enrollmentEndDate)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Suc chua</p>
+                    <p className="font-medium">{run.capacity ?? 'Khong gioi han'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground text-sm">Cap nhat</p>
+                    <p className="font-medium">{formatDateTime(run.updatedAt)}</p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-          <div className="space-y-2">
-            {(enrollmentsQuery.data?.data ?? []).map((enrollment) => (
-              <Card key={enrollment.id}>
-                <CardContent className="flex items-center justify-between py-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <Card>
+                <CardContent className="flex items-start gap-4 p-6">
+                  <CalendarDays className="text-muted-foreground mt-1 size-5" />
                   <div>
-                    <p className="font-medium">
-                      {enrollment.userDisplayName ?? enrollment.userEmail}
-                    </p>
-                    <p className="text-muted-foreground text-xs">
-                      {enrollment.userEmail} · {enrollment.role ?? 'STUDENT'}
+                    <p className="text-muted-foreground text-sm">Buoi hoc</p>
+                    <p className="text-2xl font-semibold">{sessions.length}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-start gap-4 p-6">
+                  <BookOpen className="text-muted-foreground mt-1 size-5" />
+                  <div>
+                    <p className="text-muted-foreground text-sm">Muc giao trinh</p>
+                    <p className="text-2xl font-semibold">{totalSyllabusItems}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-start gap-4 p-6">
+                  <Users className="text-muted-foreground mt-1 size-5" />
+                  <div>
+                    <p className="text-muted-foreground text-sm">Ghi danh</p>
+                    <p className="text-2xl font-semibold">
+                      {enrollmentsQuery.data?.totalElement ?? 0}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge>{enrollment.status}</Badge>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-start gap-4 p-6">
+                  <MessageSquare className="text-muted-foreground mt-1 size-5" />
+                  <div>
+                    <p className="text-muted-foreground text-sm">Chat lop</p>
+                    <p className="text-2xl font-semibold">
+                      {conversationQuery.data?.participants.length ?? 0}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <Tabs defaultValue="sessions" className="space-y-4">
+            <TabsList className="h-auto flex-wrap justify-start">
+              <TabsTrigger value="sessions">Buoi hoc ({sessions.length})</TabsTrigger>
+              <TabsTrigger value="syllabus">Giao trinh ({sections.length})</TabsTrigger>
+              <TabsTrigger value="enrollments">
+                Ghi danh ({enrollmentsQuery.data?.totalElement ?? 0})
+              </TabsTrigger>
+              <TabsTrigger value="chat">Chat lop</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="sessions" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-base">Buoi hoc</CardTitle>
+                  <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
+                    <Plus className="mr-2 size-4" />
+                    Them buoi hoc
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  {sessions.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Chua co buoi hoc nao.</p>
+                  ) : (
+                    sessions.map((session) => (
+                      <div
+                        key={session.id}
+                        className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">
+                              #{session.sessionNumber} {session.title}
+                            </p>
+                            <Badge variant="secondary">{session.status}</Badge>
+                          </div>
+                          <p className="text-muted-foreground text-sm">
+                            {session.scheduledAt
+                              ? formatDateTime(session.scheduledAt)
+                              : 'Chua len lich'}
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            {session.durationMinutes != null
+                              ? `${session.durationMinutes} phut`
+                              : 'Chua co thoi luong'}
+                          </p>
+                          {session.description ? (
+                            <p className="text-sm">{session.description}</p>
+                          ) : null}
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEditSession(session)}>
+                              Sua buoi hoc
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                if (window.confirm('Xoa buoi hoc nay?')) {
+                                  deleteSessionMutation.mutate(session.id);
+                                }
+                              }}
+                            >
+                              Xoa buoi hoc
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="syllabus" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-base">Giao trinh</CardTitle>
+                  <Button size="sm" onClick={() => setCreateSectionOpen(true)}>
+                    <Plus className="mr-2 size-4" />
+                    Them chuong
+                  </Button>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-0">
+                  {sections.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Chua co chuong trinh day.</p>
+                  ) : (
+                    sections.map((section) => (
+                      <Card key={section.id}>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                          <div>
+                            <CardTitle className="text-base">{section.title}</CardTitle>
+                            <p className="text-muted-foreground mt-1 text-sm">
+                              {section.items?.length ?? 0} muc giao trinh
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setCreateItemSectionId(section.id)}
+                            >
+                              <Plus className="mr-2 size-4" />
+                              Them muc
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="size-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEditSection(section)}>
+                                  Sua chuong
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => {
+                                    if (window.confirm('Xoa chuong nay?')) {
+                                      deleteSectionMutation.mutate(section.id);
+                                    }
+                                  }}
+                                >
+                                  Xoa chuong
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-2">
+                          {(section.items ?? []).length === 0 ? (
+                            <p className="text-muted-foreground text-sm">
+                              Chua co muc giao trinh.
+                            </p>
+                          ) : (
+                            section.items.map((item) => (
+                              <div
+                                key={item.id}
+                                className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                              >
+                                <div>
+                                  <p className="font-medium">{item.title}</p>
+                                  <p className="text-muted-foreground text-sm">{item.type}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link to={ROUTES.syllabusItemDetail(item.id)}>Sua chi tiet</Link>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      if (window.confirm('Xoa muc giao trinh nay?')) {
+                                        deleteItemMutation.mutate(item.id);
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="enrollments" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle className="text-base">Ghi danh</CardTitle>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => setEnrollOpen(true)}>
+                      <Plus className="mr-2 size-4" />
+                      Ghi danh thu cong
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                      <FileSpreadsheet className="mr-2 size-4" />
+                      Import Excel
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  {enrollments.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">Chua co ghi danh nao.</p>
+                  ) : (
+                    enrollments.map((enrollment) => (
+                      <div
+                        key={enrollment.id}
+                        className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium">
+                              {enrollment.userDisplayName ?? enrollment.userEmail ?? 'Nguoi dung'}
+                            </p>
+                            <Badge>{enrollment.status}</Badge>
+                          </div>
+                          <p className="text-muted-foreground text-sm">
+                            {enrollment.userEmail ?? 'Khong co email'} · {enrollment.role ?? 'STUDENT'}
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            Ghi danh luc {formatDateTime(enrollment.enrolledAt)}
+                          </p>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="size-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setViewEnrollmentId(enrollment.id)}>
+                              Xem chi tiet
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setEditEnrollment(enrollment);
+                                setEditStatus(enrollment.status);
+                                setEditRole(enrollment.role ?? 'STUDENT');
+                              }}
+                            >
+                              Sua ghi danh
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => {
+                                if (window.confirm('Xoa ghi danh nay?')) {
+                                  deleteEnrollmentMutation.mutate(enrollment.id);
+                                }
+                              }}
+                            >
+                              Xoa ghi danh
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    ))
+                  )}
+                  <div className="flex justify-end gap-2 pt-2">
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setViewEnrollmentId(enrollment.id)}
+                      variant="outline"
+                      size="sm"
+                      disabled={enrollmentPage <= 1}
+                      onClick={() => setEnrollmentPage((page) => page - 1)}
                     >
-                      <Eye className="size-4" />
+                      Trang truoc
                     </Button>
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setEditEnrollment(enrollment);
-                        setEditStatus(enrollment.status);
-                        setEditRole(enrollment.role ?? 'STUDENT');
-                      }}
+                      variant="outline"
+                      size="sm"
+                      disabled={enrollmentPage >= (enrollmentsQuery.data?.totalPages ?? 1)}
+                      onClick={() => setEnrollmentPage((page) => page + 1)}
                     >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive"
-                      onClick={() => deleteEnrollmentMutation.mutate(enrollment.id)}
-                    >
-                      <Trash2 className="size-4" />
+                      Trang sau
                     </Button>
                   </div>
                 </CardContent>
               </Card>
-            ))}
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={enrollmentPage <= 1}
-              onClick={() => setEnrollmentPage((p) => p - 1)}
-            >
-              Trang trước
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={
-                enrollmentPage >= (enrollmentsQuery.data?.totalPages ?? 1)
-              }
-              onClick={() => setEnrollmentPage((p) => p + 1)}
-            >
-              Trang sau
-            </Button>
-          </div>
-        </TabsContent>
+            </TabsContent>
 
-        <TabsContent value="settings" className="space-y-4">
+            <TabsContent value="chat" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Chat lop</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-0">
+                  {!conversationQuery.data ? (
+                    <p className="text-muted-foreground text-sm">
+                      Lop nay chua co hoi thoai nhom hoac chua duoc tao.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-muted-foreground text-sm">
+                        {conversationQuery.data.participants.length} thanh vien ·{' '}
+                        {conversationQuery.data.status}
+                      </p>
+                      <div className="space-y-3">
+                        {(messagesQuery.data?.data ?? []).map((message) => (
+                          <div
+                            key={message.id}
+                            className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between"
+                          >
+                            <div className="space-y-1">
+                              <p className="font-medium">
+                                {message.senderUsername ?? message.senderId}
+                              </p>
+                              <p className="text-sm">{message.text ?? '(attachment)'}</p>
+                              <p className="text-muted-foreground text-xs">
+                                {formatDateTime(message.createdAt)}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                              onClick={() => {
+                                if (window.confirm('Xoa tin nhan nay?')) {
+                                  deleteMessageMutation.mutate(message.id);
+                                }
+                              }}
+                            >
+                              <Trash2 className="size-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={messagePage <= 1}
+                          onClick={() => setMessagePage((page) => page - 1)}
+                        >
+                          Trang truoc
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={messagePage >= (messagesQuery.data?.totalPages ?? 1)}
+                          onClick={() => setMessagePage((page) => page + 1)}
+                        >
+                          Trang sau
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </>
+      ) : (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Dang tai chi tiet dot hoc...
+          </CardContent>
+        </Card>
+      )}
+
+      <Sheet open={runSettingsOpen} onOpenChange={setRunSettingsOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Cai dat dot hoc</SheetTitle>
+          </SheetHeader>
           {runSettings ? (
-            <Card>
-              <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label>Mã lớp</Label>
+            <>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                <div className="space-y-2">
+                  <Label>Ma lop</Label>
                   <Input
                     value={runSettings.code}
-                    onChange={(e) =>
-                      setRunSettings((s) => s && { ...s, code: e.target.value })
+                    onChange={(event) =>
+                      setRunSettings((current) => current && { ...current, code: event.target.value })
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Trạng thái</Label>
-                  <Select
-                    value={runSettings.status}
-                    onValueChange={(value) =>
-                      setRunSettings((s) => s && { ...s, status: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="DRAFT">DRAFT</SelectItem>
-                      <SelectItem value="OPEN">OPEN</SelectItem>
-                      <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                      <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                      <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Trang thai</Label>
+                    <Select
+                      value={runSettings.status}
+                      onValueChange={(value) =>
+                        setRunSettings((current) => current && { ...current, status: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="DRAFT">DRAFT</SelectItem>
+                        <SelectItem value="OPEN">OPEN</SelectItem>
+                        <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                        <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                        <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Suc chua</Label>
+                    <Input
+                      type="number"
+                      value={runSettings.capacity}
+                      onChange={(event) =>
+                        setRunSettings((current) =>
+                          current && { ...current, capacity: event.target.value },
+                        )
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Sức chứa</Label>
-                  <Input
-                    type="number"
-                    value={runSettings.capacity}
-                    onChange={(e) =>
-                      setRunSettings((s) => s && { ...s, capacity: e.target.value })
-                    }
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Bat dau</Label>
+                    <DateTimePicker
+                      value={runSettings.startsAt}
+                      onChange={(startsAt) =>
+                        setRunSettings((current) => current && { ...current, startsAt })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Ket thuc</Label>
+                    <DateTimePicker
+                      value={runSettings.endsAt}
+                      onChange={(endsAt) =>
+                        setRunSettings((current) => current && { ...current, endsAt })
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Bắt đầu</Label>
-                  <DateTimePicker
-                    value={runSettings.startsAt}
-                    onChange={(startsAt) =>
-                      setRunSettings((s) => s && { ...s, startsAt })
-                    }
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Mo dang ky</Label>
+                    <DateTimePicker
+                      value={runSettings.enrollmentStartDate}
+                      onChange={(enrollmentStartDate) =>
+                        setRunSettings((current) =>
+                          current && { ...current, enrollmentStartDate },
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Dong dang ky</Label>
+                    <DateTimePicker
+                      value={runSettings.enrollmentEndDate}
+                      onChange={(enrollmentEndDate) =>
+                        setRunSettings((current) =>
+                          current && { ...current, enrollmentEndDate },
+                        )
+                      }
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Kết thúc</Label>
-                  <DateTimePicker
-                    value={runSettings.endsAt}
-                    onChange={(endsAt) =>
-                      setRunSettings((s) => s && { ...s, endsAt })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Má»Ÿ Ä‘Äƒng kÃ½</Label>
-                  <DateTimePicker
-                    value={runSettings.enrollmentStartDate}
-                    onChange={(enrollmentStartDate) =>
-                      setRunSettings((s) => s && { ...s, enrollmentStartDate })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>ÄÃ³ng Ä‘Äƒng kÃ½</Label>
-                  <DateTimePicker
-                    value={runSettings.enrollmentEndDate}
-                    onChange={(enrollmentEndDate) =>
-                      setRunSettings((s) => s && { ...s, enrollmentEndDate })
-                    }
-                  />
-                </div>
-                <div className="flex gap-2 sm:col-span-2">
-                  <Button onClick={() => updateRunMutation.mutate()}>Lưu</Button>
-                  <Button
-                    variant="destructive"
-                    onClick={() => deleteRunMutation.mutate()}
-                  >
-                    Xóa đợt học
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <Button onClick={openRunSettings}>Mở cài đặt đợt học</Button>
-          )}
-        </TabsContent>
-
-        <TabsContent value="chat" className="space-y-4">
-          {!conversationQuery.data ? (
-            <p className="text-muted-foreground text-sm">
-              Lớp này chưa có hội thoại nhóm hoặc chưa được tạo.
-            </p>
-          ) : (
-            <>
-              <p className="text-muted-foreground text-sm">
-                {conversationQuery.data.participants.length} thành viên ·{' '}
-                {conversationQuery.data.status}
-              </p>
-              <div className="space-y-2">
-                {(messagesQuery.data?.data ?? []).map((msg) => (
-                  <Card key={msg.id}>
-                    <CardContent className="flex items-start justify-between py-4">
-                      <div>
-                        <p className="font-medium">{msg.senderUsername ?? msg.senderId}</p>
-                        <p className="text-sm">{msg.text ?? '(attachment)'}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {formatDateTime(msg.createdAt)}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => deleteMessageMutation.mutate(msg.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </CardContent>
-                  </Card>
-                ))}
               </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={messagePage <= 1}
-                  onClick={() => setMessagePage((p) => p - 1)}
-                >
-                  Trang trước
+              <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+                <Button onClick={() => updateRunMutation.mutate()} disabled={updateRunMutation.isPending}>
+                  Luu
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={
-                    messagePage >= (messagesQuery.data?.totalPages ?? 1)
-                  }
-                  onClick={() => setMessagePage((p) => p + 1)}
-                >
-                  Trang sau
-                </Button>
-              </div>
+              </SheetFooter>
             </>
-          )}
-        </TabsContent>
-      </Tabs>
+          ) : null}
+        </SheetContent>
+      </Sheet>
 
-      <Dialog open={sessionDialog} onOpenChange={setSessionDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Thêm buổi học</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Sheet open={createSessionOpen} onOpenChange={setCreateSessionOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Them buoi hoc</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Tiêu đề</Label>
+              <Label>Tieu de</Label>
               <Input
                 value={sessionForm.title}
-                onChange={(e) =>
-                  setSessionForm((f) => ({ ...f, title: e.target.value }))
+                onChange={(event) =>
+                  setSessionForm((current) => ({ ...current, title: event.target.value }))
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label>Mô tả</Label>
-              <Input
+              <Label>Mo ta</Label>
+              <Textarea
                 value={sessionForm.description}
-                onChange={(e) =>
-                  setSessionForm((f) => ({ ...f, description: e.target.value }))
+                onChange={(event) =>
+                  setSessionForm((current) => ({ ...current, description: event.target.value }))
                 }
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Số buổi</Label>
+                <Label>So buoi</Label>
                 <Input
                   type="number"
                   value={sessionForm.sessionNumber}
-                  onChange={(e) =>
-                    setSessionForm((f) => ({
-                      ...f,
-                      sessionNumber: e.target.value,
+                  onChange={(event) =>
+                    setSessionForm((current) => ({
+                      ...current,
+                      sessionNumber: event.target.value,
                     }))
                   }
                 />
               </div>
               <div className="space-y-2">
-                <Label>Thời lượng (phút)</Label>
+                <Label>Thoi luong (phut)</Label>
                 <Input
                   type="number"
                   value={sessionForm.durationMinutes}
-                  onChange={(e) =>
-                    setSessionForm((f) => ({
-                      ...f,
-                      durationMinutes: e.target.value,
+                  onChange={(event) =>
+                    setSessionForm((current) => ({
+                      ...current,
+                      durationMinutes: event.target.value,
                     }))
                   }
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Lịch học</Label>
+              <Label>Lich hoc</Label>
               <DateTimePicker
                 value={sessionForm.scheduledAt}
                 onChange={(scheduledAt) =>
-                  setSessionForm((f) => ({ ...f, scheduledAt }))
+                  setSessionForm((current) => ({ ...current, scheduledAt }))
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label>Trạng thái</Label>
+              <Label>Trang thai</Label>
               <Select
                 value={sessionForm.status}
                 onValueChange={(value) =>
-                  setSessionForm((f) => ({ ...f, status: value }))
+                  setSessionForm((current) => ({ ...current, status: value }))
                 }
               >
                 <SelectTrigger>
@@ -955,143 +1192,167 @@ export function CourseRunDetailPage() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={() => createSessionMutation.mutate()}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+            <Button onClick={() => createSessionMutation.mutate()} disabled={createSessionMutation.isPending}>
+              Luu
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog open={Boolean(editSession)} onOpenChange={() => setEditSession(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa buổi học</DialogTitle>
-          </DialogHeader>
-          {editSession && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Tiêu đề</Label>
-                <Input
-                  value={editSession.form.title}
-                  onChange={(e) =>
-                    setEditSession((s) =>
-                      s && { ...s, form: { ...s.form, title: e.target.value } },
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Mô tả</Label>
-                <Input
-                  value={editSession.form.description}
-                  onChange={(e) =>
-                    setEditSession((s) =>
-                      s && {
-                        ...s,
-                        form: { ...s.form, description: e.target.value },
-                      },
-                    )
-                  }
-                />
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+      <Sheet
+        open={Boolean(editSession)}
+        onOpenChange={() => {
+          setEditSession(null);
+        }}
+      >
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Sua buoi hoc</SheetTitle>
+          </SheetHeader>
+          {editSession ? (
+            <>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                 <div className="space-y-2">
-                  <Label>Số buổi</Label>
+                  <Label>Tieu de</Label>
                   <Input
-                    type="number"
-                    value={editSession.form.sessionNumber}
-                    onChange={(e) =>
-                      setEditSession((s) =>
-                        s && {
-                          ...s,
-                          form: { ...s.form, sessionNumber: e.target.value },
+                    value={editSession.form.title}
+                    onChange={(event) =>
+                      setEditSession((current) =>
+                        current && {
+                          ...current,
+                          form: { ...current.form, title: event.target.value },
                         },
                       )
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Thời lượng (phút)</Label>
-                  <Input
-                    type="number"
-                    value={editSession.form.durationMinutes}
-                    onChange={(e) =>
-                      setEditSession((s) =>
-                        s && {
-                          ...s,
-                          form: { ...s.form, durationMinutes: e.target.value },
+                  <Label>Mo ta</Label>
+                  <Textarea
+                    value={editSession.form.description}
+                    onChange={(event) =>
+                      setEditSession((current) =>
+                        current && {
+                          ...current,
+                          form: { ...current.form, description: event.target.value },
                         },
                       )
                     }
                   />
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>So buoi</Label>
+                    <Input
+                      type="number"
+                      value={editSession.form.sessionNumber}
+                      onChange={(event) =>
+                        setEditSession((current) =>
+                          current && {
+                            ...current,
+                            form: { ...current.form, sessionNumber: event.target.value },
+                          },
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Thoi luong (phut)</Label>
+                    <Input
+                      type="number"
+                      value={editSession.form.durationMinutes}
+                      onChange={(event) =>
+                        setEditSession((current) =>
+                          current && {
+                            ...current,
+                            form: { ...current.form, durationMinutes: event.target.value },
+                          },
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Lich hoc</Label>
+                  <DateTimePicker
+                    value={editSession.form.scheduledAt}
+                    onChange={(scheduledAt) =>
+                      setEditSession((current) =>
+                        current && {
+                          ...current,
+                          form: { ...current.form, scheduledAt },
+                        },
+                      )
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Trang thai</Label>
+                  <Select
+                    value={editSession.form.status}
+                    onValueChange={(value) =>
+                      setEditSession((current) =>
+                        current && {
+                          ...current,
+                          form: { ...current.form, status: value },
+                        },
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
+                      <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                      <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                      <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Lịch học</Label>
-                <DateTimePicker
-                  value={editSession.form.scheduledAt}
-                  onChange={(scheduledAt) =>
-                    setEditSession((s) =>
-                      s && { ...s, form: { ...s.form, scheduledAt } },
-                    )
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Trạng thái</Label>
-                <Select
-                  value={editSession.form.status}
-                  onValueChange={(value) =>
-                    setEditSession((s) =>
-                      s && { ...s, form: { ...s.form, status: value } },
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
-                    <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+                <Button onClick={() => updateSessionMutation.mutate()} disabled={updateSessionMutation.isPending}>
+                  Luu
+                </Button>
+              </SheetFooter>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={createSectionOpen} onOpenChange={setCreateSectionOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Them chuong</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="space-y-2">
+              <Label>Tieu de</Label>
+              <Input value={sectionTitle} onChange={(event) => setSectionTitle(event.target.value)} />
             </div>
-          )}
-          <DialogFooter>
-            <Button onClick={() => updateSessionMutation.mutate()}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={sectionDialog} onOpenChange={setSectionDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Thêm chương</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Tiêu đề</Label>
-            <Input value={sectionTitle} onChange={(e) => setSectionTitle(e.target.value)} />
           </div>
-          <DialogFooter>
-            <Button onClick={() => createSectionMutation.mutate()}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+            <Button onClick={() => createSectionMutation.mutate()} disabled={createSectionMutation.isPending}>
+              Luu
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog open={Boolean(itemDialog)} onOpenChange={() => setItemDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Thêm mục giáo trình</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Sheet open={Boolean(createItemSectionId)} onOpenChange={() => setCreateItemSectionId(null)}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Them muc giao trinh</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Tiêu đề</Label>
-              <Input value={itemTitle} onChange={(e) => setItemTitle(e.target.value)} />
+              <Label>Tieu de</Label>
+              <Input value={itemTitle} onChange={(event) => setItemTitle(event.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Loại</Label>
+              <Label>Loai</Label>
               <Select value={itemType} onValueChange={setItemType}>
                 <SelectTrigger>
                   <SelectValue />
@@ -1104,93 +1365,202 @@ export function CourseRunDetailPage() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
-              onClick={() => itemDialog && createItemMutation.mutate(itemDialog)}
+              onClick={() => createItemSectionId && createItemMutation.mutate(createItemSectionId)}
+              disabled={!createItemSectionId || createItemMutation.isPending}
             >
-              Lưu
+              Luu
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog
-        open={enrollDialog}
+      <Sheet open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Sua chuong</SheetTitle>
+          </SheetHeader>
+          {editSection ? (
+            <>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+                <div className="space-y-2">
+                  <Label>Tieu de</Label>
+                  <Input
+                    value={editSection.title}
+                    onChange={(event) =>
+                      setEditSection((current) =>
+                        current && { ...current, title: event.target.value },
+                      )
+                    }
+                  />
+                </div>
+              </div>
+              <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+                <Button onClick={() => updateSectionMutation.mutate()} disabled={updateSectionMutation.isPending}>
+                  Luu
+                </Button>
+              </SheetFooter>
+            </>
+          ) : null}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={enrollOpen}
         onOpenChange={(open) => {
-          setEnrollDialog(open);
-          if (!open) setEnrollUser(null);
+          setEnrollOpen(open);
+          if (!open) {
+            setEnrollUser(null);
+          }
         }}
       >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Ghi danh thủ công</DialogTitle>
-          </DialogHeader>
-          <UserPicker
-            open={enrollDialog}
-            selectedUser={enrollUser}
-            onSelect={setEnrollUser}
-          />
-          <DialogFooter>
-            <Button
-              onClick={() => enrollMutation.mutate()}
-              disabled={!enrollUser || enrollMutation.isPending}
-            >
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Ghi danh thu cong</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <UserPicker open={enrollOpen} selectedUser={enrollUser} onSelect={setEnrollUser} />
+          </div>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+            <Button onClick={() => enrollMutation.mutate()} disabled={!enrollUser || enrollMutation.isPending}>
               Ghi danh
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa chương</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2">
-            <Label>Tiêu đề</Label>
-            <Input
-              value={editSection?.title ?? ''}
-              onChange={(e) =>
-                setEditSection((c) => c && { ...c, title: e.target.value })
-              }
-            />
-          </div>
-          <DialogFooter>
-            <Button onClick={() => updateSectionMutation.mutate()}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(viewEnrollmentId)} onOpenChange={() => setViewEnrollmentId(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Chi tiết ghi danh</DialogTitle>
-          </DialogHeader>
-          {enrollmentDetailQuery.data ? (
-            <div className="space-y-2 text-sm">
-              <p>ID: {enrollmentDetailQuery.data.id}</p>
-              <p>User: {enrollmentDetailQuery.data.userEmail}</p>
-              <p>Status: {enrollmentDetailQuery.data.status}</p>
-              <p>Role: {enrollmentDetailQuery.data.role}</p>
-              <p>Method: {enrollmentDetailQuery.data.enrolmentMethod}</p>
-              <p>
-                Progress: {enrollmentDetailQuery.data.progressPercent ?? '—'}%
-              </p>
+      <Sheet
+        open={importOpen}
+        onOpenChange={(open) => {
+          setImportOpen(open);
+          if (!open) {
+            setImportPreview(null);
+            setImportFile(null);
+          }
+        }}
+      >
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Import ghi danh bang Excel</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+              Tai file mau, dien du lieu hoc vien, xem truoc ket qua roi moi thuc hien import.
             </div>
-          ) : (
-            <p className="text-muted-foreground text-sm">Đang tải...</p>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa ghi danh</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                void enrollmentsApi.downloadImportTemplate().then((blob) => {
+                  const url = URL.createObjectURL(blob);
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = 'enrollment-template.xlsx';
+                  anchor.click();
+                  URL.revokeObjectURL(url);
+                });
+              }}
+            >
+              <FileSpreadsheet className="mr-2 size-4" />
+              Tai mau Excel
+            </Button>
             <div className="space-y-2">
-              <Label>Trạng thái</Label>
+              <Label>Chon file</Label>
+              <Input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+              />
+            </div>
+            {importPreview ? (
+              <Card>
+                <CardContent className="space-y-2 p-4 text-sm">
+                  <p>
+                    Xem truoc: {importPreview.successCount} OK, {importPreview.failedCount} loi,{' '}
+                    {importPreview.skippedCount} bo qua / {importPreview.totalRows} dong
+                  </p>
+                  {importPreview.failures.length > 0 ? (
+                    <div className="space-y-2">
+                      {importPreview.failures.slice(0, 10).map((failure) => (
+                        <div key={`${failure.rowNumber}-${failure.email ?? 'unknown'}`} className="rounded-md border p-3">
+                          <p className="font-medium">Dong {failure.rowNumber}</p>
+                          <p className="text-muted-foreground">{failure.reason}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              disabled={!importFile || previewImportMutation.isPending}
+              onClick={() => importFile && previewImportMutation.mutate()}
+            >
+              <Eye className="mr-2 size-4" />
+              Xem truoc
+            </Button>
+            <Button
+              disabled={!importFile || importMutation.isPending}
+              onClick={() => importFile && importMutation.mutate()}
+            >
+              <Upload className="mr-2 size-4" />
+              Import Excel
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={Boolean(viewEnrollmentId)} onOpenChange={() => setViewEnrollmentId(null)}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Chi tiet ghi danh</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 text-sm">
+            {enrollmentDetailQuery.data ? (
+              <>
+                <div>
+                  <p className="text-muted-foreground">Nguoi dung</p>
+                  <p className="font-medium">{enrollmentDetailQuery.data.userEmail}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Trang thai</p>
+                  <p className="font-medium">{enrollmentDetailQuery.data.status}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Vai tro</p>
+                  <p className="font-medium">{enrollmentDetailQuery.data.role ?? 'STUDENT'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Phuong thuc</p>
+                  <p className="font-medium">
+                    {enrollmentDetailQuery.data.enrolmentMethod ?? 'Khong xac dinh'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Tien do</p>
+                  <p className="font-medium">
+                    {enrollmentDetailQuery.data.progressPercent ?? '0'}%
+                  </p>
+                </div>
+              </>
+            ) : (
+              <p className="text-muted-foreground">Dang tai...</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Sua ghi danh</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="space-y-2">
+              <Label>Trang thai</Label>
               <Select value={editStatus} onValueChange={setEditStatus}>
                 <SelectTrigger>
                   <SelectValue />
@@ -1204,7 +1574,7 @@ export function CourseRunDetailPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Vai trò</Label>
+              <Label>Vai tro</Label>
               <Select value={editRole} onValueChange={setEditRole}>
                 <SelectTrigger>
                   <SelectValue />
@@ -1218,11 +1588,13 @@ export function CourseRunDetailPage() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={() => updateEnrollmentMutation.mutate()}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+            <Button onClick={() => updateEnrollmentMutation.mutate()} disabled={updateEnrollmentMutation.isPending}>
+              Luu
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
