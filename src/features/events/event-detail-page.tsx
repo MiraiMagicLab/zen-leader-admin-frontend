@@ -18,6 +18,13 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
@@ -292,12 +299,12 @@ export function EventDetailPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa sự kiện</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Sửa sự kiện</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
               <Label>Tiêu đề</Label>
               <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
@@ -326,11 +333,11 @@ export function EventDetailPage() {
               </div>
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => updateMutation.mutate()}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={Boolean(editComment)} onOpenChange={() => setEditComment(null)}>
         <DialogContent>

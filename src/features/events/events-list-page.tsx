@@ -11,13 +11,6 @@ import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -32,6 +25,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
@@ -83,7 +83,7 @@ export function EventsListPage() {
     mutationFn: async () => {
       let thumbnailUrl: string | undefined;
       if (form.thumbnailFile) {
-        thumbnailUrl = (await assetsApi.upload(form.thumbnailFile)).url;
+        thumbnailUrl = (await assetsApi.uploadViaPresigned(form.thumbnailFile)).downloadUrl;
       }
       return eventsApi.create({
         title: form.title,
@@ -263,12 +263,12 @@ export function EventsListPage() {
         </Button>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Tạo sự kiện</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Tạo sự kiện</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
               <Label>Tiêu đề</Label>
               <Input
@@ -353,13 +353,13 @@ export function EventsListPage() {
               <Label>Sự kiện chính thức</Label>
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
               Tạo
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

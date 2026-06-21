@@ -13,15 +13,15 @@ import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -369,12 +369,12 @@ export function CourseDetailPage() {
         emptyMessage="Chưa có đợt học nào."
       />
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Tạo đợt học mới</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Tạo đợt học mới</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
               <Label>Mã lớp</Label>
               <Input
@@ -441,23 +441,23 @@ export function CourseDetailPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               onClick={() => createRunMutation.mutate()}
               disabled={createRunMutation.isPending}
             >
               Tạo
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog open={editCourseOpen} onOpenChange={setEditCourseOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa khóa học</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+      <Sheet open={editCourseOpen} onOpenChange={setEditCourseOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Sửa khóa học</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
               <Label>Mã</Label>
               <Input
@@ -504,29 +504,29 @@ export function CourseDetailPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               onClick={() => updateCourseMutation.mutate()}
               disabled={updateCourseMutation.isPending}
             >
               Lưu
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
-      <Dialog
+      <Sheet
         open={Boolean(editingRun)}
         onOpenChange={() => {
           setEditingRun(null);
           setForm(emptyRunForm);
         }}
       >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa đợt học</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Sửa đợt học</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
               <Label>Mã lớp</Label>
               <Input
@@ -593,16 +593,16 @@ export function CourseDetailPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               onClick={() => updateRunMutation.mutate()}
               disabled={updateRunMutation.isPending}
             >
               Lưu
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
