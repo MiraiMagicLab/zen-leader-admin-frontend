@@ -6,6 +6,16 @@ import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,13 +28,27 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
+import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { CommentResponse } from '@/services/types/domain';
+
+type EventActionKind = 'publish' | 'unpublish' | 'delete';
+
+type PendingEventAction = {
+  action: EventActionKind;
+  eventTitle: string;
+};
+
+type PendingCommentDelete = {
+  commentId: string;
+  authorName: string;
+};
 
 function CommentItem({
   comment,
@@ -32,7 +56,7 @@ function CommentItem({
   onEdit,
 }: {
   comment: CommentResponse;
-  onDelete: (id: string) => void;
+  onDelete: (comment: CommentResponse) => void;
   onEdit: (comment: CommentResponse) => void;
 }) {
   return (
@@ -53,7 +77,7 @@ function CommentItem({
             variant="ghost"
             size="icon"
             className="text-destructive shrink-0"
-            onClick={() => onDelete(comment.id)}
+            onClick={() => onDelete(comment)}
           >
             <Trash2 className="size-4" />
           </Button>
@@ -80,8 +104,15 @@ export function EventDetailPage() {
   const [editContent, setEditContent] = useState('');
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
+  const [editIsOfficial, setEditIsOfficial] = useState(false);
+  const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
+  const [editThumbnailUrl, setEditThumbnailUrl] = useState('');
   const [editComment, setEditComment] = useState<CommentResponse | null>(null);
   const [editCommentContent, setEditCommentContent] = useState('');
+  const [pendingEventAction, setPendingEventAction] = useState<PendingEventAction | null>(null);
+  const [pendingCommentDelete, setPendingCommentDelete] = useState<PendingCommentDelete | null>(
+    null,
+  );
 
   const eventQuery = useQuery({
     queryKey: queryKeys.events.detail(eventId ?? ''),
@@ -99,6 +130,7 @@ export function EventDetailPage() {
     mutationFn: (commentId: string) => eventsApi.deleteComment(commentId),
     onSuccess: () => {
       toast.success('Comment deleted.');
+      setPendingCommentDelete(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -108,6 +140,7 @@ export function EventDetailPage() {
     mutationFn: () => eventsApi.publish(eventId!),
     onSuccess: () => {
       toast.success('Event published.');
+      setPendingEventAction(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -117,23 +150,33 @@ export function EventDetailPage() {
     mutationFn: () => eventsApi.unpublish(eventId!),
     onSuccess: () => {
       toast.success('Event moved back to draft.');
+      setPendingEventAction(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const updateMutation = useMutation({
-    mutationFn: () =>
-      eventsApi.update(eventId!, {
+    mutationFn: async () => {
+      let thumbnailUrl = editThumbnailUrl.trim() || undefined;
+      if (editThumbnailFile) {
+        thumbnailUrl = (await assetsApi.uploadViaPresigned(editThumbnailFile)).downloadUrl;
+      }
+
+      return eventsApi.update(eventId!, {
         title: editTitle.trim(),
         description: editDescription.trim() || undefined,
         content: editContent.trim() || undefined,
         startTime: new Date(editStart).toISOString(),
         endTime: new Date(editEnd).toISOString(),
-      }),
+        thumbnailUrl,
+        isOfficial: editIsOfficial,
+      });
+    },
     onSuccess: () => {
       toast.success('Event updated.');
       setEditEventOpen(false);
+      setEditThumbnailFile(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -154,6 +197,7 @@ export function EventDetailPage() {
     mutationFn: () => eventsApi.remove(eventId!),
     onSuccess: () => {
       toast.success('Event deleted.');
+      setPendingEventAction(null);
       void navigate(ROUTES.events);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -161,6 +205,56 @@ export function EventDetailPage() {
 
   const event = eventQuery.data;
   const eventOwnerLabel = event?.isOfficial ? 'ZenLeader System' : event?.author.name;
+  const metadataEntries = Object.entries(event?.metadata ?? {});
+  const isConfirmingEventAction =
+    publishMutation.isPending || unpublishMutation.isPending || deleteEventMutation.isPending;
+
+  const openEditSheet = () => {
+    if (!event) {
+      return;
+    }
+
+    const toLocal = (iso: string) => {
+      const date = new Date(iso);
+      const pad = (value: number) => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+
+    setEditTitle(event.title);
+    setEditDescription(event.description ?? '');
+    setEditContent(event.content ?? '');
+    setEditStart(toLocal(event.startTime));
+    setEditEnd(toLocal(event.endTime));
+    setEditIsOfficial(event.isOfficial);
+    setEditThumbnailFile(null);
+    setEditThumbnailUrl(event.thumbnailUrl ?? '');
+    setEditEventOpen(true);
+  };
+
+  const openEventActionDialog = (action: EventActionKind) => {
+    if (!event) {
+      return;
+    }
+    setPendingEventAction({ action, eventTitle: event.title });
+  };
+
+  const confirmEventAction = () => {
+    if (!pendingEventAction) {
+      return;
+    }
+
+    if (pendingEventAction.action === 'publish') {
+      publishMutation.mutate();
+      return;
+    }
+
+    if (pendingEventAction.action === 'unpublish') {
+      unpublishMutation.mutate();
+      return;
+    }
+
+    deleteEventMutation.mutate();
+  };
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -179,42 +273,21 @@ export function EventDetailPage() {
             <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">{event.status}</Badge>
               {event.isOfficial ? <Badge>System event</Badge> : null}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const toLocal = (iso: string) => {
-                    const date = new Date(iso);
-                    const pad = (value: number) => String(value).padStart(2, '0');
-                    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-                  };
-
-                  setEditTitle(event.title);
-                  setEditDescription(event.description ?? '');
-                  setEditContent(event.content ?? '');
-                  setEditStart(toLocal(event.startTime));
-                  setEditEnd(toLocal(event.endTime));
-                  setEditEventOpen(true);
-                }}
-              >
+              <Button variant="outline" size="sm" onClick={openEditSheet}>
                 <Pencil className="mr-2 size-4" />
                 Edit
               </Button>
-              <Button variant="outline" size="sm" onClick={() => publishMutation.mutate()}>
-                Publish
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => unpublishMutation.mutate()}>
-                Move to draft
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  if (window.confirm('Delete this event?')) {
-                    deleteEventMutation.mutate();
-                  }
-                }}
-              >
+              {event.status !== 'PUBLISHED' ? (
+                <Button variant="outline" size="sm" onClick={() => openEventActionDialog('publish')}>
+                  Publish
+                </Button>
+              ) : null}
+              {event.status !== 'DRAFT' ? (
+                <Button variant="outline" size="sm" onClick={() => openEventActionDialog('unpublish')}>
+                  Move to draft
+                </Button>
+              ) : null}
+              <Button variant="destructive" size="sm" onClick={() => openEventActionDialog('delete')}>
                 <Trash2 className="mr-2 size-4" />
                 Delete
               </Button>
@@ -226,6 +299,16 @@ export function EventDetailPage() {
       {event ? (
         <Card>
           <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
+            {event.thumbnailUrl ? (
+              <div className="sm:col-span-2">
+                <p className="text-muted-foreground mb-2 text-sm">Thumbnail</p>
+                <img
+                  src={event.thumbnailUrl}
+                  alt={event.title}
+                  className="h-56 w-full rounded-lg border object-cover"
+                />
+              </div>
+            ) : null}
             <div>
               <p className="text-muted-foreground text-sm">Start time</p>
               <p>{formatDateTime(event.startTime)}</p>
@@ -239,20 +322,51 @@ export function EventDetailPage() {
               <p>{eventOwnerLabel}</p>
             </div>
             <div>
+              <p className="text-muted-foreground text-sm">Visibility</p>
+              <p>{event.status === 'PUBLISHED' ? 'Visible in public feeds' : 'Hidden from public feeds'}</p>
+            </div>
+            <div>
               <p className="text-muted-foreground text-sm">Meeting target</p>
               <p>{event.roomCode ? `Internal meet room: ${event.roomCode}` : 'Internal meet room will be assigned.'}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">Join target</p>
+              <p className="break-all">{event.liveLink ?? 'Internal meet link will be generated automatically.'}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">Session type</p>
+              <p>{event.sessionType ?? 'TORII_MEET'}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">Created</p>
+              <p>{formatDateTime(event.createdAt)}</p>
             </div>
             <div className="sm:col-span-2">
               <p className="text-muted-foreground text-sm">Engagement</p>
               <p>
-                {event.engagementStats.likes} likes • {event.engagementStats.interested} interested
-                {' '}• {event.engagementStats.comments ?? 0} comments
+                {event.engagementStats.likes} likes • {event.engagementStats.interested} interested •{' '}
+                {event.engagementStats.comments ?? 0} comments
               </p>
             </div>
             {event.content ? (
               <div className="sm:col-span-2">
                 <p className="text-muted-foreground text-sm">Content</p>
                 <p className="whitespace-pre-wrap">{event.content}</p>
+              </div>
+            ) : null}
+            {metadataEntries.length > 0 ? (
+              <div className="sm:col-span-2">
+                <p className="text-muted-foreground mb-2 text-sm">Metadata</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {metadataEntries.map(([key, value]) => (
+                    <div key={key} className="rounded-md border p-3">
+                      <p className="text-muted-foreground text-xs uppercase">{key}</p>
+                      <p className="mt-1 break-words text-sm">
+                        {typeof value === 'string' ? value : JSON.stringify(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
           </CardContent>
@@ -271,7 +385,12 @@ export function EventDetailPage() {
               <CommentItem
                 key={comment.id}
                 comment={comment}
-                onDelete={(id) => deleteCommentMutation.mutate(id)}
+                onDelete={(selectedComment) =>
+                  setPendingCommentDelete({
+                    commentId: selectedComment.id,
+                    authorName: selectedComment.userDisplayName,
+                  })
+                }
                 onEdit={(selectedComment) => {
                   setEditComment(selectedComment);
                   setEditCommentContent(selectedComment.content);
@@ -312,7 +431,7 @@ export function EventDetailPage() {
               <Input
                 id="edit-event-title"
                 value={editTitle}
-                onChange={(event) => setEditTitle(event.target.value)}
+                onChange={(currentEvent) => setEditTitle(currentEvent.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -320,7 +439,7 @@ export function EventDetailPage() {
               <Textarea
                 id="edit-event-description"
                 value={editDescription}
-                onChange={(event) => setEditDescription(event.target.value)}
+                onChange={(currentEvent) => setEditDescription(currentEvent.target.value)}
               />
             </div>
             <div className="space-y-2">
@@ -329,7 +448,25 @@ export function EventDetailPage() {
                 id="edit-event-content"
                 rows={8}
                 value={editContent}
-                onChange={(event) => setEditContent(event.target.value)}
+                onChange={(currentEvent) => setEditContent(currentEvent.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-event-thumbnail-url">Thumbnail URL</Label>
+              <Input
+                id="edit-event-thumbnail-url"
+                value={editThumbnailUrl}
+                placeholder="https://..."
+                onChange={(currentEvent) => setEditThumbnailUrl(currentEvent.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-event-thumbnail-file">Replace thumbnail</Label>
+              <Input
+                id="edit-event-thumbnail-file"
+                type="file"
+                accept="image/*"
+                onChange={(currentEvent) => setEditThumbnailFile(currentEvent.target.files?.[0] ?? null)}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -341,6 +478,10 @@ export function EventDetailPage() {
                 <Label>End time</Label>
                 <DateTimePicker value={editEnd} onChange={setEditEnd} />
               </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={editIsOfficial} onCheckedChange={setEditIsOfficial} />
+              <Label>System event</Label>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
@@ -374,7 +515,7 @@ export function EventDetailPage() {
                 id="edit-comment-content"
                 rows={8}
                 value={editCommentContent}
-                onChange={(event) => setEditCommentContent(event.target.value)}
+                onChange={(currentEvent) => setEditCommentContent(currentEvent.target.value)}
               />
             </div>
           </div>
@@ -388,6 +529,86 @@ export function EventDetailPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        open={Boolean(pendingEventAction)}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingEventAction) {
+            setPendingEventAction(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingEventAction?.action === 'publish'
+                ? 'Publish this event?'
+                : pendingEventAction?.action === 'unpublish'
+                  ? 'Move this event back to draft?'
+                  : 'Delete this event?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingEventAction?.action === 'publish'
+                ? `"${pendingEventAction.eventTitle}" will become visible in public event feeds immediately.`
+                : pendingEventAction?.action === 'unpublish'
+                  ? `"${pendingEventAction.eventTitle}" will stop appearing in public event feeds until it is published again.`
+                  : `"${pendingEventAction?.eventTitle}" will be removed from admin management and public feeds.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isConfirmingEventAction}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                pendingEventAction?.action === 'delete'
+                  ? 'bg-destructive text-white hover:bg-destructive/90'
+                  : undefined
+              }
+              disabled={isConfirmingEventAction}
+              onClick={confirmEventAction}
+            >
+              {pendingEventAction?.action === 'publish'
+                ? 'Publish event'
+                : pendingEventAction?.action === 'unpublish'
+                  ? 'Move to draft'
+                  : 'Delete event'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(pendingCommentDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deleteCommentMutation.isPending) {
+            setPendingCommentDelete(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this comment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingCommentDelete
+                ? `This will remove the comment from ${pendingCommentDelete.authorName} and any moderation context attached to it.`
+                : 'This comment will be removed permanently.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteCommentMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={deleteCommentMutation.isPending}
+              onClick={() => {
+                if (pendingCommentDelete) {
+                  deleteCommentMutation.mutate(pendingCommentDelete.commentId);
+                }
+              }}
+            >
+              Delete comment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

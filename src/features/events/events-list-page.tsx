@@ -8,6 +8,16 @@ import { toast } from 'sonner';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { DataTable } from '@/components/data-table/data-table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -57,6 +67,13 @@ type EventForm = {
 };
 
 type EventTypeFilter = 'all' | 'official' | 'community';
+type EventActionKind = 'publish' | 'unpublish' | 'delete';
+
+type PendingEventAction = {
+  eventId: string;
+  eventTitle: string;
+  action: EventActionKind;
+};
 
 const emptyForm: EventForm = {
   title: '',
@@ -78,6 +95,7 @@ export function EventsListPage() {
   const [authorKeyword, setAuthorKeyword] = useState('');
   const [status, setStatus] = useState('all');
   const [typeFilter, setTypeFilter] = useState<EventTypeFilter>('all');
+  const [pendingAction, setPendingAction] = useState<PendingEventAction | null>(null);
 
   const listParams = useMemo<EventAdminFeedParams>(
     () => ({
@@ -151,6 +169,41 @@ export function EventsListPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
+  const isConfirmingAction =
+    publishMutation.isPending || unpublishMutation.isPending || deleteMutation.isPending;
+
+  const openActionDialog = (
+    eventId: string,
+    eventTitle: string,
+    action: EventActionKind,
+  ) => {
+    setPendingAction({ eventId, eventTitle, action });
+  };
+
+  const confirmPendingAction = () => {
+    if (!pendingAction) {
+      return;
+    }
+
+    if (pendingAction.action === 'publish') {
+      publishMutation.mutate(pendingAction.eventId, {
+        onSuccess: () => setPendingAction(null),
+      });
+      return;
+    }
+
+    if (pendingAction.action === 'unpublish') {
+      unpublishMutation.mutate(pendingAction.eventId, {
+        onSuccess: () => setPendingAction(null),
+      });
+      return;
+    }
+
+    deleteMutation.mutate(pendingAction.eventId, {
+      onSuccess: () => setPendingAction(null),
+    });
+  };
+
   const columns = useMemo<ColumnDef<EventResponse>[]>(
     () => [
       {
@@ -204,18 +257,26 @@ export function EventsListPage() {
                 <Link to={ROUTES.eventDetail(row.original.id)}>Details</Link>
               </DropdownMenuItem>
               {row.original.status !== 'PUBLISHED' ? (
-                <DropdownMenuItem onClick={() => publishMutation.mutate(row.original.id)}>
+                <DropdownMenuItem
+                  onClick={() =>
+                    openActionDialog(row.original.id, row.original.title, 'publish')
+                  }
+                >
                   Publish
                 </DropdownMenuItem>
               ) : null}
               {row.original.status !== 'DRAFT' ? (
-                <DropdownMenuItem onClick={() => unpublishMutation.mutate(row.original.id)}>
+                <DropdownMenuItem
+                  onClick={() =>
+                    openActionDialog(row.original.id, row.original.title, 'unpublish')
+                  }
+                >
                   Move to draft
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={() => deleteMutation.mutate(row.original.id)}
+                onClick={() => openActionDialog(row.original.id, row.original.title, 'delete')}
               >
                 Delete
               </DropdownMenuItem>
@@ -430,6 +491,52 @@ export function EventsListPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        open={Boolean(pendingAction)}
+        onOpenChange={(open) => {
+          if (!open && !isConfirmingAction) {
+            setPendingAction(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingAction?.action === 'publish'
+                ? 'Publish this event?'
+                : pendingAction?.action === 'unpublish'
+                  ? 'Move this event back to draft?'
+                  : 'Delete this event?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingAction?.action === 'publish'
+                ? `"${pendingAction.eventTitle}" will become visible in public event feeds.`
+                : pendingAction?.action === 'unpublish'
+                  ? `"${pendingAction.eventTitle}" will be hidden from public event feeds until it is published again.`
+                  : `"${pendingAction?.eventTitle}" will be removed from admin management and public feeds.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isConfirmingAction}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                pendingAction?.action === 'delete'
+                  ? 'bg-destructive text-white hover:bg-destructive/90'
+                  : undefined
+              }
+              disabled={isConfirmingAction}
+              onClick={confirmPendingAction}
+            >
+              {pendingAction?.action === 'publish'
+                ? 'Publish event'
+                : pendingAction?.action === 'unpublish'
+                  ? 'Move to draft'
+                  : 'Delete event'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
