@@ -289,7 +289,6 @@ export type CreateEventRequest = {
   thumbnailUrl?: string;
   startTime: string;
   endTime: string;
-  programId?: string;
   metadata?: Record<string, unknown>;
   publishImmediately?: boolean;
   isOfficial?: boolean;
