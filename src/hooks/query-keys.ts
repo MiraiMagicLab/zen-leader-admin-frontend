@@ -71,8 +71,8 @@ export const queryKeys = {
   },
   events: {
     all: ['events'] as const,
-    list: (page: number, size: number) =>
-      [...queryKeys.events.all, 'list', page, size] as const,
+    list: (params: Record<string, unknown>) =>
+      [...queryKeys.events.all, 'list', params] as const,
     detail: (id: string) => [...queryKeys.events.all, 'detail', id] as const,
     comments: (id: string, page: number) =>
       [...queryKeys.events.all, 'comments', id, page] as const,

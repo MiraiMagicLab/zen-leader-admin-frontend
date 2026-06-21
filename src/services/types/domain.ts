@@ -176,6 +176,15 @@ export type EventResponse = {
   createdAt: string;
 };
 
+export type EventAdminFeedParams = {
+  page: number;
+  pageSize: number;
+  keyword?: string;
+  status?: string;
+  isOfficial?: boolean;
+  authorKeyword?: string;
+};
+
 export type AuditLogResponse = {
   id: string;
   actorUserId: string | null;
@@ -278,7 +287,6 @@ export type CreateEventRequest = {
   description?: string;
   content?: string;
   thumbnailUrl?: string;
-  liveLink?: string;
   startTime: string;
   endTime: string;
   programId?: string;

@@ -9,13 +9,6 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -45,19 +38,15 @@ function CommentItem({
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-4 rounded-md border p-3">
-        <div>
+        <div className="min-w-0">
           <p className="font-medium">{comment.userDisplayName}</p>
-          <p className="text-muted-foreground mt-1 text-sm">{comment.content}</p>
+          <p className="text-muted-foreground mt-1 whitespace-pre-wrap text-sm">{comment.content}</p>
           <p className="text-muted-foreground mt-2 text-xs">
-            {formatDateTime(comment.createdAt)} · {comment.likesCount} thích
+            {formatDateTime(comment.createdAt)} • {comment.likesCount} likes
           </p>
         </div>
         <div className="flex gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onEdit(comment)}
-          >
+          <Button variant="ghost" size="icon" onClick={() => onEdit(comment)}>
             <Pencil className="size-4" />
           </Button>
           <Button
@@ -84,9 +73,11 @@ export function EventDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [commentPage, setCommentPage] = useState(0);
-  const [editOpen, setEditOpen] = useState(false);
+  const [editEventOpen, setEditEventOpen] = useState(false);
+  const [editCommentOpen, setEditCommentOpen] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
+  const [editContent, setEditContent] = useState('');
   const [editStart, setEditStart] = useState('');
   const [editEnd, setEditEnd] = useState('');
   const [editComment, setEditComment] = useState<CommentResponse | null>(null);
@@ -107,7 +98,7 @@ export function EventDetailPage() {
   const deleteCommentMutation = useMutation({
     mutationFn: (commentId: string) => eventsApi.deleteComment(commentId),
     onSuccess: () => {
-      toast.success('Đã xóa bình luận.');
+      toast.success('Comment deleted.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -116,7 +107,7 @@ export function EventDetailPage() {
   const publishMutation = useMutation({
     mutationFn: () => eventsApi.publish(eventId!),
     onSuccess: () => {
-      toast.success('Đã xuất bản.');
+      toast.success('Event published.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -125,7 +116,7 @@ export function EventDetailPage() {
   const unpublishMutation = useMutation({
     mutationFn: () => eventsApi.unpublish(eventId!),
     onSuccess: () => {
-      toast.success('Đã gỡ xuất bản.');
+      toast.success('Event moved back to draft.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -134,25 +125,26 @@ export function EventDetailPage() {
   const updateMutation = useMutation({
     mutationFn: () =>
       eventsApi.update(eventId!, {
-        title: editTitle,
-        description: editDescription,
+        title: editTitle.trim(),
+        description: editDescription.trim() || undefined,
+        content: editContent.trim() || undefined,
         startTime: new Date(editStart).toISOString(),
         endTime: new Date(editEnd).toISOString(),
       }),
     onSuccess: () => {
-      toast.success('Đã cập nhật sự kiện.');
-      setEditOpen(false);
+      toast.success('Event updated.');
+      setEditEventOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const updateCommentMutation = useMutation({
-    mutationFn: () =>
-      eventsApi.updateComment(editComment!.id, editCommentContent),
+    mutationFn: () => eventsApi.updateComment(editComment!.id, editCommentContent),
     onSuccess: () => {
-      toast.success('Đã sửa bình luận.');
+      toast.success('Comment updated.');
       setEditComment(null);
+      setEditCommentOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -161,117 +153,129 @@ export function EventDetailPage() {
   const deleteEventMutation = useMutation({
     mutationFn: () => eventsApi.remove(eventId!),
     onSuccess: () => {
-      toast.success('Đã xóa sự kiện.');
+      toast.success('Event deleted.');
       void navigate(ROUTES.events);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const event = eventQuery.data;
+  const eventOwnerLabel = event?.isOfficial ? 'ZenLeader System' : event?.author.name;
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Button variant="ghost" size="sm" asChild>
         <Link to={ROUTES.events}>
           <ArrowLeft className="mr-2 size-4" />
-          Quay lại sự kiện
+          Back to events
         </Link>
       </Button>
 
       <PageHeader
-        title={event?.title ?? 'Sự kiện'}
+        title={event?.title ?? 'Event'}
         description={event?.description ?? undefined}
         actions={
           event ? (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Badge variant="secondary">{event.status}</Badge>
+              {event.isOfficial ? <Badge>System event</Badge> : null}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   const toLocal = (iso: string) => {
-                    const d = new Date(iso);
-                    const pad = (n: number) => String(n).padStart(2, '0');
-                    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                    const date = new Date(iso);
+                    const pad = (value: number) => String(value).padStart(2, '0');
+                    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
                   };
+
                   setEditTitle(event.title);
                   setEditDescription(event.description ?? '');
+                  setEditContent(event.content ?? '');
                   setEditStart(toLocal(event.startTime));
                   setEditEnd(toLocal(event.endTime));
-                  setEditOpen(true);
+                  setEditEventOpen(true);
                 }}
               >
                 <Pencil className="mr-2 size-4" />
-                Sửa
+                Edit
               </Button>
               <Button variant="outline" size="sm" onClick={() => publishMutation.mutate()}>
-                Xuất bản
+                Publish
               </Button>
               <Button variant="outline" size="sm" onClick={() => unpublishMutation.mutate()}>
-                Gỡ xuất bản
+                Move to draft
               </Button>
               <Button
                 variant="destructive"
                 size="sm"
                 onClick={() => {
-                  if (window.confirm('Xóa sự kiện này?')) {
+                  if (window.confirm('Delete this event?')) {
                     deleteEventMutation.mutate();
                   }
                 }}
               >
                 <Trash2 className="mr-2 size-4" />
-                Xóa
+                Delete
               </Button>
             </div>
           ) : undefined
         }
       />
 
-      {event && (
+      {event ? (
         <Card>
           <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
             <div>
-              <p className="text-muted-foreground text-sm">Bắt đầu</p>
+              <p className="text-muted-foreground text-sm">Start time</p>
               <p>{formatDateTime(event.startTime)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-sm">Kết thúc</p>
+              <p className="text-muted-foreground text-sm">End time</p>
               <p>{formatDateTime(event.endTime)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-sm">Tác giả</p>
-              <p>{event.author.name}</p>
+              <p className="text-muted-foreground text-sm">Owner</p>
+              <p>{eventOwnerLabel}</p>
             </div>
             <div>
-              <p className="text-muted-foreground text-sm">Tương tác</p>
+              <p className="text-muted-foreground text-sm">Meeting target</p>
+              <p>{event.roomCode ? `Internal meet room: ${event.roomCode}` : 'Internal meet room will be assigned.'}</p>
+            </div>
+            <div className="sm:col-span-2">
+              <p className="text-muted-foreground text-sm">Engagement</p>
               <p>
-                {event.engagementStats.likes} thích ·{' '}
-                {event.engagementStats.interested} quan tâm ·{' '}
-                {event.engagementStats.comments ?? 0} bình luận
+                {event.engagementStats.likes} likes • {event.engagementStats.interested} interested
+                {' '}• {event.engagementStats.comments ?? 0} comments
               </p>
             </div>
+            {event.content ? (
+              <div className="sm:col-span-2">
+                <p className="text-muted-foreground text-sm">Content</p>
+                <p className="whitespace-pre-wrap">{event.content}</p>
+              </div>
+            ) : null}
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">
-            Bình luận ({commentsQuery.data?.totalElement ?? 0})
-          </CardTitle>
+          <CardTitle className="text-base">Comments ({commentsQuery.data?.totalElement ?? 0})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {(commentsQuery.data?.data ?? []).length === 0 ? (
-            <p className="text-muted-foreground text-sm">Chưa có bình luận.</p>
+            <p className="text-muted-foreground text-sm">No comments yet.</p>
           ) : (
             commentsQuery.data?.data.map((comment) => (
               <CommentItem
                 key={comment.id}
                 comment={comment}
                 onDelete={(id) => deleteCommentMutation.mutate(id)}
-                onEdit={(c) => {
-                  setEditComment(c);
-                  setEditCommentContent(c.content);
+                onEdit={(selectedComment) => {
+                  setEditComment(selectedComment);
+                  setEditCommentContent(selectedComment.content);
+                  setEditCommentOpen(true);
                 }}
               />
             ))
@@ -281,79 +285,109 @@ export function EventDetailPage() {
               variant="outline"
               size="sm"
               disabled={commentPage <= 0}
-              onClick={() => setCommentPage((p) => p - 1)}
+              onClick={() => setCommentPage((currentPage) => currentPage - 1)}
             >
-              Trang trước
+              Previous
             </Button>
             <Button
               variant="outline"
               size="sm"
-              disabled={
-                commentPage + 1 >= (commentsQuery.data?.totalPages ?? 1)
-              }
-              onClick={() => setCommentPage((p) => p + 1)}
+              disabled={commentPage + 1 >= (commentsQuery.data?.totalPages ?? 1)}
+              onClick={() => setCommentPage((currentPage) => currentPage + 1)}
             >
-              Trang sau
+              Next
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+      <Sheet open={editEventOpen} onOpenChange={setEditEventOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sửa sự kiện</SheetTitle>
+            <SheetTitle>Edit event</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Tiêu đề</Label>
-              <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              <Label htmlFor="edit-event-title">Title</Label>
+              <Input
+                id="edit-event-title"
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+              />
             </div>
             <div className="space-y-2">
-              <Label>Mô tả</Label>
+              <Label htmlFor="edit-event-description">Description</Label>
               <Textarea
+                id="edit-event-description"
                 value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
+                onChange={(event) => setEditDescription(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-event-content">Content</Label>
+              <Textarea
+                id="edit-event-content"
+                rows={8}
+                value={editContent}
+                onChange={(event) => setEditContent(event.target.value)}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Bắt đầu</Label>
-                <DateTimePicker
-                  value={editStart}
-                  onChange={setEditStart}
-                />
+                <Label>Start time</Label>
+                <DateTimePicker value={editStart} onChange={setEditStart} />
               </div>
               <div className="space-y-2">
-                <Label>Kết thúc</Label>
-                <DateTimePicker
-                  value={editEnd}
-                  onChange={setEditEnd}
-                />
+                <Label>End time</Label>
+                <DateTimePicker value={editEnd} onChange={setEditEnd} />
               </div>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => updateMutation.mutate()}>Lưu</Button>
+            <Button
+              onClick={() => updateMutation.mutate()}
+              disabled={!editTitle.trim() || !editStart || !editEnd || updateMutation.isPending}
+            >
+              Save changes
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
 
-      <Dialog open={Boolean(editComment)} onOpenChange={() => setEditComment(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sửa bình luận</DialogTitle>
-          </DialogHeader>
-          <Textarea
-            value={editCommentContent}
-            onChange={(e) => setEditCommentContent(e.target.value)}
-            rows={4}
-          />
-          <DialogFooter>
-            <Button onClick={() => updateCommentMutation.mutate()}>Lưu</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Sheet
+        open={editCommentOpen && Boolean(editComment)}
+        onOpenChange={(open) => {
+          setEditCommentOpen(open);
+          if (!open) {
+            setEditComment(null);
+          }
+        }}
+      >
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Edit comment</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-comment-content">Content</Label>
+              <Textarea
+                id="edit-comment-content"
+                rows={8}
+                value={editCommentContent}
+                onChange={(event) => setEditCommentContent(event.target.value)}
+              />
+            </div>
+          </div>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+            <Button
+              onClick={() => updateCommentMutation.mutate()}
+              disabled={!editCommentContent.trim() || updateCommentMutation.isPending}
+            >
+              Save comment
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

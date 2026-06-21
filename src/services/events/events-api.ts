@@ -6,6 +6,7 @@ import {
   apiPut,
 } from '@/services/lib/api-request';
 import type {
+  EventAdminFeedParams,
   CreateEventRequest,
   CommentResponse,
   EventResponse,
@@ -18,6 +19,24 @@ export const eventsApi = {
     apiGet<PagingResponse<EventResponse>>(
       `/api/v1/events/web/feed?page=${page}&size=${size}&includeDrafts=${includeDrafts}`,
     ),
+  getAdminFeed: (params: EventAdminFeedParams) => {
+    const searchParams = new URLSearchParams();
+    searchParams.set('page', String(params.page));
+    searchParams.set('pageSize', String(params.pageSize));
+    if (params.keyword?.trim()) {
+      searchParams.set('keyword', params.keyword.trim());
+    }
+    if (params.status?.trim()) {
+      searchParams.set('status', params.status.trim());
+    }
+    if (typeof params.isOfficial === 'boolean') {
+      searchParams.set('isOfficial', String(params.isOfficial));
+    }
+    if (params.authorKeyword?.trim()) {
+      searchParams.set('authorKeyword', params.authorKeyword.trim());
+    }
+    return apiGet<PagingResponse<EventResponse>>(`/api/v1/events/admin/feed?${searchParams.toString()}`);
+  },
   getById: (id: string) => apiGet<EventResponse>(`/api/v1/events/${id}`),
   create: (payload: CreateEventRequest) =>
     apiPost<EventResponse>('/api/v1/events', payload),
