@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
-  GraduationCap,
   Lock,
   ShieldCheck,
   Sparkles,

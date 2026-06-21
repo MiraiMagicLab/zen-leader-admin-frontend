@@ -192,7 +192,7 @@ export function CourseRunDetailPage() {
       const section = sectionsQuery.data?.data.find(
         (entry) => entry.id === syllabusSectionId,
       );
-      const nextOrderIndex = section?.syllabusItems?.length ?? 0;
+      const nextOrderIndex = section?.items?.length ?? 0;
       return syllabusItemsApi.create({
         syllabusSectionId,
         type: itemType,
