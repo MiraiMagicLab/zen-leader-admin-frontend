@@ -5,11 +5,3 @@ export type PagingResponse<T> = {
   totalElement: number;
   data: T[];
 };
-
-export type SpringPage<T> = {
-  content: T[];
-  totalElements: number;
-  totalPages: number;
-  size: number;
-  number: number;
-};

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -36,6 +36,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
@@ -85,6 +92,8 @@ export function ProgramsListPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<ProgramResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState('');
+  const [publishedFilter, setPublishedFilter] = useState('all');
 
   const programsQuery = useQuery({
     queryKey: queryKeys.programs.list(),
@@ -163,51 +172,44 @@ export function ProgramsListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex items-center justify-end gap-1">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={ROUTES.programCourses(row.original.id)}>
-                Khóa học
-              </Link>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to={ROUTES.programCourses(row.original.id)}>
-                    Quản lý khóa học
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setEditing(row.original);
-                    setForm({
-                      code: row.original.code,
-                      title: row.original.title,
-                      description: row.original.description ?? '',
-                      thumbnailUrl: row.original.thumbnailUrl ?? '',
-                      isPublished: row.original.isPublished,
-                      thumbnailFile: null,
-                    });
-                    setFieldErrors({});
-                    setDialogOpen(true);
-                  }}
-                >
-                  Chỉnh sửa
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setDeleteTarget(row.original)}
-                >
-                  <Trash2 className="mr-2 size-4" />
-                  Xóa
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to={ROUTES.programCourses(row.original.id)}>
+                  Khóa học
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditing(row.original);
+                  setForm({
+                    code: row.original.code,
+                    title: row.original.title,
+                    description: row.original.description ?? '',
+                    thumbnailUrl: row.original.thumbnailUrl ?? '',
+                    isPublished: row.original.isPublished,
+                    thumbnailFile: null,
+                  });
+                  setFieldErrors({});
+                  setDialogOpen(true);
+                }}
+              >
+                Chỉnh sửa
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setDeleteTarget(row.original)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Xóa
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ),
       },
     ],
@@ -234,10 +236,44 @@ export function ProgramsListPage() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            className="pl-9"
+            placeholder="Tìm theo mã hoặc tiêu đề…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={publishedFilter} onValueChange={setPublishedFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả</SelectItem>
+            <SelectItem value="published">Đã xuất bản</SelectItem>
+            <SelectItem value="draft">Nháp</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <DataTable
         columns={columns}
-        data={programsQuery.data ?? []}
+        data={programsQuery.data?.filter((p) => {
+          if (publishedFilter === 'published' && !p.isPublished) return false;
+          if (publishedFilter === 'draft' && p.isPublished) return false;
+          if (search.trim()) {
+            const q = search.toLowerCase();
+            return (
+              p.code.toLowerCase().includes(q) ||
+              p.title.toLowerCase().includes(q)
+            );
+          }
+          return true;
+        }) ?? []}
         isLoading={programsQuery.isLoading}
+        showRowIndex
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

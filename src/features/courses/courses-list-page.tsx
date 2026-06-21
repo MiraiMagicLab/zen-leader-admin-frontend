@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, MoreHorizontal, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -35,6 +35,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { ROUTES } from '@/routes/paths';
@@ -80,6 +87,8 @@ export function CoursesListPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<CourseResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [search, setSearch] = useState('');
+  const [levelFilter, setLevelFilter] = useState('all');
 
   const programQuery = useQuery({
     queryKey: queryKeys.programs.detail(programId ?? ''),
@@ -175,7 +184,7 @@ export function CoursesListPage() {
       { accessorKey: 'level', header: 'Cấp độ' },
       {
         accessorKey: 'courseRuns',
-        header: 'Lớp chạy',
+        header: 'Đợt học',
         cell: ({ row }) => row.original.courseRuns?.length ?? 0,
       },
     ];
@@ -262,10 +271,44 @@ export function CoursesListPage() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            className="pl-9"
+            placeholder="Tìm theo mã hoặc tiêu đề…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={levelFilter} onValueChange={setLevelFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả cấp độ</SelectItem>
+            <SelectItem value="beginner">Beginner</SelectItem>
+            <SelectItem value="intermediate">Intermediate</SelectItem>
+            <SelectItem value="advanced">Advanced</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <DataTable
         columns={columns}
-        data={coursesQuery.data ?? []}
+        data={coursesQuery.data?.filter((c) => {
+          if (levelFilter !== 'all' && (c.level ?? '').toLowerCase() !== levelFilter) return false;
+          if (search.trim()) {
+            const q = search.toLowerCase();
+            return (
+              c.code.toLowerCase().includes(q) ||
+              c.title.toLowerCase().includes(q)
+            );
+          }
+          return true;
+        }) ?? []}
         isLoading={coursesQuery.isLoading}
+        showRowIndex
         emptyMessage={
           isProgramScope
             ? 'Chưa có khóa học. Bấm "Thêm khóa học" để tạo mới.'

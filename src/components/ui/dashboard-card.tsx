@@ -28,8 +28,8 @@ export const DashboardCard = memo(({ stat, index }: DashboardCardProps) => {
       whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
       className="group relative cursor-pointer"
     >
-      <div className="border-border bg-card/40 rounded-xl border p-6 transition-all duration-300 hover:shadow-lg">
-        <div className="to-primary/5 absolute inset-0 rounded-xl bg-gradient-to-br from-transparent via-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="border-border bg-card/40 rounded-xl border p-6 transition-all duration-300 hover:shadow-lg">
+        
 
         <div className="relative">
           <div className="mb-4 flex items-center justify-between">

@@ -82,24 +82,24 @@ export const sessionsApi = {
 
 export const enrollmentsApi = {
   getById: (enrollmentId: string) =>
-    apiGet<EnrollmentResponse>(`/api/v1/enrollments/${enrollmentId}`),
+    apiGet<EnrollmentResponse>(`/api/v1/admin/enrollments/${enrollmentId}`),
   getByCourseRun: (courseRunId: string) =>
     apiGet<EnrollmentResponse[]>(
-      `/api/v1/enrollments/by-course-run/${encodeURIComponent(courseRunId)}`,
+      `/api/v1/admin/enrollments/by-course-run/${encodeURIComponent(courseRunId)}`,
     ),
   getByUser: (userId: string) =>
     apiGet<EnrollmentResponse[]>(
-      `/api/v1/enrollments/by-user/${encodeURIComponent(userId)}`,
+      `/api/v1/admin/enrollments/by-user/${encodeURIComponent(userId)}`,
     ),
   manualEnroll: (payload: ManualEnrollmentRequest) =>
-    apiPost<EnrollmentResponse>('/api/v1/enrollments/manual', payload),
+    apiPost<EnrollmentResponse>('/api/v1/admin/enrollments/manual', payload),
   update: (enrollmentId: string, payload: EnrollmentUpdateRequest) =>
     apiPut<EnrollmentResponse>(
-      `/api/v1/enrollments/${enrollmentId}`,
+      `/api/v1/admin/enrollments/${enrollmentId}`,
       payload,
     ),
   remove: (enrollmentId: string) =>
-    apiDelete<string>(`/api/v1/enrollments/${enrollmentId}`),
+    apiDelete<string>(`/api/v1/admin/enrollments/${enrollmentId}`),
   filter: (payload: {
     courseRunId: string;
     page?: number;
@@ -107,7 +107,7 @@ export const enrollmentsApi = {
     conditions?: unknown[];
   }) =>
     apiPost<PagingResponse<EnrollmentResponse>>(
-      '/api/v1/enrollments/filter',
+      '/api/v1/admin/enrollments/filter',
       payload,
     ),
   importByExcel: async (courseRunId: string, file: File, dryRun = false) => {
@@ -116,10 +116,10 @@ export const enrollmentsApi = {
     form.append('file', file);
     form.append('dryRun', String(dryRun));
     return apiPostForm<EnrollmentImportResponse>(
-      '/api/v1/enrollments/import',
+      '/api/v1/admin/enrollments/import',
       form,
     );
   },
   downloadImportTemplate: () =>
-    apiGetBlob('/api/v1/enrollments/import-template'),
+    apiGetBlob('/api/v1/admin/enrollments/import-template'),
 };

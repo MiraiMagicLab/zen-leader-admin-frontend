@@ -39,7 +39,7 @@ const highlights = [
   {
     icon: Sparkles,
     title: 'Quản trị LMS',
-    description: 'Theo dõi học viên, khóa học, lớp chạy và hoạt động nền tảng.',
+    description: 'Theo dõi học viên, khóa học, đợt học và hoạt động nền tảng.',
   },
 ];
 
@@ -71,7 +71,7 @@ export function LoginPage() {
     <div className="bg-background relative flex min-h-svh overflow-hidden">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,var(--primary)/0.18,transparent)]"
+        className="pointer-events-none absolute inset-0 bg-primary/5"
       />
       <div
         aria-hidden
@@ -91,7 +91,7 @@ export function LoginPage() {
         >
           <div
             aria-hidden
-            className="absolute inset-0 bg-[linear-gradient(135deg,var(--primary)/0.12_0%,transparent_45%,var(--primary)/0.06_100%)]"
+            className="absolute inset-0 bg-primary/5"
           />
           <div
             aria-hidden

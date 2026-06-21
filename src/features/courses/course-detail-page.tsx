@@ -44,6 +44,8 @@ type RunForm = {
   endsAt: string;
   timezone: string;
   capacity: string;
+  enrollmentStartDate: string;
+  enrollmentEndDate: string;
 };
 
 const emptyRunForm: RunForm = {
@@ -53,6 +55,8 @@ const emptyRunForm: RunForm = {
   endsAt: '',
   timezone: 'Asia/Ho_Chi_Minh',
   capacity: '',
+  enrollmentStartDate: '',
+  enrollmentEndDate: '',
 };
 
 export function CourseDetailPage() {
@@ -126,9 +130,15 @@ export function CourseDetailPage() {
         endsAt: new Date(form.endsAt).toISOString(),
         timezone: form.timezone,
         capacity: form.capacity ? Number(form.capacity) : null,
+        enrollmentStartDate: form.enrollmentStartDate
+          ? new Date(form.enrollmentStartDate).toISOString()
+          : null,
+        enrollmentEndDate: form.enrollmentEndDate
+          ? new Date(form.enrollmentEndDate).toISOString()
+          : null,
       }),
     onSuccess: () => {
-      toast.success('Đã tạo lớp chạy.');
+      toast.success('Đã tạo đợt học.');
       setDialogOpen(false);
       setForm(emptyRunForm);
       void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
@@ -146,9 +156,15 @@ export function CourseDetailPage() {
         endsAt: new Date(form.endsAt).toISOString(),
         timezone: form.timezone,
         capacity: form.capacity ? Number(form.capacity) : null,
+        enrollmentStartDate: form.enrollmentStartDate
+          ? new Date(form.enrollmentStartDate).toISOString()
+          : null,
+        enrollmentEndDate: form.enrollmentEndDate
+          ? new Date(form.enrollmentEndDate).toISOString()
+          : null,
       }),
     onSuccess: () => {
-      toast.success('Đã cập nhật lớp chạy.');
+      toast.success('Đã cập nhật đợt học.');
       setEditingRun(null);
       setForm(emptyRunForm);
       void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
@@ -159,7 +175,7 @@ export function CourseDetailPage() {
   const deleteRunMutation = useMutation({
     mutationFn: (runId: string) => courseRunsApi.remove(runId),
     onSuccess: () => {
-      toast.success('Đã xóa lớp chạy.');
+      toast.success('Đã xóa đợt học.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -174,7 +190,11 @@ export function CourseDetailPage() {
         description: courseForm.description || null,
         level: courseForm.level || null,
         category: courseForm.category || null,
+        thumbnailUrl: course!.thumbnailUrl ?? null,
         orderIndex: Number(courseForm.orderIndex) || 0,
+        tags: course!.tags ?? [],
+        appleProductId: appleProductId || null,
+        androidProductId: androidProductId || null,
       }),
     onSuccess: () => {
       toast.success('Đã cập nhật khóa học.');
@@ -202,6 +222,12 @@ export function CourseDetailPage() {
       endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
       timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
       capacity: run.capacity != null ? String(run.capacity) : '',
+      enrollmentStartDate: run.enrollmentStartDate
+        ? toLocalDateTimeFromIso(run.enrollmentStartDate)
+        : '',
+      enrollmentEndDate: run.enrollmentEndDate
+        ? toLocalDateTimeFromIso(run.enrollmentEndDate)
+        : '',
     });
   };
 
@@ -243,7 +269,7 @@ export function CourseDetailPage() {
               size="icon"
               className="text-destructive"
               onClick={() => {
-                if (window.confirm('Xóa lớp chạy này?')) {
+                if (window.confirm('Xóa đợt học này?')) {
                   deleteRunMutation.mutate(row.original.id);
                 }
               }}
@@ -288,7 +314,7 @@ export function CourseDetailPage() {
             </Button>
             <Button onClick={() => setDialogOpen(true)}>
               <Plus className="mr-2 size-4" />
-              Thêm lớp chạy
+              Thêm đợt học
             </Button>
           </div>
         }
@@ -333,13 +359,13 @@ export function CourseDetailPage() {
         columns={columns}
         data={runsQuery.data ?? courseQuery.data?.courseRuns ?? []}
         isLoading={runsQuery.isLoading || courseQuery.isLoading}
-        emptyMessage="Chưa có lớp chạy nào."
+        emptyMessage="Chưa có đợt học nào."
       />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Tạo lớp chạy mới</DialogTitle>
+            <DialogTitle>Tạo đợt học mới</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -361,7 +387,9 @@ export function CourseDetailPage() {
                 <SelectContent>
                   <SelectItem value="DRAFT">DRAFT</SelectItem>
                   <SelectItem value="OPEN">OPEN</SelectItem>
-                  <SelectItem value="CLOSED">CLOSED</SelectItem>
+                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -378,6 +406,22 @@ export function CourseDetailPage() {
                 <DateTimePicker
                   value={form.endsAt}
                   onChange={(endsAt) => setForm((f) => ({ ...f, endsAt }))}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Mở đăng ký</Label>
+                <DateTimePicker
+                  value={form.enrollmentStartDate}
+                  onChange={(v) => setForm((f) => ({ ...f, enrollmentStartDate: v }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Đóng đăng ký</Label>
+                <DateTimePicker
+                  value={form.enrollmentEndDate}
+                  onChange={(v) => setForm((f) => ({ ...f, enrollmentEndDate: v }))}
                 />
               </div>
             </div>
@@ -486,7 +530,7 @@ export function CourseDetailPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Sửa lớp chạy</DialogTitle>
+            <DialogTitle>Sửa đợt học</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
@@ -508,7 +552,9 @@ export function CourseDetailPage() {
                 <SelectContent>
                   <SelectItem value="DRAFT">DRAFT</SelectItem>
                   <SelectItem value="OPEN">OPEN</SelectItem>
-                  <SelectItem value="CLOSED">CLOSED</SelectItem>
+                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -525,6 +571,22 @@ export function CourseDetailPage() {
                 <DateTimePicker
                   value={form.endsAt}
                   onChange={(endsAt) => setForm((f) => ({ ...f, endsAt }))}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Mở đăng ký</Label>
+                <DateTimePicker
+                  value={form.enrollmentStartDate}
+                  onChange={(v) => setForm((f) => ({ ...f, enrollmentStartDate: v }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Đóng đăng ký</Label>
+                <DateTimePicker
+                  value={form.enrollmentEndDate}
+                  onChange={(v) => setForm((f) => ({ ...f, enrollmentEndDate: v }))}
                 />
               </div>
             </div>

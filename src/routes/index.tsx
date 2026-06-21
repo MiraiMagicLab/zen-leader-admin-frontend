@@ -14,12 +14,9 @@ import { AdminDashboardPage } from '@/features/dashboard';
 import { EventDetailPage } from '@/features/events/event-detail-page';
 import { EventsListPage } from '@/features/events/events-list-page';
 import { SyllabusItemDetailPage } from '@/features/syllabus-items/syllabus-item-detail-page';
-import { LiveSessionsPage } from '@/features/live-sessions/live-sessions-page';
 import { ModerationPage } from '@/features/moderation/moderation-page';
-import { NotificationsPage } from '@/features/notifications/notifications-page';
 import { PaymentsPage } from '@/features/payments/payments-page';
 import { ProgramsListPage } from '@/features/programs/programs-list-page';
-import { SettingsPage } from '@/features/settings/settings-page';
 import { UserDetailPage } from '@/features/users/user-detail-page';
 import { UsersListPage } from '@/features/users/users-list-page';
 import { AdminLayout } from '@/layouts/admin-layout';
@@ -89,10 +86,7 @@ export const appRouter = createBrowserRouter([
           { path: '/events/:eventId', element: <EventDetailPage /> },
           { path: ROUTES.payments, element: <PaymentsPage /> },
           { path: ROUTES.moderation, element: <ModerationPage /> },
-          { path: ROUTES.liveSessions, element: <LiveSessionsPage /> },
-          { path: ROUTES.notifications, element: <NotificationsPage /> },
           { path: ROUTES.auditLogs, element: <AuditLogsPage /> },
-          { path: ROUTES.settings, element: <SettingsPage /> },
         ],
       },
     ],

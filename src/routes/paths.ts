@@ -14,8 +14,5 @@ export const ROUTES = {
   userDetail: (userId: string) => `/users/${userId}`,
   payments: '/payments',
   moderation: '/moderation',
-  liveSessions: '/live-sessions',
-  notifications: '/notifications',
   auditLogs: '/audit-logs',
-  settings: '/settings',
 } as const;

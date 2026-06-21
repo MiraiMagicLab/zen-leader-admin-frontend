@@ -28,7 +28,26 @@ type DataTableProps<TData, TValue> = {
   isLoading?: boolean;
   emptyMessage?: string;
   pageSize?: number;
+  showRowIndex?: boolean;
+  pageOffset?: number;
 };
+
+function rowIndexColumn<TData>(): ColumnDef<TData, unknown> {
+  return {
+    id: '__stt',
+    header: 'STT',
+    size: 48,
+    minSize: 48,
+    maxSize: 64,
+    enableSorting: false,
+    enableHiding: false,
+    cell: ({ row }) => (
+      <span className="text-muted-foreground text-sm tabular-nums">
+        {row.index + 1}
+      </span>
+    ),
+  };
+}
 
 export function DataTable<TData, TValue>({
   columns,
@@ -36,12 +55,18 @@ export function DataTable<TData, TValue>({
   isLoading = false,
   emptyMessage = 'Không có dữ liệu.',
   pageSize = 10,
+  showRowIndex = false,
+  pageOffset = 0,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
+  const allColumns = showRowIndex
+    ? [rowIndexColumn<TData>(), ...columns]
+    : columns;
+
   const table = useReactTable({
     data,
-    columns,
+    columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -58,7 +83,14 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    style={
+                      header.column.id === '__stt'
+                        ? { width: 48, minWidth: 48, textAlign: 'center' }
+                        : undefined
+                    }
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -73,7 +105,7 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={allColumns.length} className="h-24 text-center">
                   <Spinner className="mx-auto" />
                 </TableCell>
               </TableRow>
@@ -81,15 +113,24 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} className="hover:bg-muted/40">
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <TableCell
+                      key={cell.id}
+                      style={
+                        cell.column.id === '__stt'
+                          ? { textAlign: 'center' }
+                          : undefined
+                      }
+                    >
+                      {cell.column.id === '__stt'
+                        ? pageOffset + (cell.row.index as number) + 1
+                        : flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={allColumns.length} className="h-24 text-center">
                   {emptyMessage}
                 </TableCell>
               </TableRow>

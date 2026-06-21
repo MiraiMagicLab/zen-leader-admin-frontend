@@ -84,9 +84,11 @@ export function AuditLogsPage() {
 
       <DataTable
         columns={columns}
-        data={auditQuery.data?.content ?? []}
+        data={auditQuery.data?.data ?? []}
         isLoading={auditQuery.isLoading}
         pageSize={20}
+        showRowIndex
+        pageOffset={(page - 1) * 20}
       />
 
       <div className="flex justify-end gap-2">

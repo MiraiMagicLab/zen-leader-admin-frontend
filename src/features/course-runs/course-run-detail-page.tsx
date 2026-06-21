@@ -360,7 +360,7 @@ export function CourseRunDetailPage() {
       });
     },
     onSuccess: () => {
-      toast.success('Đã cập nhật lớp chạy.');
+      toast.success('Đã cập nhật đợt học.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -369,7 +369,7 @@ export function CourseRunDetailPage() {
   const deleteRunMutation = useMutation({
     mutationFn: () => courseRunsApi.remove(runId!),
     onSuccess: () => {
-      toast.success('Đã xóa lớp chạy.');
+      toast.success('Đã xóa đợt học.');
       navigate(ROUTES.courseRuns);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -408,12 +408,12 @@ export function CourseRunDetailPage() {
       <Button variant="ghost" size="sm" asChild>
         <Link to={ROUTES.courseRuns}>
           <ArrowLeft className="mr-2 size-4" />
-          Quay lại lớp chạy
+          Quay lại đợt học
         </Link>
       </Button>
 
       <PageHeader
-        title={run?.code ?? 'Lớp chạy'}
+        title={run?.code ?? 'Đợt học'}
         description={
           run
             ? `${formatDateTime(run.startsAt)} → ${formatDateTime(run.endsAt)}`
@@ -761,13 +761,13 @@ export function CourseRunDetailPage() {
                     variant="destructive"
                     onClick={() => deleteRunMutation.mutate()}
                   >
-                    Xóa lớp chạy
+                    Xóa đợt học
                   </Button>
                 </div>
               </CardContent>
             </Card>
           ) : (
-            <Button onClick={openRunSettings}>Mở cài đặt lớp chạy</Button>
+            <Button onClick={openRunSettings}>Mở cài đặt đợt học</Button>
           )}
         </TabsContent>
 

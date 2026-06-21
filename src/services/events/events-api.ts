@@ -11,11 +11,11 @@ import type {
   EventResponse,
   UpdateEventRequest,
 } from '@/services/types/domain';
-import type { SpringPage } from '@/services/types/pagination';
+import type { PagingResponse } from '@/services/types/pagination';
 
 export const eventsApi = {
   getAll: (page = 0, size = 10, includeDrafts = true) =>
-    apiGet<SpringPage<EventResponse>>(
+    apiGet<PagingResponse<EventResponse>>(
       `/api/v1/events?page=${page}&size=${size}&includeDrafts=${includeDrafts}`,
     ),
   getById: (id: string) => apiGet<EventResponse>(`/api/v1/events/${id}`),

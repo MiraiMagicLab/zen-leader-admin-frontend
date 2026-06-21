@@ -132,8 +132,5 @@
 @layer utilities {
   .admin-shell {
     background-color: var(--background);
-    background-image:
-      radial-gradient(ellipse 80% 50% at 50% -20%, color-mix(in oklch, var(--primary) 12%, transparent), transparent),
-      radial-gradient(ellipse 60% 40% at 100% 0%, color-mix(in oklch, var(--primary) 6%, transparent), transparent);
   }
 }

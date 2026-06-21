@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreHorizontal, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
@@ -38,6 +38,8 @@ import type { EventResponse } from '@/services/types/domain';
 type EventForm = {
   title: string;
   description: string;
+  content: string;
+  liveLink: string;
   startTime: string;
   endTime: string;
   publishImmediately: boolean;
@@ -48,6 +50,8 @@ type EventForm = {
 const emptyForm: EventForm = {
   title: '',
   description: '',
+  content: '',
+  liveLink: '',
   startTime: '',
   endTime: '',
   publishImmediately: false,
@@ -60,10 +64,12 @@ export function EventsListPage() {
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<EventForm>(emptyForm);
+  const [includeDrafts, setIncludeDrafts] = useState(true);
+  const [search, setSearch] = useState('');
 
   const eventsQuery = useQuery({
     queryKey: queryKeys.events.list(page, 10),
-    queryFn: () => eventsApi.getAll(page, 10, true),
+    queryFn: () => eventsApi.getAll(page, 10, includeDrafts),
   });
 
   const createMutation = useMutation({
@@ -75,6 +81,8 @@ export function EventsListPage() {
       return eventsApi.create({
         title: form.title,
         description: form.description || undefined,
+        content: form.content || undefined,
+        liveLink: form.liveLink || undefined,
         startTime: new Date(form.startTime).toISOString(),
         endTime: new Date(form.endTime).toISOString(),
         publishImmediately: form.publishImmediately,
@@ -122,15 +130,6 @@ export function EventsListPage() {
     () => [
       { accessorKey: 'title', header: 'Tiêu đề' },
       {
-        id: 'detail',
-        header: '',
-        cell: ({ row }) => (
-          <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.eventDetail(row.original.id)}>Chi tiết</Link>
-          </Button>
-        ),
-      },
-      {
         accessorKey: 'status',
         header: 'Trạng thái',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
@@ -156,6 +155,9 @@ export function EventsListPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link to={ROUTES.eventDetail(row.original.id)}>Chi tiết</Link>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => publishMutation.mutate(row.original.id)}>
                 Xuất bản
               </DropdownMenuItem>
@@ -194,10 +196,45 @@ export function EventsListPage() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            className="pl-9"
+            placeholder="Tìm theo tiêu đề…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select
+          value={includeDrafts ? 'all' : 'published'}
+          onValueChange={(v) => {
+            setIncludeDrafts(v === 'all');
+            setPage(0);
+          }}
+        >
+          <SelectTrigger className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả (kể cả nháp)</SelectItem>
+            <SelectItem value="published">Chỉ đã xuất bản</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <DataTable
         columns={columns}
-        data={eventsQuery.data?.content ?? []}
+        data={eventsQuery.data?.data?.filter((e) => {
+          if (search.trim()) {
+            const q = search.toLowerCase();
+            return e.title.toLowerCase().includes(q);
+          }
+          return true;
+        }) ?? []}
         isLoading={eventsQuery.isLoading}
+        showRowIndex
+        pageOffset={page * 10}
       />
 
       <div className="flex justify-end gap-2">
@@ -238,6 +275,26 @@ export function EventsListPage() {
                 value={form.description}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, description: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nội dung</Label>
+              <Textarea
+                value={form.content}
+                rows={4}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, content: e.target.value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Link live</Label>
+              <Input
+                value={form.liveLink}
+                placeholder="https://..."
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, liveLink: e.target.value }))
                 }
               />
             </div>

@@ -26,5 +26,5 @@ export const coursesApi = {
     id: string,
     payload: { appleProductId?: string | null; androidProductId?: string | null },
   ) =>
-    apiPut<CourseResponse>(`/api/v1/courses/${id}/iap-mapping`, payload),
+    apiPut<CourseResponse>(`/api/v1/admin/courses/${id}/iap-mapping`, payload),
 };

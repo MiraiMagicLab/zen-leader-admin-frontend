@@ -5,7 +5,6 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -23,10 +22,7 @@ import {
   CalendarDays,
   CreditCard,
   ScrollText,
-  Settings,
   Layers,
-  Video,
-  Bell,
   ShieldAlert,
 } from 'lucide-react';
 import { BRAND } from '@/lib/brand/constants';
@@ -56,15 +52,13 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: 'Chương trình', icon: GraduationCap, to: ROUTES.programs },
       { title: 'Khóa học', icon: BookOpen, to: ROUTES.courses },
-      { title: 'Lớp chạy', icon: Layers, to: ROUTES.courseRuns },
+      { title: 'Đợt học', icon: Layers, to: ROUTES.courseRuns },
     ],
   },
   {
     label: 'Cộng đồng',
     items: [
       { title: 'Sự kiện', icon: CalendarDays, to: ROUTES.events },
-      { title: 'Live sessions', icon: Video, to: ROUTES.liveSessions },
-      { title: 'Thông báo', icon: Bell, to: ROUTES.notifications },
     ],
   },
   {
@@ -135,23 +129,6 @@ export const AdminSidebar = memo(() => {
           </SidebarGroup>
         ))}
       </SidebarContent>
-
-      <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={isActive(ROUTES.settings)}
-              tooltip="Cài đặt"
-            >
-              <NavLink to={ROUTES.settings}>
-                <Settings />
-                <span>Cài đặt</span>
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

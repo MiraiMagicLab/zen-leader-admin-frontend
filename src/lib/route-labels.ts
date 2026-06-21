@@ -5,21 +5,18 @@ const exactLabels: Record<string, string> = {
   [ROUTES.users]: 'Người dùng',
   [ROUTES.programs]: 'Chương trình',
   [ROUTES.courses]: 'Khóa học',
-  [ROUTES.courseRuns]: 'Lớp chạy',
+  [ROUTES.courseRuns]: 'Đợt học',
   [ROUTES.events]: 'Sự kiện',
-  [ROUTES.liveSessions]: 'Live sessions',
-  [ROUTES.notifications]: 'Thông báo',
   [ROUTES.payments]: 'Thanh toán',
   [ROUTES.moderation]: 'Kiểm duyệt',
   [ROUTES.auditLogs]: 'Audit log',
-  [ROUTES.settings]: 'Cài đặt',
 };
 
 const prefixLabels: { prefix: string; label: string }[] = [
   { prefix: '/users/', label: 'Chi tiết người dùng' },
   { prefix: '/programs/', label: 'Khóa học chương trình' },
   { prefix: '/courses/', label: 'Chi tiết khóa học' },
-  { prefix: '/course-runs/', label: 'Chi tiết lớp chạy' },
+  { prefix: '/course-runs/', label: 'Chi tiết đợt học' },
   { prefix: '/syllabus-items/', label: 'Chi tiết mục giáo trình' },
   { prefix: '/events/', label: 'Chi tiết sự kiện' },
 ];

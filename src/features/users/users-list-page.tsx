@@ -7,18 +7,9 @@ import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { DataTable } from '@/components/data-table/data-table';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +21,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
@@ -57,6 +49,12 @@ import {
 
 const ROLE_OPTIONS = ['admin', 'user'];
 
+function getDefaultBanDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
 export function UsersListPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
@@ -66,7 +64,11 @@ export function UsersListPage() {
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banDate, setBanDate] = useState(getDefaultBanDate());
+  const [banPermanent, setBanPermanent] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [createForm, setCreateForm] = useState({
     email: '',
     displayName: '',
@@ -134,17 +136,30 @@ export function UsersListPage() {
   });
 
   const banMutation = useMutation({
-    mutationFn: (userId: string) =>
-      banUserApi(userId, {
-        bannedUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      }),
+    mutationFn: ({ userId, bannedUntil }: { userId: string; bannedUntil: string | null }) =>
+      banUserApi(userId, { bannedUntil }),
     onSuccess: () => {
-      toast.success('Đã ban người dùng 7 ngày.');
+      toast.success('Đã cập nhật trạng thái ban.');
       setBanDialogOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
+
+  const openBanDialog = (user: UserResponse) => {
+    setSelectedUser(user);
+    setBanPermanent(false);
+    setBanDate(getDefaultBanDate());
+    setBanDialogOpen(true);
+  };
+
+  const handleBanSubmit = () => {
+    if (!selectedUser) return;
+    const bannedUntil = banPermanent
+      ? new Date('2099-12-31T23:59:59Z').toISOString()
+      : new Date(banDate + 'T23:59:59Z').toISOString();
+    banMutation.mutate({ userId: selectedUser.id, bannedUntil });
+  };
 
   const columns = useMemo<ColumnDef<UserResponse>[]>(
     () => [
@@ -193,6 +208,18 @@ export function UsersListPage() {
         ),
       },
       {
+        accessorKey: 'bannedUntil',
+        header: 'Ban',
+        cell: ({ row }) =>
+          row.original.bannedUntil ? (
+            <Badge variant="destructive">
+              {formatDateTime(row.original.bannedUntil)}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          ),
+      },
+      {
         accessorKey: 'createdAt',
         header: 'Ngày tạo',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
@@ -220,20 +247,30 @@ export function UsersListPage() {
               >
                 Sửa vai trò
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedUser(row.original);
-                  setBanDialogOpen(true);
-                }}
-              >
-                Ban 7 ngày
-              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {row.original.bannedUntil ? (
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() =>
+                    banMutation.mutate({ userId: row.original.id, bannedUntil: null })
+                  }
+                >
+                  Gỡ ban
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => openBanDialog(row.original)}
+                >
+                  Ban người dùng
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ),
       },
     ],
-    [statusMutation],
+    [statusMutation, banMutation],
   );
 
   return (
@@ -259,21 +296,52 @@ export function UsersListPage() {
         }
       />
 
-      <div className="relative max-w-sm">
-        <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-        <Input
-          className="pl-9"
-          placeholder="Tìm theo email hoặc tên…"
-          value={keyword}
-          onChange={(e) => setKeyword(e.target.value)}
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            className="pl-9"
+            placeholder="Tìm theo email hoặc tên…"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả vai trò</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="user">User</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="active">Hoạt động</SelectItem>
+            <SelectItem value="inactive">Bị khóa</SelectItem>
+            <SelectItem value="banned">Đang bị ban</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <DataTable
         columns={columns}
-        data={usersQuery.data?.data ?? []}
+        data={usersQuery.data?.data?.filter((u) => {
+          if (roleFilter !== 'all' && !u.roles.includes(roleFilter)) return false;
+          if (statusFilter === 'active' && !u.isActive) return false;
+          if (statusFilter === 'inactive' && u.isActive) return false;
+          if (statusFilter === 'banned' && !u.bannedUntil) return false;
+          return true;
+        }) ?? []}
         isLoading={usersQuery.isLoading}
         emptyMessage="Không tìm thấy người dùng."
+        showRowIndex
+        pageOffset={(page - 1) * 10}
       />
 
       <div className="flex items-center justify-between">
@@ -442,25 +510,60 @@ export function UsersListPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Ban người dùng?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Ban {selectedUser?.email} trong 7 ngày. Hành động này có thể hoàn tác
-              bằng cách đặt bannedUntil = null qua API.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedUser && banMutation.mutate(selectedUser.id)}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ban người dùng</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              {selectedUser?.displayName} ({selectedUser?.email})
+            </p>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="ban-permanent"
+                checked={banPermanent}
+                onCheckedChange={(checked) => setBanPermanent(checked === true)}
+              />
+              <Label htmlFor="ban-permanent" className="cursor-pointer">
+                Ban vĩnh viễn
+              </Label>
+            </div>
+            {!banPermanent && (
+              <div className="space-y-2">
+                <Label htmlFor="ban-date">Ngày hết hạn ban</Label>
+                <Input
+                  id="ban-date"
+                  type="date"
+                  value={banDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setBanDate(e.target.value)}
+                />
+              </div>
+            )}
+            {banPermanent && (
+              <p className="text-muted-foreground text-xs">
+                Người dùng sẽ bị ban cho đến khi admin gỡ ban thủ công.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBanDialogOpen(false)}
             >
-              Xác nhận
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBanSubmit}
+              disabled={banMutation.isPending || (!banPermanent && !banDate)}
+            >
+              Xác nhận ban
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

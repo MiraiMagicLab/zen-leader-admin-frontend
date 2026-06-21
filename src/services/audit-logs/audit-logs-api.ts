@@ -1,6 +1,6 @@
 import { apiGet } from '@/services/lib/api-request';
 import type { AuditLogResponse } from '@/services/types/domain';
-import type { SpringPage } from '@/services/types/pagination';
+import type { PagingResponse } from '@/services/types/pagination';
 
 export const auditLogsApi = {
   getAll: (params: {
@@ -16,7 +16,7 @@ export const auditLogsApi = {
     if (params.action) search.set('action', params.action);
     if (params.entityType) search.set('entityType', params.entityType);
     if (params.actorUserId) search.set('actorUserId', params.actorUserId);
-    return apiGet<SpringPage<AuditLogResponse>>(
+    return apiGet<PagingResponse<AuditLogResponse>>(
       `/api/v1/admin/audit-logs?${search.toString()}`,
     );
   },

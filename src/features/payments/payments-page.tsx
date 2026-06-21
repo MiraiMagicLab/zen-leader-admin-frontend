@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ export function PaymentsPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
   const ordersQuery = useQuery({
     queryKey: queryKeys.payments.list(page, statusFilter),
@@ -75,7 +77,7 @@ export function PaymentsPage() {
       },
       {
         accessorKey: 'courseRunCode',
-        header: 'Lớp chạy',
+        header: 'Đợt học',
       },
       {
         accessorKey: 'amount',
@@ -154,11 +156,36 @@ export function PaymentsPage() {
         }
       />
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            className="pl-9"
+            placeholder="Tìm theo tên, email hoặc mã đơn…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+
       <DataTable
         columns={columns}
-        data={ordersQuery.data?.data ?? []}
+        data={ordersQuery.data?.data?.filter((o) => {
+          if (search.trim()) {
+            const q = search.toLowerCase();
+            return (
+              o.userDisplayName.toLowerCase().includes(q) ||
+              o.userEmail.toLowerCase().includes(q) ||
+              o.orderId.toLowerCase().includes(q) ||
+              o.courseRunCode.toLowerCase().includes(q)
+            );
+          }
+          return true;
+        }) ?? []}
         isLoading={ordersQuery.isLoading}
         emptyMessage="Chưa có đơn thanh toán."
+        showRowIndex
+        pageOffset={page * 20}
       />
 
       <div className="flex justify-end gap-2">

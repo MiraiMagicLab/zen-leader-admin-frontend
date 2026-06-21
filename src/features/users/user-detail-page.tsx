@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -37,11 +38,20 @@ import {
 
 const ROLE_OPTIONS = ['admin', 'user'];
 
+function getDefaultBanDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
 export function UserDetailPage() {
   const { userId } = useParams();
   const queryClient = useQueryClient();
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banDate, setBanDate] = useState(getDefaultBanDate());
+  const [banPermanent, setBanPermanent] = useState(false);
   const [progressRunId, setProgressRunId] = useState<string>('');
   const [streakFrom, setStreakFrom] = useState(
     () => new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10),
@@ -131,19 +141,28 @@ export function UserDetailPage() {
   });
 
   const banMutation = useMutation({
-    mutationFn: (days: number | null) =>
-      banUserApi(userId!, {
-        bannedUntil:
-          days === null
-            ? null
-            : new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString(),
-      }),
+    mutationFn: (bannedUntil: string | null) =>
+      banUserApi(userId!, { bannedUntil }),
     onSuccess: () => {
       toast.success('Đã cập nhật trạng thái ban.');
+      setBanDialogOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
+
+  const openBanDialog = () => {
+    setBanPermanent(false);
+    setBanDate(getDefaultBanDate());
+    setBanDialogOpen(true);
+  };
+
+  const handleBanSubmit = () => {
+    const bannedUntil = banPermanent
+      ? new Date('2099-12-31T23:59:59Z').toISOString()
+      : new Date(banDate + 'T23:59:59Z').toISOString();
+    banMutation.mutate(bannedUntil);
+  };
 
   const user = userQuery.data;
 
@@ -168,12 +187,13 @@ export function UserDetailPage() {
               }}>
                 Sửa vai trò
               </Button>
-              <Button variant="outline" onClick={() => banMutation.mutate(7)}>
-                Ban 7 ngày
-              </Button>
-              {user.bannedUntil && (
+              {user.bannedUntil ? (
                 <Button variant="outline" onClick={() => banMutation.mutate(null)}>
                   Gỡ ban
+                </Button>
+              ) : (
+                <Button variant="destructive" onClick={openBanDialog}>
+                  Ban người dùng
                 </Button>
               )}
             </div>
@@ -275,7 +295,7 @@ export function UserDetailPage() {
         <TabsContent value="progress" className="space-y-4">
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-2">
-              <Label className="text-muted-foreground text-xs">Lớp chạy</Label>
+              <Label className="text-muted-foreground text-xs">Đợt học</Label>
               <select
                 className="border-input bg-background h-9 rounded-md border px-3 text-sm"
                 value={progressRunId}
@@ -467,6 +487,58 @@ export function UserDetailPage() {
           </div>
           <DialogFooter>
             <Button onClick={() => rolesMutation.mutate()}>Lưu</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ban người dùng</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground text-sm">
+              {user?.displayName} ({user?.email})
+            </p>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="ban-permanent-detail"
+                checked={banPermanent}
+                onCheckedChange={(checked) => setBanPermanent(checked === true)}
+              />
+              <Label htmlFor="ban-permanent-detail" className="cursor-pointer">
+                Ban vĩnh viễn
+              </Label>
+            </div>
+            {!banPermanent && (
+              <div className="space-y-2">
+                <Label htmlFor="ban-date-detail">Ngày hết hạn ban</Label>
+                <Input
+                  id="ban-date-detail"
+                  type="date"
+                  value={banDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setBanDate(e.target.value)}
+                />
+              </div>
+            )}
+            {banPermanent && (
+              <p className="text-muted-foreground text-xs">
+                Người dùng sẽ bị ban cho đến khi admin gỡ ban thủ công.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBanSubmit}
+              disabled={banMutation.isPending || (!banPermanent && !banDate)}
+            >
+              Xác nhận ban
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

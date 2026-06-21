@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
   Activity,
-  Bell,
   BookOpen,
   CalendarDays,
   CreditCard,
@@ -11,7 +10,6 @@ import {
   ShieldAlert,
   Sparkles,
   Users,
-  Video,
 } from 'lucide-react';
 
 import { QuickLinks } from '@/components/admin/quick-links';
@@ -44,7 +42,7 @@ const quickLinks = [
   },
   {
     title: 'Tạo khóa học',
-    description: 'Thêm chương trình, khóa học và lớp chạy mới.',
+    description: 'Thêm chương trình, khóa học và đợt học mới.',
     href: ROUTES.courses,
     icon: BookOpen,
   },
@@ -81,7 +79,7 @@ export function AdminDashboardPage() {
         programs: programs.length,
         courses: courses.length,
         runs: runs.length,
-        events: events.totalElements,
+        events: events.totalElement,
       };
     },
   });
@@ -91,7 +89,7 @@ export function AdminDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/12 via-card to-card px-6 py-8 shadow-sm md:px-8">
+      <section className="relative overflow-hidden rounded-2xl border bg-card px-6 py-8 shadow-sm md:px-8">
         <div
           aria-hidden
           className="pointer-events-none absolute -top-20 -right-16 size-56 rounded-full bg-primary/10 blur-3xl"
@@ -128,7 +126,7 @@ export function AdminDashboardPage() {
               )}
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Lớp chạy</p>
+              <p className="text-muted-foreground text-xs">Đợt học</p>
               {isLoading ? (
                 <Skeleton className="mt-1 h-7 w-10" />
               ) : (
@@ -174,7 +172,7 @@ export function AdminDashboardPage() {
             isLoading={isLoading}
           />
           <StatCard
-            title="Lớp chạy"
+            title="Đợt học"
             value={formatNumber(stats?.runs ?? 0)}
             icon={Activity}
             href={ROUTES.courseRuns}
@@ -204,10 +202,8 @@ export function AdminDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {[
-              { label: 'Live sessions', icon: Video, href: ROUTES.liveSessions },
-              { label: 'Thông báo broadcast', icon: Bell, href: ROUTES.notifications },
               { label: 'Thanh toán & đơn hàng', icon: CreditCard, href: ROUTES.payments },
-              { label: 'Lớp chạy đang mở', icon: Layers, href: ROUTES.courseRuns },
+              { label: 'Đợt học đang mở', icon: Layers, href: ROUTES.courseRuns },
             ].map((item) => {
               const Icon = item.icon;
               return (
