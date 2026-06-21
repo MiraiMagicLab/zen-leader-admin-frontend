@@ -19,6 +19,7 @@ type AuthState = {
   accessToken: string | null;
   refreshToken: string | null;
   setSession: (session: AuthenticationDto) => void;
+  setUser: (user: AuthUser) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
   clearSession: () => void;
 };
@@ -36,6 +37,12 @@ export const useAuthStore = create<AuthState>()(
           user: mapAuthUser(session.user),
           accessToken: session.accessToken,
           refreshToken: session.refreshToken,
+        });
+      },
+
+      setUser: (user) => {
+        set({
+          user,
         });
       },
 

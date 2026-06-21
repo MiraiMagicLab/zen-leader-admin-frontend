@@ -5,10 +5,10 @@ import axios, {
 } from 'axios';
 
 import { AUTH_API } from '@/lib/auth/constants';
+import { clearAdminSessionAndRedirect } from '@/lib/auth/session-lifecycle';
 import { unwrapAuthResponse } from '@/lib/auth/session';
-import type { ApiResponse } from '@/services/types/api';
 import type { TokenResponseDto } from '@/services/auth/types';
-import { ROUTES } from '@/routes/paths';
+import type { ApiResponse } from '@/services/types/api';
 import { useAuthStore } from '@/stores/auth-store';
 
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
@@ -49,8 +49,7 @@ httpClient.interceptors.response.use(
 
     const refreshToken = useAuthStore.getState().refreshToken;
     if (!refreshToken) {
-      useAuthStore.getState().clearSession();
-      redirectToLogin();
+      clearAdminSessionAndRedirect();
       return Promise.reject(error);
     }
 
@@ -61,8 +60,7 @@ httpClient.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${tokenResponse.accessToken}`;
       return httpClient(originalRequest);
     } catch {
-      useAuthStore.getState().clearSession();
-      redirectToLogin();
+      clearAdminSessionAndRedirect();
       return Promise.reject(error);
     }
   },
@@ -83,11 +81,4 @@ async function refreshAccessTokenSingleFlight(
   }
 
   return refreshPromise;
-}
-
-
-function redirectToLogin() {
-  if (window.location.pathname !== ROUTES.login) {
-    window.location.assign(ROUTES.login);
-  }
 }
