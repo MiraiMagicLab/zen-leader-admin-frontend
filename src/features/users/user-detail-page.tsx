@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Ban, MoreHorizontal, ShieldCheck, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -16,9 +16,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
@@ -180,23 +186,53 @@ export function UserDetailPage() {
         description={user?.email}
         actions={
           user ? (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => {
-                setSelectedRoles(user.roles);
-                setRolesDialogOpen(true);
-              }}>
-                Sửa vai trò
-              </Button>
-              {user.bannedUntil ? (
-                <Button variant="outline" onClick={() => banMutation.mutate(null)}>
-                  Gỡ ban
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <MoreHorizontal className="mr-2 size-4" />
+                  Thao tác
                 </Button>
-              ) : (
-                <Button variant="destructive" onClick={openBanDialog}>
-                  Ban người dùng
-                </Button>
-              )}
-            </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedRoles(user.roles);
+                    setRolesDialogOpen(true);
+                  }}
+                >
+                  Sửa vai trò
+                </DropdownMenuItem>
+                {user.isActive ? (
+                  <DropdownMenuItem onClick={() => statusMutation.mutate(false)}>
+                    <ShieldOff className="mr-2 size-4" />
+                    Khóa tài khoản
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem onClick={() => statusMutation.mutate(true)}>
+                    <ShieldCheck className="mr-2 size-4" />
+                    Mở khóa tài khoản
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                {user.bannedUntil ? (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => banMutation.mutate(null)}
+                  >
+                    <Ban className="mr-2 size-4" />
+                    Gỡ ban
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={openBanDialog}
+                  >
+                    <Ban className="mr-2 size-4" />
+                    Ban người dùng
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : undefined
         }
       />
@@ -211,12 +247,11 @@ export function UserDetailPage() {
               <p className="text-muted-foreground text-sm">ID</p>
               <p className="font-mono text-sm">{user.id}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-muted-foreground text-sm">Hoạt động</span>
-              <Switch
-                checked={user.isActive}
-                onCheckedChange={(checked) => statusMutation.mutate(checked)}
-              />
+            <div>
+              <p className="text-muted-foreground text-sm">Hoạt động</p>
+              <Badge variant={user.isActive ? 'default' : 'outline'}>
+                {user.isActive ? 'Hoạt động' : 'Đã khóa'}
+              </Badge>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Xác minh</p>

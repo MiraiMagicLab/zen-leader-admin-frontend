@@ -2,7 +2,15 @@ import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { MoreHorizontal, Plus, RefreshCw, Search } from 'lucide-react';
+import {
+  Ban,
+  MoreHorizontal,
+  Plus,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  ShieldOff,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -33,7 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
@@ -160,6 +167,12 @@ export function UsersListPage() {
     setBanDialogOpen(true);
   };
 
+  const openRolesDialog = (user: UserResponse) => {
+    setSelectedUser(user);
+    setSelectedRoles(user.roles);
+    setRolesDialogOpen(true);
+  };
+
   const handleBanSubmit = () => {
     if (!selectedUser) return;
     const bannedUntil = banPermanent
@@ -197,12 +210,9 @@ export function UsersListPage() {
         accessorKey: 'isActive',
         header: 'Hoạt động',
         cell: ({ row }) => (
-          <Switch
-            checked={row.original.isActive}
-            onCheckedChange={(checked) =>
-              statusMutation.mutate({ userId: row.original.id, isActive: checked })
-            }
-          />
+          <Badge variant={row.original.isActive ? 'default' : 'outline'}>
+            {row.original.isActive ? 'Hoạt động' : 'Đã khóa'}
+          </Badge>
         ),
       },
       {
@@ -246,14 +256,35 @@ export function UsersListPage() {
                 <Link to={ROUTES.userDetail(row.original.id)}>Xem chi tiết</Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => {
-                  setSelectedUser(row.original);
-                  setSelectedRoles(row.original.roles);
-                  setRolesDialogOpen(true);
-                }}
+                onClick={() => openRolesDialog(row.original)}
               >
                 Sửa vai trò
               </DropdownMenuItem>
+              {row.original.isActive ? (
+                <DropdownMenuItem
+                  onClick={() =>
+                    statusMutation.mutate({
+                      userId: row.original.id,
+                      isActive: false,
+                    })
+                  }
+                >
+                  <ShieldOff className="mr-2 size-4" />
+                  Khóa tài khoản
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() =>
+                    statusMutation.mutate({
+                      userId: row.original.id,
+                      isActive: true,
+                    })
+                  }
+                >
+                  <ShieldCheck className="mr-2 size-4" />
+                  Mở khóa tài khoản
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               {row.original.bannedUntil ? (
                 <DropdownMenuItem
@@ -262,6 +293,7 @@ export function UsersListPage() {
                     banMutation.mutate({ userId: row.original.id, bannedUntil: null })
                   }
                 >
+                  <Ban className="mr-2 size-4" />
                   Gỡ ban
                 </DropdownMenuItem>
               ) : (
@@ -269,6 +301,7 @@ export function UsersListPage() {
                   className="text-destructive"
                   onClick={() => openBanDialog(row.original)}
                 >
+                  <Ban className="mr-2 size-4" />
                   Ban người dùng
                 </DropdownMenuItem>
               )}
