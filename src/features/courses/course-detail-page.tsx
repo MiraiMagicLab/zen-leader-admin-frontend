@@ -100,6 +100,7 @@ export function CourseDetailPage() {
   const queryClient = useQueryClient();
   const [createRunOpen, setCreateRunOpen] = useState(false);
   const [editCourseOpen, setEditCourseOpen] = useState(false);
+  const [editIapOpen, setEditIapOpen] = useState(false);
   const [editingRun, setEditingRun] = useState<CourseRunResponse | null>(null);
   const [runForm, setRunForm] = useState<RunForm>(emptyRunForm);
   const [courseForm, setCourseForm] = useState<CourseForm>(emptyCourseForm);
@@ -129,6 +130,7 @@ export function CourseDetailPage() {
     (count, run) => count + (run.courseSessions?.length ?? 0),
     0,
   );
+  const programDisplayName = course?.programCode?.trim() || 'Chương trình liên kết';
 
   useEffect(() => {
     if (!course) {
@@ -167,6 +169,7 @@ export function CourseDetailPage() {
       }),
     onSuccess: async () => {
       toast.success('Đã cập nhật IAP mapping.');
+      setEditIapOpen(false);
       await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -434,16 +437,24 @@ export function CourseDetailPage() {
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="secondary">{course.code}</Badge>
-                    {course.programId ? (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to={ROUTES.programCourses(course.programId)}>
-                          Chương trình {course.programCode ?? course.programId.slice(0, 8)}
-                        </Link>
-                      </Button>
-                    ) : null}
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <p className="text-muted-foreground text-sm">Thuộc chương trình</p>
+                      {course.programId ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <p className="font-medium">{programDisplayName}</p>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link to={ROUTES.programCourses(course.programId)}>
+                              Mở danh sách khóa học
+                            </Link>
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="font-medium">Chưa gắn với chương trình nào</p>
+                      )}
+                    </div>
                     <div>
                       <p className="text-muted-foreground text-sm">Thứ tự</p>
                       <p className="font-medium">{course.orderIndex ?? 0}</p>
@@ -481,28 +492,24 @@ export function CourseDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Apple Product ID</Label>
-                  <Input
-                    value={appleProductId}
-                    onChange={(e) => setAppleProductId(e.target.value)}
-                    placeholder="com.zenleader.course.xxx"
-                  />
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Apple Product ID</p>
+                  <p className="text-muted-foreground mt-1 break-all text-sm">
+                    {appleProductId || 'Chưa cấu hình'}
+                  </p>
                 </div>
-                <div className="space-y-2">
-                  <Label>Android Product ID</Label>
-                  <Input
-                    value={androidProductId}
-                    onChange={(e) => setAndroidProductId(e.target.value)}
-                    placeholder="course_xxx"
-                  />
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Android Product ID</p>
+                  <p className="text-muted-foreground mt-1 break-all text-sm">
+                    {androidProductId || 'Chưa cấu hình'}
+                  </p>
                 </div>
                 <Button
                   variant="secondary"
                   disabled={iapMutation.isPending}
-                  onClick={() => iapMutation.mutate()}
+                  onClick={() => setEditIapOpen(true)}
                 >
-                  Lưu IAP mapping
+                  Thiết lập IAP mapping
                 </Button>
               </CardContent>
             </Card>
@@ -710,6 +717,43 @@ export function CourseDetailPage() {
               disabled={updateCourseMutation.isPending}
             >
               Lưu
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={editIapOpen} onOpenChange={setEditIapOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>Thiết lập cấu hình bán khóa học</SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
+              Thiết lập mã sản phẩm cho iOS và Android để map khóa học này với gói thanh toán trong store.
+            </div>
+            <div className="space-y-2">
+              <Label>Apple Product ID</Label>
+              <Input
+                value={appleProductId}
+                onChange={(e) => setAppleProductId(e.target.value)}
+                placeholder="com.zenleader.course.xxx"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Android Product ID</Label>
+              <Input
+                value={androidProductId}
+                onChange={(e) => setAndroidProductId(e.target.value)}
+                placeholder="course_xxx"
+              />
+            </div>
+          </div>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+            <Button
+              onClick={() => iapMutation.mutate()}
+              disabled={iapMutation.isPending}
+            >
+              Lưu IAP mapping
             </Button>
           </SheetFooter>
         </SheetContent>
