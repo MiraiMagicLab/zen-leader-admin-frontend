@@ -15,6 +15,22 @@ export const assetsApi = {
     apiGet<string>(
       `/api/v1/assets/presigned-download?key=${encodeURIComponent(key)}`,
     ),
+  uploadViaPresigned: async (file: File): Promise<PresignedUploadResponse> => {
+    const presigned = await assetsApi.getPresignedUpload(file.name, file.type);
+    const response = await fetch(presigned.uploadUrl, {
+      method: 'PUT',
+      body: file,
+      headers: {
+        'Content-Type': file.type || 'application/octet-stream',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Upload ảnh thất bại.');
+    }
+
+    return presigned;
+  },
   remove: (key: string) =>
     apiDelete<void>(`/api/v1/assets?key=${encodeURIComponent(key)}`),
 };

@@ -24,13 +24,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -45,6 +38,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDate } from '@/lib/format';
@@ -112,8 +112,8 @@ export function ProgramsListPage() {
       setFieldErrors({});
       let thumbnailUrl = form.thumbnailUrl || null;
       if (form.thumbnailFile) {
-        const uploaded = await assetsApi.upload(form.thumbnailFile);
-        thumbnailUrl = uploaded.url;
+        const uploaded = await assetsApi.uploadViaPresigned(form.thumbnailFile);
+        thumbnailUrl = uploaded.downloadUrl;
       }
       const payload = {
         code: parsed.data.code,
@@ -298,14 +298,14 @@ export function ProgramsListPage() {
         </Button>
       </div>
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="flex max-h-[min(90vh,720px)] max-w-lg flex-col gap-0 overflow-hidden p-0">
-          <DialogHeader className="shrink-0 px-6 pt-6 pb-2">
-            <DialogTitle>
+      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
+            <SheetTitle>
               {editing ? 'Sửa chương trình' : 'Thêm chương trình'}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-2">
+            </SheetTitle>
+          </SheetHeader>
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
               <Label htmlFor="code">Mã</Label>
               <Input
@@ -392,13 +392,13 @@ export function ProgramsListPage() {
               <Label>Xuất bản</Label>
             </div>
           </div>
-          <DialogFooter className="shrink-0 border-t px-6 py-4">
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
               Lưu
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
