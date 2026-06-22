@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
+import { Link } from 'react-router-dom';
 import { RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -8,6 +9,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -18,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
+import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { paymentsApi } from '@/services/payments/payments-api';
 import type { AdminPaymentOrderResponse } from '@/services/types/domain';
@@ -90,6 +93,13 @@ export function PaymentsPage() {
       {
         accessorKey: 'courseRunCode',
         header: 'Course run',
+        cell: ({ row }) => (
+          <Button variant="link" className="h-auto p-0" asChild>
+            <Link to={ROUTES.courseRunDetail(row.original.courseRunId)}>
+              {row.original.courseRunCode}
+            </Link>
+          </Button>
+        ),
       },
       {
         accessorKey: 'amount',
@@ -101,6 +111,25 @@ export function PaymentsPage() {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+      },
+      {
+        id: 'followUp',
+        header: 'Follow-up',
+        cell: ({ row }) => {
+          if (row.original.enrollmentActive) {
+            return 'Done';
+          }
+          if (row.original.status === 'ENROLL_FAILED') {
+            return row.original.enrollmentFailureMessage || 'Retry enrollment needed';
+          }
+          if (row.original.status === 'PAID') {
+            return 'Payment succeeded but enrollment is still missing';
+          }
+          if (row.original.status === 'PENDING') {
+            return 'Waiting for payment confirmation';
+          }
+          return 'No action';
+        },
       },
       {
         accessorKey: 'enrollmentActive',
@@ -120,18 +149,24 @@ export function PaymentsPage() {
       {
         id: 'actions',
         header: '',
-        cell: ({ row }) =>
-          row.original.status === 'ENROLL_FAILED' ||
-          (row.original.status === 'PAID' && !row.original.enrollmentActive) ? (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={retryMutation.isPending}
-              onClick={() => retryMutation.mutate(row.original.orderId)}
-            >
-              Retry enrollment
+        cell: ({ row }) => (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to={ROUTES.courseRunDetail(row.original.courseRunId)}>Open run</Link>
             </Button>
-          ) : null,
+            {row.original.status === 'ENROLL_FAILED' ||
+            (row.original.status === 'PAID' && !row.original.enrollmentActive) ? (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={retryMutation.isPending}
+                onClick={() => retryMutation.mutate(row.original.orderId)}
+              >
+                Retry enrollment
+              </Button>
+            ) : null}
+          </div>
+        ),
       },
     ],
     [retryMutation],
@@ -178,6 +213,43 @@ export function PaymentsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Orders on page</p>
+            <p className="mt-2 text-2xl font-semibold">{ordersQuery.data?.data?.length ?? 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Pending</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {ordersQuery.data?.data?.filter((order) => order.status === 'PENDING').length ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Enrollment issues</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {ordersQuery.data?.data?.filter(
+                (order) =>
+                  order.status === 'ENROLL_FAILED' ||
+                  (order.status === 'PAID' && !order.enrollmentActive),
+              ).length ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Admin note</p>
+            <p className="mt-2 text-sm">
+              Use this screen mainly to recover enrollment after a successful payment. Pricing is configured on each course run.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <DataTable

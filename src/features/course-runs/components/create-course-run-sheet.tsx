@@ -20,6 +20,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { mergeCourseRunPricingMetadata } from '@/lib/course-run-pricing';
 import { queryKeys } from '@/hooks/query-keys';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import { coursesApi } from '@/services/courses/courses-api';
@@ -36,6 +37,7 @@ type RunForm = {
   capacity: string;
   enrollmentStartDate: string;
   enrollmentEndDate: string;
+  paypalPriceUsd: string;
 };
 
 const emptyForm = (courseId = ''): RunForm => ({
@@ -48,6 +50,7 @@ const emptyForm = (courseId = ''): RunForm => ({
   capacity: '',
   enrollmentStartDate: '',
   enrollmentEndDate: '',
+  paypalPriceUsd: '',
 });
 
 type Props = {
@@ -89,6 +92,7 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
         startsAt: new Date(form.startsAt).toISOString(),
         endsAt: new Date(form.endsAt).toISOString(),
         timezone: form.timezone,
+        metadata: mergeCourseRunPricingMetadata(null, form.paypalPriceUsd),
         capacity: form.capacity ? Number(form.capacity) : null,
         enrollmentStartDate: form.enrollmentStartDate
           ? new Date(form.enrollmentStartDate).toISOString()
@@ -208,6 +212,23 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
               value={form.capacity}
               onChange={(e) => setForm((prev) => ({ ...prev, capacity: e.target.value }))}
             />
+          </div>
+          <div className="rounded-lg border bg-muted/20 p-4">
+            <p className="text-sm font-medium">Checkout pricing</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Set one global checkout price in USD. Leave blank if this run should stay free.
+            </p>
+            <div className="mt-4 space-y-2">
+              <Label>Global price (USD)</Label>
+              <Input
+                inputMode="decimal"
+                placeholder="19.99"
+                value={form.paypalPriceUsd}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, paypalPriceUsd: e.target.value }))
+                }
+              />
+            </div>
           </div>
         </div>
         <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">

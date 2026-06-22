@@ -9,6 +9,7 @@ import { CreateCourseRunSheet } from '@/features/course-runs/components/create-c
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { formatCourseRunPricingSummary, hasCourseRunPricing } from '@/lib/course-run-pricing';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
@@ -100,6 +102,33 @@ export function CourseRunsListPage() {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+      },
+      {
+        id: 'pricing',
+        header: 'Checkout',
+        cell: ({ row }) =>
+          hasCourseRunPricing(row.original.metadata) ? (
+            <div className="space-y-1">
+              <Badge>Paid</Badge>
+              <p className="text-muted-foreground text-xs">
+                {formatCourseRunPricingSummary(row.original.metadata)}
+              </p>
+            </div>
+          ) : (
+            <Badge variant="outline">Free</Badge>
+          ),
+      },
+      {
+        id: 'enrollment',
+        header: 'Enrollment window',
+        cell: ({ row }) => (
+          <div className="space-y-1 text-sm">
+            <p>{formatDateTime(row.original.enrollmentStartDate)}</p>
+            <p className="text-muted-foreground">
+              {formatDateTime(row.original.enrollmentEndDate)}
+            </p>
+          </div>
+        ),
       },
       {
         accessorKey: 'startsAt',
@@ -184,6 +213,31 @@ export function CourseRunsListPage() {
         emptyMessage='No course runs yet. Click "Add course run" to create one.'
         showPagination={false}
       />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Total runs on this page</p>
+            <p className="mt-2 text-2xl font-semibold">{filteredData.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Paid runs</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {filteredData.filter((run) => hasCourseRunPricing(run.metadata)).length}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Admin note</p>
+            <p className="mt-2 text-sm">
+              Create the run, set the global USD price if it is paid, then open the run details to add live sessions and enrollments.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex items-center justify-end gap-2">
         <Button

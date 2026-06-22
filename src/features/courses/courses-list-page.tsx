@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/select';
 import { stripHtml } from '@/lib/html';
 import { queryKeys } from '@/hooks/query-keys';
+import { hasCourseRunPricing } from '@/lib/course-run-pricing';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { coursesApi } from '@/services/courses/courses-api';
@@ -208,6 +209,26 @@ export function CoursesListPage() {
         header: 'Course runs',
         cell: ({ row }) => row.original.courseRuns?.length ?? 0,
       },
+      {
+        id: 'setup',
+        header: 'Setup progress',
+        cell: ({ row }) => {
+          const lessons = row.original.syllabusSections?.reduce(
+            (count, section) => count + (section.items?.length ?? 0),
+            0,
+          );
+          const paidRuns =
+            row.original.courseRuns?.filter((run) => hasCourseRunPricing(run.metadata)).length ?? 0;
+          return (
+            <div className="space-y-1 text-sm">
+              <p>{lessons ?? 0} lessons</p>
+              <p className="text-muted-foreground">
+                {paidRuns} paid / {row.original.courseRuns?.length ?? 0} runs
+              </p>
+            </div>
+          );
+        },
+      },
     ];
 
     if (!isProgramScope) {
@@ -276,7 +297,7 @@ export function CoursesListPage() {
         description={
           isProgramScope
             ? `Manage courses for program ${programQuery.data?.code ?? ''}.`
-            : 'All courses. Create new or open details to edit syllabus.'
+            : 'All courses. Open a course to manage syllabus, course runs, pricing, and learning operations.'
         }
         actions={
           <Button onClick={openCreateDialog} disabled={saveMutation.isPending}>

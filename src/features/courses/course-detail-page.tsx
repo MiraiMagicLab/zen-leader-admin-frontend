@@ -51,6 +51,12 @@ import { stripHtml } from '@/lib/html';
 import { SyllabusEditor } from '@/features/courses/components/syllabus-editor';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
 import { queryKeys } from '@/hooks/query-keys';
+import {
+  formatCourseRunPricingSummary,
+  getPayPalPriceUsd,
+  hasCourseRunPricing,
+  mergeCourseRunPricingMetadata,
+} from '@/lib/course-run-pricing';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
@@ -69,6 +75,7 @@ type RunForm = {
   capacity: string;
   enrollmentStartDate: string;
   enrollmentEndDate: string;
+  paypalPriceUsd: string;
 };
 
 type CourseForm = {
@@ -89,6 +96,7 @@ const emptyRunForm: RunForm = {
   capacity: '',
   enrollmentStartDate: '',
   enrollmentEndDate: '',
+  paypalPriceUsd: '',
 };
 
 const emptyCourseForm: CourseForm = {
@@ -210,6 +218,10 @@ export function CourseDetailPage() {
         startsAt: new Date(runForm.startsAt).toISOString(),
         endsAt: new Date(runForm.endsAt).toISOString(),
         timezone: runForm.timezone,
+        metadata: mergeCourseRunPricingMetadata(
+          editingRun?.metadata,
+          runForm.paypalPriceUsd,
+        ),
         capacity: runForm.capacity ? Number(runForm.capacity) : null,
         enrollmentStartDate: runForm.enrollmentStartDate
           ? new Date(runForm.enrollmentStartDate).toISOString()
@@ -286,6 +298,7 @@ export function CourseDetailPage() {
       endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
       timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
       capacity: run.capacity != null ? String(run.capacity) : '',
+      paypalPriceUsd: getPayPalPriceUsd(run.metadata),
       enrollmentStartDate: run.enrollmentStartDate
         ? toLocalDateTimeFromIso(run.enrollmentStartDate)
         : '',
@@ -324,6 +337,11 @@ export function CourseDetailPage() {
             </p>
           </div>
         ),
+      },
+      {
+        id: 'pricing',
+        header: 'Pricing',
+        cell: ({ row }) => formatCourseRunPricingSummary(row.original.metadata) || 'Free',
       },
       {
         accessorKey: 'capacity',
@@ -472,6 +490,32 @@ export function CourseDetailPage() {
                 </CardContent>
               </Card>
 
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Admin workflow</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-lg border p-4">
+                    <p className="font-medium">Shared course content</p>
+                    <p className="text-muted-foreground mt-2 text-sm">
+                      Syllabus belongs to the course and is reused across every course run.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="font-medium">Run-specific operations</p>
+                    <p className="text-muted-foreground mt-2 text-sm">
+                      Pricing, enrollment windows, live sessions, messaging, and enrollment are all managed per course run.
+                    </p>
+                  </div>
+                  <div className="rounded-lg border p-4">
+                    <p className="font-medium">Mobile store mapping</p>
+                    <p className="text-muted-foreground mt-2 text-sm">
+                      Apple and Android product IDs are only for native store purchases, not for PayPal checkout pricing.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
               <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                 <Card>
                   <CardContent className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
@@ -540,6 +584,13 @@ export function CourseDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <p className="text-sm font-medium">Paid course runs</p>
+                      <p className="text-muted-foreground mt-1 text-sm">
+                        {courseRuns.filter((run) => hasCourseRunPricing(run.metadata)).length} /{' '}
+                        {courseRuns.length} runs are ready for global checkout
+                      </p>
+                    </div>
                     <div className="rounded-lg border bg-muted/20 p-4">
                       <p className="text-sm font-medium">Apple Product ID</p>
                       <p className="text-muted-foreground mt-1 break-all text-sm">
@@ -718,7 +769,7 @@ export function CourseDetailPage() {
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-              Set up product IDs for iOS and Android to map this course with store payment packages.
+              This section is only for native in-app purchase mapping. Web and PayPal checkout pricing is configured per course run.
             </div>
             <div className="space-y-2">
               <Label>Apple Product ID</Label>
@@ -828,6 +879,23 @@ export function CourseDetailPage() {
                 value={runForm.capacity}
                 onChange={(e) => setRunForm((prev) => ({ ...prev, capacity: e.target.value }))}
               />
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-4">
+              <p className="text-sm font-medium">Checkout pricing</p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Save one global USD price on this run so checkout can create the right payment order.
+              </p>
+              <div className="mt-4 space-y-2">
+                <Label>Global price (USD)</Label>
+                <Input
+                  inputMode="decimal"
+                  placeholder="19.99"
+                  value={runForm.paypalPriceUsd}
+                  onChange={(e) =>
+                    setRunForm((prev) => ({ ...prev, paypalPriceUsd: e.target.value }))
+                  }
+                />
+              </div>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">

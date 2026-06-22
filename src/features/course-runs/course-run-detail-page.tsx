@@ -48,6 +48,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
+import {
+  formatCourseRunPricingSummary,
+  getPayPalPriceUsd,
+  hasCourseRunPricing,
+  mergeCourseRunPricingMetadata,
+} from '@/lib/course-run-pricing';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { ROUTES } from '@/routes/paths';
@@ -76,6 +82,7 @@ type RunSettingsForm = {
   capacity: string;
   enrollmentStartDate: string;
   enrollmentEndDate: string;
+  paypalPriceUsd: string;
 };
 
 type SessionForm = {
@@ -106,6 +113,7 @@ function toRunSettingsForm(run: CourseRunResponse): RunSettingsForm {
     endsAt: run.endsAt ? toLocalDateTimeFromIso(run.endsAt) : '',
     timezone: run.timezone ?? 'Asia/Ho_Chi_Minh',
     capacity: run.capacity != null ? String(run.capacity) : '',
+    paypalPriceUsd: getPayPalPriceUsd(run.metadata),
     enrollmentStartDate: run.enrollmentStartDate
       ? toLocalDateTimeFromIso(run.enrollmentStartDate)
       : '',
@@ -364,6 +372,10 @@ export function CourseRunDetailPage() {
         startsAt: new Date(settings.startsAt).toISOString(),
         endsAt: new Date(settings.endsAt).toISOString(),
         timezone: settings.timezone,
+        metadata: mergeCourseRunPricingMetadata(
+          run?.metadata,
+          settings.paypalPriceUsd,
+        ),
         capacity: settings.capacity ? Number(settings.capacity) : null,
         enrollmentStartDate: settings.enrollmentStartDate
           ? new Date(settings.enrollmentStartDate).toISOString()
@@ -499,9 +511,41 @@ export function CourseRunDetailPage() {
                     <p className="font-medium">{run.capacity ?? 'Unlimited'}</p>
                   </div>
                   <div>
+                    <p className="text-muted-foreground text-sm">Pricing</p>
+                    <p className="font-medium">
+                      {formatCourseRunPricingSummary(run.metadata) || 'Free'}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-muted-foreground text-sm">Updated</p>
                     <p className="font-medium">{formatDateTime(run.updatedAt)}</p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Admin workflow</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-lg border p-4">
+                  <p className="font-medium">1. Configure checkout</p>
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    Set the global USD price only if this run should be paid. Leave blank to keep it free.
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="font-medium">2. Add live sessions</p>
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    Sessions, meeting rooms, recordings, and attendance live inside this run only.
+                  </p>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="font-medium">3. Operate enrollment</p>
+                  <p className="text-muted-foreground mt-2 text-sm">
+                    Use payments for failed post-payment enrollment, or use manual enrollment/import for direct access management.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -551,6 +595,17 @@ export function CourseRunDetailPage() {
                     <p className="text-muted-foreground text-sm">Class chat</p>
                     <p className="text-2xl font-semibold">
                       {conversationQuery.data?.participants.length ?? 0}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="flex items-start gap-4 p-6">
+                  <Settings2 className="text-muted-foreground mt-1 size-5" />
+                  <div>
+                    <p className="text-muted-foreground text-sm">Checkout readiness</p>
+                    <p className="text-2xl font-semibold">
+                      {hasCourseRunPricing(run.metadata) ? 'Paid' : 'Free'}
                     </p>
                   </div>
                 </CardContent>
@@ -871,6 +926,25 @@ export function CourseRunDetailPage() {
                       onChange={(event) =>
                         setRunSettings((current) =>
                           current && { ...current, capacity: event.target.value },
+                        )
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="rounded-lg border bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Checkout pricing</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    Set one global USD price on this run so checkout can create the correct payment order.
+                  </p>
+                  <div className="mt-4 space-y-2">
+                    <Label>Global price (USD)</Label>
+                    <Input
+                      inputMode="decimal"
+                      placeholder="19.99"
+                      value={runSettings.paypalPriceUsd}
+                      onChange={(event) =>
+                        setRunSettings((current) =>
+                          current && { ...current, paypalPriceUsd: event.target.value },
                         )
                       }
                     />
