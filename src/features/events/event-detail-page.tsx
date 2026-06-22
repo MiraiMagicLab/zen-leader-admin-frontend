@@ -326,8 +326,8 @@ export function EventDetailPage() {
               <p className="text-muted-foreground text-sm">Visibility</p>
               <p>
                 {normalizeEventStatus(event.status) === 'PUBLISHED'
-                  ? 'Hiển thị trên feed công khai'
-                  : 'Ẩn khỏi feed công khai'}
+                  ? 'Visible on public feed'
+                  : 'Hidden from public feed'}
               </p>
             </div>
             <div>
@@ -411,10 +411,10 @@ export function EventDetailPage() {
               disabled={commentPage <= 0}
               onClick={() => setCommentPage((currentPage) => currentPage - 1)}
             >
-              Trang trước
+              Previous page
             </Button>
             <span className="text-muted-foreground text-sm">
-              Trang {commentPage + 1} / {commentsQuery.data?.totalPages ?? 1}
+              Page {commentPage + 1} / {commentsQuery.data?.totalPages ?? 1}
             </span>
             <Button
               variant="outline"
@@ -422,7 +422,7 @@ export function EventDetailPage() {
               disabled={commentPage + 1 >= (commentsQuery.data?.totalPages ?? 1)}
               onClick={() => setCommentPage((currentPage) => currentPage + 1)}
             >
-              Trang sau
+              Next page
             </Button>
           </div>
         </CardContent>

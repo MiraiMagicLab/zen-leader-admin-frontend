@@ -37,7 +37,7 @@ type DataTableProps<TData, TValue> = {
 function rowIndexColumn<TData>(): ColumnDef<TData, unknown> {
   return {
     id: '__stt',
-    header: 'STT',
+    header: '#',
     size: 48,
     minSize: 48,
     maxSize: 64,
@@ -55,7 +55,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   isLoading = false,
-  emptyMessage = 'Không có dữ liệu.',
+  emptyMessage = 'No data.',
   pageSize = 10,
   showRowIndex = false,
   pageOffset = 0,
@@ -149,10 +149,10 @@ export function DataTable<TData, TValue>({
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
-            Trước
+            Previous
           </Button>
           <span className="text-muted-foreground text-sm">
-            Trang {table.getState().pagination.pageIndex + 1} /{' '}
+            Page {table.getState().pagination.pageIndex + 1} /{' '}
             {table.getPageCount() || 1}
           </span>
           <Button
@@ -161,7 +161,7 @@ export function DataTable<TData, TValue>({
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
-            Sau
+            Next
           </Button>
         </div>
       ) : null}

@@ -23,10 +23,10 @@ import { safetyApi } from '@/services/safety/safety-api';
 import type { UgcReportResponse } from '@/services/types/domain';
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'PENDING', label: 'Chờ xử lý' },
-  { value: 'RESOLVED', label: 'Đã xử lý' },
-  { value: 'DISMISSED', label: 'Bỏ qua' },
+  { value: 'all', label: 'All' },
+  { value: 'PENDING', label: 'Pending' },
+  { value: 'RESOLVED', label: 'Resolved' },
+  { value: 'DISMISSED', label: 'Dismissed' },
 ];
 
 export function ModerationPage() {
@@ -59,7 +59,7 @@ export function ModerationPage() {
     mutationFn: ({ reportId, status }: { reportId: string; status: string }) =>
       safetyApi.updateReportStatus(reportId, status),
     onSuccess: () => {
-      toast.success('Đã cập nhật báo cáo.');
+      toast.success('Report updated.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.safety.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -69,7 +69,7 @@ export function ModerationPage() {
     () => [
       {
         accessorKey: 'reason',
-        header: 'Lý do',
+        header: 'Reason',
         cell: ({ row }) => (
           <div className="max-w-xs">
             <p className="font-medium">{row.original.reason}</p>
@@ -81,7 +81,7 @@ export function ModerationPage() {
       },
       {
         id: 'reporter',
-        header: 'Người báo cáo',
+        header: 'Reporter',
         cell: ({ row }) => (
           <div>
             <p>{row.original.reporterDisplayName}</p>
@@ -91,17 +91,17 @@ export function ModerationPage() {
       },
       {
         id: 'target',
-        header: 'Đối tượng',
+        header: 'Target',
         cell: ({ row }) => row.original.targetUserDisplayName,
       },
       {
         accessorKey: 'status',
-        header: 'Trạng thái',
+        header: 'Status',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
       },
       {
         accessorKey: 'createdAt',
-        header: 'Thời gian',
+        header: 'Time',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -120,7 +120,7 @@ export function ModerationPage() {
                   })
                 }
               >
-                Xử lý
+Resolve
               </Button>
               <Button
                 variant="ghost"
@@ -132,7 +132,7 @@ export function ModerationPage() {
                   })
                 }
               >
-                Bỏ qua
+                Dismiss
               </Button>
             </div>
           ) : null,
@@ -144,8 +144,8 @@ export function ModerationPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Kiểm duyệt"
-        description="Xử lý báo cáo nội dung người dùng (UGC)."
+        title="Moderation"
+        description="Handle user-generated content (UGC) reports."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -166,7 +166,7 @@ export function ModerationPage() {
               onClick={() => void reportsQuery.refetch()}
             >
               <RefreshCw className="mr-2 size-4" />
-              Làm mới
+              Refresh
             </Button>
           </div>
         }
@@ -177,7 +177,7 @@ export function ModerationPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Tìm theo lý do, người báo cáo…"
+            placeholder="Search by reason, reporter…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -188,7 +188,7 @@ export function ModerationPage() {
         columns={columns}
         data={reportsQuery.data?.data ?? []}
         isLoading={reportsQuery.isLoading}
-        emptyMessage="Không có báo cáo nào."
+        emptyMessage="No reports found."
         showRowIndex
         pageOffset={page * 20}
         showPagination={false}
@@ -201,10 +201,10 @@ export function ModerationPage() {
           disabled={page <= 0}
           onClick={() => setPage((p) => p - 1)}
         >
-          Trang trước
+          Previous page
         </Button>
         <span className="text-muted-foreground text-sm">
-          Trang {page + 1} / {reportsQuery.data?.totalPages ?? 1}
+          Page {page + 1} / {reportsQuery.data?.totalPages ?? 1}
         </span>
         <Button
           variant="outline"
@@ -212,7 +212,7 @@ export function ModerationPage() {
           disabled={page + 1 >= (reportsQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Trang sau
+          Next page
         </Button>
       </div>
     </div>

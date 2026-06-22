@@ -66,23 +66,23 @@ export function AuditLogsPage() {
     () => [
       {
         accessorKey: 'createdAt',
-        header: 'Thời gian',
+        header: 'Time',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
         accessorKey: 'action',
-        header: 'Hành động',
+        header: 'Action',
         cell: ({ row }) => auditActionLabel(row.original.action),
       },
       {
         accessorKey: 'entityType',
-        header: 'Loại đối tượng',
+        header: 'Entity type',
         cell: ({ row }) => auditEntityTypeLabel(row.original.entityType),
       },
-      { accessorKey: 'entityId', header: 'ID đối tượng' },
+      { accessorKey: 'entityId', header: 'Entity ID', },
       {
         accessorKey: 'actorDisplay',
-        header: 'Người thực hiện',
+        header: 'Actor',
         cell: ({ row }) => row.original.actorDisplay ?? row.original.actorUserId ?? '—',
       },
     ],
@@ -92,8 +92,8 @@ export function AuditLogsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Nhật ký audit"
-        description="Theo dõi thao tác quản trị và thay đổi dữ liệu trên hệ thống."
+        title="Audit Log"
+        description="Track admin actions and data changes on the system."
       />
 
       <div className="flex flex-col gap-3">
@@ -107,10 +107,10 @@ export function AuditLogsPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Hành động" />
+                <SelectValue placeholder="Action" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Tất cả hành động</SelectItem>
+                <SelectItem value={ALL}>All actions</SelectItem>
                 {AUDIT_ACTION_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -129,10 +129,10 @@ export function AuditLogsPage() {
               }}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Loại đối tượng" />
+                <SelectValue placeholder="Entity type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL}>Tất cả loại</SelectItem>
+                <SelectItem value={ALL}>All types</SelectItem>
                 {AUDIT_ENTITY_TYPE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
@@ -146,7 +146,7 @@ export function AuditLogsPage() {
             <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               className="pl-9"
-              placeholder="ID người thực hiện…"
+              placeholder="Actor user ID…"
               value={actorUserIdInput}
               onChange={(event) => setActorUserIdInput(event.target.value)}
               onKeyDown={(event) => {
@@ -159,12 +159,12 @@ export function AuditLogsPage() {
 
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={applyActorFilter}>
-              Lọc người dùng
+              Filter by user
             </Button>
             {hasActiveFilters ? (
               <Button variant="outline" onClick={resetFilters}>
                 <RotateCcw className="mr-2 size-4" />
-                Xóa lọc
+                Clear filter
               </Button>
             ) : null}
           </div>
@@ -172,10 +172,10 @@ export function AuditLogsPage() {
 
         {hasActiveFilters ? (
           <p className="text-muted-foreground text-sm">
-            Đang lọc:
+            Filtering:
             {action !== ALL ? ` ${auditActionLabel(action)}` : ''}
             {entityType !== ALL ? ` · ${auditEntityTypeLabel(entityType)}` : ''}
-            {actorUserId ? ` · Người dùng ${actorUserId}` : ''}
+            {actorUserId ? ` · User ${actorUserId}` : ''}
           </p>
         ) : null}
       </div>
@@ -187,7 +187,7 @@ export function AuditLogsPage() {
         showRowIndex
         pageOffset={(page - 1) * 20}
         showPagination={false}
-        emptyMessage="Không có bản ghi audit phù hợp."
+        emptyMessage="No matching audit records."
       />
 
       <div className="flex items-center justify-end gap-2">
@@ -197,10 +197,10 @@ export function AuditLogsPage() {
           disabled={page <= 1}
           onClick={() => setPage((p) => p - 1)}
         >
-          Trang trước
+          Previous page
         </Button>
         <span className="text-muted-foreground text-sm">
-          Trang {page} / {auditQuery.data?.totalPages ?? 1}
+          Page {page} / {auditQuery.data?.totalPages ?? 1}
         </span>
         <Button
           variant="outline"
@@ -208,7 +208,7 @@ export function AuditLogsPage() {
           disabled={page >= (auditQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Trang sau
+          Next page
         </Button>
       </div>
     </div>

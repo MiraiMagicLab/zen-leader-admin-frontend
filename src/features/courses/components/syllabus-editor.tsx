@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  BookOpen,
   FileText,
   MoreHorizontal,
   Pencil,
@@ -54,7 +55,7 @@ const TYPE_ICONS: Record<string, typeof PlayCircle> = {
 };
 
 function typeLabel(type: string) {
-  return type.toUpperCase() === 'VIDEO' ? 'Video' : 'Bài viết';
+  return type.toUpperCase() === 'VIDEO' ? 'Video' : 'Article';
 }
 
 export function SyllabusEditor({
@@ -87,7 +88,7 @@ export function SyllabusEditor({
 
   const createSectionMutation = useMutation({
     mutationFn: () => {
-      const title = sectionTitle.trim() || `Chương ${sections.length + 1}`;
+      const title = sectionTitle.trim() || `Chapter ${sections.length + 1}`;
       return syllabusSectionsApi.create({
         courseId,
         title,
@@ -95,7 +96,7 @@ export function SyllabusEditor({
       });
     },
     onSuccess: async (created) => {
-      toast.success('Đã tạo chương.');
+      toast.success('Chapter created.');
       setSectionSheetOpen(false);
       setSectionTitle('');
       await invalidate();
@@ -116,7 +117,7 @@ export function SyllabusEditor({
         orderIndex: editSection!.orderIndex,
       }),
     onSuccess: async () => {
-      toast.success('Đã cập nhật chương.');
+      toast.success('Chapter updated.');
       setEditSection(null);
       await invalidate();
     },
@@ -126,7 +127,7 @@ export function SyllabusEditor({
   const deleteSectionMutation = useMutation({
     mutationFn: (sectionId: string) => syllabusSectionsApi.remove(sectionId),
     onSuccess: async () => {
-      toast.success('Đã xóa chương.');
+      toast.success('Chapter deleted.');
       await invalidate();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -135,7 +136,7 @@ export function SyllabusEditor({
   const deleteItemMutation = useMutation({
     mutationFn: (itemId: string) => syllabusItemsApi.remove(itemId),
     onSuccess: async () => {
-      toast.success('Đã xóa bài học.');
+      toast.success('Lesson deleted.');
       await invalidate();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -187,36 +188,36 @@ export function SyllabusEditor({
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium">Giáo trình khóa học</p>
+          <p className="text-sm font-medium">Course syllabus</p>
           <p className="text-muted-foreground text-sm">
             {courseTitle ? `${courseTitle} · ` : ''}
-            {sections.length} chương · {totalItems} bài học — dùng chung cho mọi đợt học.
+            {sections.length} chapters · {totalItems} lessons — shared across all runs.
           </p>
         </div>
         <Button size="sm" onClick={() => setSectionSheetOpen(true)}>
           <Plus className="mr-2 size-4" />
-          Thêm chương
+          Add chapter
         </Button>
       </div>
 
       {sectionsQuery.isLoading ? (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Đang tải giáo trình…</CardContent>
+          <CardContent className="p-6 text-sm text-muted-foreground">Loading syllabus…</CardContent>
         </Card>
       ) : sections.length === 0 ? (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
             <BookOpen className="text-muted-foreground size-10" />
             <div>
-              <p className="font-medium">Chưa có giáo trình</p>
+              <p className="font-medium">No syllabus yet</p>
               <p className="text-muted-foreground mt-1 max-w-md text-sm">
-                Tạo chương đầu tiên, sau đó thêm bài học (video, bài viết, quiz) ngay trong cùng
-                một form — không cần chuyển trang.
+                Create the first chapter, then add lessons (video, article, quiz) right within the
+                same form — no page navigation needed.
               </p>
             </div>
             <Button onClick={() => setSectionSheetOpen(true)}>
               <Plus className="mr-2 size-4" />
-              Bắt đầu — tạo chương đầu tiên
+              Get started — create first chapter
             </Button>
           </CardContent>
         </Card>
@@ -228,12 +229,12 @@ export function SyllabusEditor({
               <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
                 <div>
                   <CardTitle className="text-base">{section.title}</CardTitle>
-                  <p className="text-muted-foreground mt-1 text-sm">{items.length} bài học</p>
+                  <p className="text-muted-foreground mt-1 text-sm">{items.length} lessons</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button variant="outline" size="sm" onClick={() => openAddItem(section)}>
                     <Plus className="mr-1 size-4" />
-                    Bài học
+                    Lesson
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -244,18 +245,18 @@ export function SyllabusEditor({
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => setEditSection(section)}>
                         <Pencil className="mr-2 size-4" />
-                        Đổi tên chương
+                        Rename chapter
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
                         onClick={() => {
-                          if (window.confirm(`Xóa chương "${section.title}" và tất cả bài học?`)) {
+                          if (window.confirm(`Delete chapter "${section.title}" and all lessons?`)) {
                             deleteSectionMutation.mutate(section.id);
                           }
                         }}
                       >
                         <Trash2 className="mr-2 size-4" />
-                        Xóa chương
+                        Delete chapter
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -264,13 +265,13 @@ export function SyllabusEditor({
               <CardContent className="space-y-2 pt-0">
                 {items.length === 0 ? (
                   <div className="rounded-lg border border-dashed p-4 text-center">
-                    <p className="text-muted-foreground text-sm">Chương này chưa có bài học.</p>
+                    <p className="text-muted-foreground text-sm">This chapter has no lessons yet.</p>
                     <div className="mt-3 flex flex-wrap justify-center gap-2">
                       <Button size="sm" variant="secondary" onClick={() => openAddItem(section, 'VIDEO')}>
                         + Video
                       </Button>
                       <Button size="sm" variant="secondary" onClick={() => openAddItem(section, 'ARTICLE')}>
-                        + Bài viết
+                        + Article
                       </Button>
                     </div>
                   </div>
@@ -293,12 +294,12 @@ export function SyllabusEditor({
                             </Badge>
                             {item.isHidden ? (
                               <Badge variant="outline" className="text-xs">
-                                Ẩn
+                                Hidden
                               </Badge>
                             ) : null}
                             {item.isOptional ? (
                               <Badge variant="outline" className="text-xs">
-                                Tuỳ chọn
+                                Optional
                               </Badge>
                             ) : null}
                           </div>
@@ -309,14 +310,14 @@ export function SyllabusEditor({
                             size="sm"
                             onClick={() => openEditItem(section, item)}
                           >
-                            Sửa
+                            Edit
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
                             className="text-destructive"
                             onClick={() => {
-                              if (window.confirm(`Xóa bài "${item.title}"?`)) {
+                              if (window.confirm(`Delete lesson "${item.title}"?`)) {
                                 deleteItemMutation.mutate(item.id);
                               }
                             }}
@@ -337,14 +338,14 @@ export function SyllabusEditor({
       <Sheet open={sectionSheetOpen} onOpenChange={setSectionSheetOpen}>
         <SheetContent className="sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Thêm chương</SheetTitle>
+            <SheetTitle>Add chapter</SheetTitle>
           </SheetHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Tên chương</Label>
+              <Label>Chapter name</Label>
               <Input
                 value={sectionTitle}
-                placeholder={`Chương ${sections.length + 1}`}
+                placeholder={`Chapter ${sections.length + 1}`}
                 onChange={(e) => setSectionTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
@@ -359,7 +360,7 @@ export function SyllabusEditor({
               onClick={() => createSectionMutation.mutate()}
               disabled={createSectionMutation.isPending}
             >
-              Tạo & thêm bài học
+              Create & add lessons
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -368,12 +369,12 @@ export function SyllabusEditor({
       <Sheet open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
         <SheetContent className="sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Đổi tên chương</SheetTitle>
+            <SheetTitle>Rename chapter</SheetTitle>
           </SheetHeader>
           {editSection ? (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Tên chương</Label>
+                <Label>Chapter name</Label>
                 <Input
                   value={editSection.title}
                   onChange={(e) =>
@@ -390,7 +391,7 @@ export function SyllabusEditor({
               onClick={() => updateSectionMutation.mutate()}
               disabled={!editSection?.title.trim() || updateSectionMutation.isPending}
             >
-              Lưu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>

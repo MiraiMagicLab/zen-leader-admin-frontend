@@ -1,6 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 
-/** Admin panel: tạm thời không cache — luôn fetch mới */
+/** Admin panel: no caching for now — always fetch fresh */
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

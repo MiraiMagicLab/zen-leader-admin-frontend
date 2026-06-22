@@ -9,7 +9,7 @@ type RichTextPreviewProps = {
 export function RichTextPreview({
   value,
   className,
-  emptyMessage = 'Chưa có nội dung mô tả.',
+  emptyMessage = 'No description content yet.',
 }: RichTextPreviewProps) {
   if (!value?.trim()) {
     return <p className={cn('text-muted-foreground text-sm', className)}>{emptyMessage}</p>;

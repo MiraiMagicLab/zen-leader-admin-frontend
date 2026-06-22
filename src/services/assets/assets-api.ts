@@ -26,7 +26,7 @@ export const assetsApi = {
     });
 
     if (!response.ok) {
-      throw new Error('Upload ảnh thất bại.');
+      throw new Error('Image upload failed.');
     }
 
     return presigned;

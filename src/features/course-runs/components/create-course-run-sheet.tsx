@@ -79,8 +79,8 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
     mutationFn: () => {
       const targetCourseId = courseId ?? form.courseId;
       if (!targetCourseId) {
-        setCourseError('Chọn khóa học.');
-        throw new Error('Thiếu khóa học.');
+        setCourseError('Select a course.');
+        throw new Error('Missing course.');
       }
       return courseRunsApi.create({
         courseId: targetCourseId,
@@ -99,7 +99,7 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
       });
     },
     onSuccess: async (created) => {
-      toast.success('Đã tạo đợt học.');
+      toast.success('Course run created.');
       onOpenChange(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
       if (courseId) {
@@ -115,12 +115,12 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
         <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-          <SheetTitle>Tạo đợt học mới</SheetTitle>
+          <SheetTitle>Create new course run</SheetTitle>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           {!courseId ? (
             <div className="space-y-2">
-              <Label>Khóa học</Label>
+              <Label>Course</Label>
               <Select
                 value={form.courseId || undefined}
                 onValueChange={(value) => {
@@ -129,7 +129,7 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
                 }}
               >
                 <SelectTrigger aria-invalid={Boolean(courseError)}>
-                  <SelectValue placeholder="Chọn khóa học" />
+                  <SelectValue placeholder="Select course" />
                 </SelectTrigger>
                 <SelectContent>
                   {(coursesQuery.data?.data ?? []).map((course) => (
@@ -143,14 +143,14 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
             </div>
           ) : null}
           <div className="space-y-2">
-            <Label>Mã lớp</Label>
+            <Label>Class code</Label>
             <Input
               value={form.code}
               onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
             />
           </div>
           <div className="space-y-2">
-            <Label>Trạng thái</Label>
+            <Label>Status</Label>
             <Select
               value={form.status}
               onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}
@@ -169,14 +169,14 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Bắt đầu</Label>
+              <Label>Start</Label>
               <DateTimePicker
                 value={form.startsAt}
                 onChange={(startsAt) => setForm((prev) => ({ ...prev, startsAt }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Kết thúc</Label>
+              <Label>End</Label>
               <DateTimePicker
                 value={form.endsAt}
                 onChange={(endsAt) => setForm((prev) => ({ ...prev, endsAt }))}
@@ -185,7 +185,7 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Mở đăng ký</Label>
+              <Label>Open enrollment</Label>
               <DateTimePicker
                 value={form.enrollmentStartDate}
                 onChange={(value) =>
@@ -194,7 +194,7 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
               />
             </div>
             <div className="space-y-2">
-              <Label>Đóng đăng ký</Label>
+              <Label>Close enrollment</Label>
               <DateTimePicker
                 value={form.enrollmentEndDate}
                 onChange={(value) => setForm((prev) => ({ ...prev, enrollmentEndDate: value }))}
@@ -202,7 +202,7 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Sức chứa</Label>
+            <Label>Capacity</Label>
             <Input
               type="number"
               value={form.capacity}
@@ -212,7 +212,7 @@ export function CreateCourseRunSheet({ open, onOpenChange, courseId, onCreated }
         </div>
         <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
           <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
-            Tạo
+            Create
           </Button>
         </SheetFooter>
       </SheetContent>

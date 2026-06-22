@@ -6,7 +6,7 @@ import type { ApiResponse } from '@/services/types/api';
 
 export function getApiErrorMessage(
   error: unknown,
-  fallback = 'Đã xảy ra lỗi. Vui lòng thử lại.',
+  fallback = 'An error occurred. Please try again.',
 ): string {
   if (error instanceof ZodError) {
     return getZodErrorMessage(error);
@@ -29,7 +29,7 @@ export function getApiErrorMessage(
 
 const ENROLLMENT_ERROR_MESSAGES: Record<string, string> = {
   'lms.enrollment_already_exists':
-    'Người này đã được ghi danh vào lớp rồi.',
+    'This user is already enrolled in the class.',
 };
 
 function enrollmentErrorMessage(errorCode: string | undefined): string | undefined {

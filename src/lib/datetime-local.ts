@@ -19,7 +19,7 @@ export function toLocalDateTimeFromIso(iso: string): string {
 
 export function formatLocalDateTimeDisplay(
   value: string | undefined,
-  placeholder = 'Chọn ngày giờ',
+  placeholder = 'Select date and time',
 ): string {
   const parsed = parseLocalDateTime(value);
   if (!parsed) return placeholder;

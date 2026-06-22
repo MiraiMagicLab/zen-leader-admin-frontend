@@ -156,7 +156,7 @@ export function CourseDetailPage() {
     (count, run) => count + (run.courseSessions?.length ?? 0),
     0,
   );
-  const programDisplayName = course?.programCode?.trim() || 'Chương trình liên kết';
+  const programDisplayName = course?.programCode?.trim() || 'Linked program';
 
   useEffect(() => {
     if (!course) {
@@ -194,7 +194,7 @@ export function CourseDetailPage() {
         androidProductId: androidProductId || null,
       }),
     onSuccess: async () => {
-      toast.success('Đã cập nhật IAP mapping.');
+      toast.success('IAP mapping updated.');
       setEditIapOpen(false);
       await invalidateCourseQueries();
     },
@@ -219,7 +219,7 @@ export function CourseDetailPage() {
           : null,
       }),
     onSuccess: async () => {
-      toast.success('Đã cập nhật đợt học.');
+      toast.success('Course run updated.');
       setEditingRun(null);
       setRunForm(emptyRunForm);
       await invalidateCourseQueries();
@@ -230,7 +230,7 @@ export function CourseDetailPage() {
   const deleteRunMutation = useMutation({
     mutationFn: (runId: string) => courseRunsApi.remove(runId),
     onSuccess: async () => {
-      toast.success('Đã xóa đợt học.');
+      toast.success('Course run deleted.');
       await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -239,7 +239,7 @@ export function CourseDetailPage() {
   const updateCourseMutation = useMutation({
     mutationFn: async () => {
       if (!course) {
-        throw new Error('Không tìm thấy khóa học.');
+        throw new Error('Course not found.');
       }
 
       let thumbnailUrl = courseForm.thumbnailUrl || null;
@@ -261,7 +261,7 @@ export function CourseDetailPage() {
       });
     },
     onSuccess: async () => {
-      toast.success('Đã cập nhật khóa học.');
+      toast.success('Course updated.');
       setEditCourseOpen(false);
       await invalidateCourseQueries();
     },
@@ -271,7 +271,7 @@ export function CourseDetailPage() {
   const deleteCourseMutation = useMutation({
     mutationFn: () => coursesApi.remove(courseId!),
     onSuccess: () => {
-      toast.success('Đã xóa khóa học.');
+      toast.success('Course deleted.');
       void navigate(ROUTES.courses);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -297,15 +297,15 @@ export function CourseDetailPage() {
 
   const columns = useMemo<ColumnDef<CourseRunResponse>[]>(
     () => [
-      { accessorKey: 'code', header: 'Mã lớp' },
+      { accessorKey: 'code', header: 'Class code' },
       {
         accessorKey: 'status',
-        header: 'Trạng thái',
+        header: 'Status',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
       },
       {
         id: 'schedule',
-        header: 'Lịch học',
+        header: 'Schedule',
         cell: ({ row }) => (
           <div className="space-y-1 text-sm">
             <p>{formatDateTime(row.original.startsAt)}</p>
@@ -315,7 +315,7 @@ export function CourseDetailPage() {
       },
       {
         id: 'enrollmentWindow',
-        header: 'Đăng ký',
+        header: 'Enrollment',
         cell: ({ row }) => (
           <div className="space-y-1 text-sm">
             <p>{formatDateTime(row.original.enrollmentStartDate)}</p>
@@ -327,12 +327,12 @@ export function CourseDetailPage() {
       },
       {
         accessorKey: 'capacity',
-        header: 'Sức chứa',
+        header: 'Capacity',
         cell: ({ row }) => row.original.capacity ?? '—',
       },
       {
         id: 'sessions',
-        header: 'Buổi học',
+        header: 'Sessions',
         cell: ({ row }) => row.original.courseSessions?.length ?? 0,
       },
       {
@@ -348,20 +348,20 @@ export function CourseDetailPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link to={ROUTES.courseRunDetail(row.original.id)}>Quản lý lớp</Link>
+                  <Link to={ROUTES.courseRunDetail(row.original.id)}>Manage classes</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => openEditRun(row.original)}>
-                  Sửa đợt học
+                  Edit course run
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
                   onClick={() => {
-                    if (window.confirm('Xóa đợt học này?')) {
+                    if (window.confirm('Delete this course run?')) {
                       deleteRunMutation.mutate(row.original.id);
                     }
                   }}
                 >
-                  Xóa đợt học
+                   Delete course run
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -381,30 +381,30 @@ export function CourseDetailPage() {
       <Button variant="ghost" size="sm" asChild>
         <Link to={course?.programId ? ROUTES.programCourses(course.programId) : ROUTES.courses}>
           <ArrowLeft className="mr-2 size-4" />
-          {course?.programId ? 'Quay lại danh sách khóa học' : 'Quay lại khóa học'}
+          {course?.programId ? 'Back to courses' : 'Back to course'}
         </Link>
       </Button>
 
       <PageHeader
-        title={course?.title ?? 'Khóa học'}
-        description={stripHtml(course?.description) || 'Quản lý nội dung, đợt học và cấu hình bán khóa học.'}
+        title={course?.title ?? 'Course'}
+        description={stripHtml(course?.description) || 'Manage content, course runs, and sales configuration.'}
         actions={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setEditCourseOpen(true)} disabled={!course}>
               <Pencil className="mr-2 size-4" />
-              Sửa khóa học
+              Edit course
             </Button>
             <Button
               variant="destructive"
               disabled={deleteCourseMutation.isPending || !course}
               onClick={() => {
-                if (window.confirm('Xóa khóa học này?')) {
+                if (window.confirm('Delete this course?')) {
                   deleteCourseMutation.mutate();
                 }
               }}
             >
               <Trash2 className="mr-2 size-4" />
-              Xóa
+              Delete
             </Button>
           </div>
         }
@@ -414,11 +414,11 @@ export function CourseDetailPage() {
         <>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full max-w-lg grid-cols-3">
-              <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="syllabus">
-                Giáo trình ({totalSyllabusItems})
+                Syllabus ({totalSyllabusItems})
               </TabsTrigger>
-              <TabsTrigger value="runs">Đợt học ({courseRuns.length})</TabsTrigger>
+              <TabsTrigger value="runs">Course runs ({courseRuns.length})</TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-6 space-y-6">
@@ -429,16 +429,16 @@ export function CourseDetailPage() {
                       <BookOpen className="size-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">1. Giáo trình</p>
+                      <p className="text-sm font-medium">1. Syllabus</p>
                       <p className="text-muted-foreground text-xs">
-                        Thêm chương & bài học — dùng chung mọi lớp
+                        Add chapters & lessons — shared across all runs
                       </p>
                       <Button
                         variant="link"
                         className="h-auto px-0 text-xs"
                         onClick={() => setActiveTab('syllabus')}
                       >
-                        {totalSyllabusItems > 0 ? 'Sửa giáo trình' : 'Tạo giáo trình'}
+                        {totalSyllabusItems > 0 ? 'Edit syllabus' : 'Create syllabus'}
                       </Button>
                     </div>
                   </div>
@@ -447,14 +447,14 @@ export function CourseDetailPage() {
                       <CalendarDays className="size-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">2. Đợt học</p>
-                      <p className="text-muted-foreground text-xs">Mở lớp, lịch live, ghi danh</p>
+                      <p className="text-sm font-medium">2. Course runs</p>
+                      <p className="text-muted-foreground text-xs">Open classes, live schedule, enrollment</p>
                       <Button
                         variant="link"
                         className="h-auto px-0 text-xs"
                         onClick={openCreateRun}
                       >
-                        {courseRuns.length > 0 ? 'Thêm đợt học' : 'Tạo đợt học'}
+                        {courseRuns.length > 0 ? 'Add course run' : 'Create course run'}
                       </Button>
                     </div>
                   </div>
@@ -463,9 +463,9 @@ export function CourseDetailPage() {
                       <Layers className="size-4" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium">3. Xuất bản</p>
+                      <p className="text-sm font-medium">3. Publish</p>
                       <p className="text-muted-foreground text-xs">
-                        {totalSyllabusItems} bài · {courseRuns.length} lớp · {totalSessions} buổi
+                        {totalSyllabusItems} lessons · {courseRuns.length} classes · {totalSessions} sessions
                       </p>
                     </div>
                   </div>
@@ -485,7 +485,7 @@ export function CourseDetailPage() {
                       ) : (
                         <div className="text-muted-foreground flex flex-col items-center gap-2 text-sm">
                           <ImageIcon className="size-8" />
-                          <span>Chưa có thumbnail</span>
+                          <span>No thumbnail yet</span>
                         </div>
                       )}
                     </div>
@@ -497,34 +497,34 @@ export function CourseDetailPage() {
 
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="sm:col-span-2">
-                          <p className="text-muted-foreground text-sm">Thuộc chương trình</p>
+                          <p className="text-muted-foreground text-sm">Belongs to program</p>
                           {course.programId ? (
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               <p className="font-medium">{programDisplayName}</p>
                               <Button variant="outline" size="sm" asChild>
                                 <Link to={ROUTES.programCourses(course.programId)}>
-                                  Mở danh sách khóa học
+                                  Open course list
                                 </Link>
                               </Button>
                             </div>
                           ) : (
-                            <p className="font-medium">Chưa gắn với chương trình nào</p>
+                            <p className="font-medium">Not linked to any program</p>
                           )}
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-sm">Thứ tự</p>
+                          <p className="text-muted-foreground text-sm">Order</p>
                           <p className="font-medium">{course.orderIndex ?? 0}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-sm">Ngày cập nhật</p>
+                          <p className="text-muted-foreground text-sm">Last updated</p>
                           <p className="font-medium">{formatDateTime(course.updatedAt)}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-sm">Chương</p>
+                          <p className="text-muted-foreground text-sm">Chapters</p>
                           <p className="font-medium">{syllabusSections.length}</p>
                         </div>
                         <div>
-                          <p className="text-muted-foreground text-sm">Bài học</p>
+                          <p className="text-muted-foreground text-sm">Lessons</p>
                           <p className="font-medium">{totalSyllabusItems}</p>
                         </div>
                       </div>
@@ -536,20 +536,20 @@ export function CourseDetailPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-base">
                       <ShoppingBag className="size-4" />
-                      Cấu hình bán khóa học
+                      Course sales config
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="rounded-lg border bg-muted/20 p-4">
                       <p className="text-sm font-medium">Apple Product ID</p>
                       <p className="text-muted-foreground mt-1 break-all text-sm">
-                        {appleProductId || 'Chưa cấu hình'}
+                        {appleProductId || 'Not configured'}
                       </p>
                     </div>
                     <div className="rounded-lg border bg-muted/20 p-4">
                       <p className="text-sm font-medium">Android Product ID</p>
                       <p className="text-muted-foreground mt-1 break-all text-sm">
-                        {androidProductId || 'Chưa cấu hình'}
+                        {androidProductId || 'Not configured'}
                       </p>
                     </div>
                     <Button
@@ -557,7 +557,7 @@ export function CourseDetailPage() {
                       disabled={iapMutation.isPending}
                       onClick={() => setEditIapOpen(true)}
                     >
-                      Thiết lập IAP mapping
+                      Set up IAP mapping
                     </Button>
                   </CardContent>
                 </Card>
@@ -565,7 +565,7 @@ export function CourseDetailPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Mô tả khóa học</CardTitle>
+                  <CardTitle className="text-base">Course description</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <RichTextPreview value={course.description} />
@@ -586,15 +586,14 @@ export function CourseDetailPage() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-3">
                   <div>
-                    <CardTitle className="text-base">Đợt học (lớp chạy)</CardTitle>
+                    <CardTitle className="text-base">Course runs</CardTitle>
                     <p className="text-muted-foreground mt-1 text-sm">
-                      Mỗi đợt học có lịch live, ghi danh và chat riêng. Giáo trình dùng chung ở tab
-                      Giáo trình.
+                      Each course run has its own live schedule, enrollment, and chat. Syllabus is shared.
                     </p>
                   </div>
                   <Button size="sm" onClick={() => setCreateRunOpen(true)}>
                     <Plus className="mr-2 size-4" />
-                    Thêm đợt học
+                    Add course run
                   </Button>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -602,7 +601,7 @@ export function CourseDetailPage() {
                     columns={columns}
                     data={courseRuns}
                     isLoading={runsQuery.isLoading || courseQuery.isLoading}
-                    emptyMessage="Chưa có đợt học. Tạo đợt học để mở lớp và ghi danh học viên."
+                    emptyMessage="No course runs yet. Create one to open classes and enroll students."
                   />
                 </CardContent>
               </Card>
@@ -612,7 +611,7 @@ export function CourseDetailPage() {
       ) : (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Đang tải chi tiết khóa học...
+            Loading course details...
           </CardContent>
         </Card>
       )}
@@ -630,18 +629,18 @@ export function CourseDetailPage() {
       <Sheet open={editCourseOpen} onOpenChange={setEditCourseOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sửa khóa học</SheetTitle>
+            <SheetTitle>Edit course</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Mã</Label>
+              <Label>Code</Label>
               <Input
                 value={courseForm.code}
                 onChange={(e) => setCourseForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Tiêu đề</Label>
+              <Label>Title</Label>
               <Input
                 value={courseForm.title}
                 onChange={(e) => setCourseForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -658,7 +657,7 @@ export function CourseDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Upload thumbnail mới</Label>
+              <Label>Upload new thumbnail</Label>
               <Input
                 type="file"
                 accept="image/*"
@@ -670,28 +669,28 @@ export function CourseDetailPage() {
                 }
               />
               <p className="text-xs text-muted-foreground">
-                Nếu chọn file mới, ảnh sẽ được upload bằng presigned URL và ghi đè thumbnail hiện tại.
+                If a new file is selected, it will be uploaded via presigned URL and overwrite the current thumbnail.
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Mô tả</Label>
+              <Label>Description</Label>
               <RichTextEditor
                 value={courseForm.description}
                 minHeight="14rem"
-                placeholder="Nhập mô tả khóa học với định dạng phong phú..."
+                placeholder="Enter course description with rich formatting..."
                 onChange={(description) =>
                   setCourseForm((prev) => ({ ...prev, description }))
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label>Xem trước mô tả</Label>
+              <Label>Preview description</Label>
               <div className="rounded-md border bg-muted/20 p-4">
                 <RichTextPreview value={courseForm.description} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Thứ tự</Label>
+              <Label>Order</Label>
               <Input
                 type="number"
                 value={courseForm.orderIndex}
@@ -706,7 +705,7 @@ export function CourseDetailPage() {
               onClick={() => updateCourseMutation.mutate()}
               disabled={updateCourseMutation.isPending}
             >
-              Lưu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -715,11 +714,11 @@ export function CourseDetailPage() {
       <Sheet open={editIapOpen} onOpenChange={setEditIapOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Thiết lập cấu hình bán khóa học</SheetTitle>
+            <SheetTitle>Set up course sales configuration</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-              Thiết lập mã sản phẩm cho iOS và Android để map khóa học này với gói thanh toán trong store.
+              Set up product IDs for iOS and Android to map this course with store payment packages.
             </div>
             <div className="space-y-2">
               <Label>Apple Product ID</Label>
@@ -743,7 +742,7 @@ export function CourseDetailPage() {
               onClick={() => iapMutation.mutate()}
               disabled={iapMutation.isPending}
             >
-              Lưu IAP mapping
+              Save IAP mapping
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -758,18 +757,18 @@ export function CourseDetailPage() {
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sửa đợt học</SheetTitle>
+            <SheetTitle>Edit course run</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Mã lớp</Label>
+              <Label>Class code</Label>
               <Input
                 value={runForm.code}
                 onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Trạng thái</Label>
+              <Label>Status</Label>
               <Select
                 value={runForm.status}
                 onValueChange={(value) => setRunForm((prev) => ({ ...prev, status: value }))}
@@ -788,14 +787,14 @@ export function CourseDetailPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Bắt đầu</Label>
+                <Label>Start</Label>
                 <DateTimePicker
                   value={runForm.startsAt}
                   onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Kết thúc</Label>
+                <Label>End</Label>
                 <DateTimePicker
                   value={runForm.endsAt}
                   onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
@@ -804,7 +803,7 @@ export function CourseDetailPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Mở đăng ký</Label>
+                <Label>Open enrollment</Label>
                 <DateTimePicker
                   value={runForm.enrollmentStartDate}
                   onChange={(value) =>
@@ -813,7 +812,7 @@ export function CourseDetailPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Đóng đăng ký</Label>
+                <Label>Close enrollment</Label>
                 <DateTimePicker
                   value={runForm.enrollmentEndDate}
                   onChange={(value) =>
@@ -823,7 +822,7 @@ export function CourseDetailPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Sức chứa</Label>
+              <Label>Capacity</Label>
               <Input
                 type="number"
                 value={runForm.capacity}
@@ -836,7 +835,7 @@ export function CourseDetailPage() {
               onClick={() => updateRunMutation.mutate()}
               disabled={updateRunMutation.isPending}
             >
-              Lưu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>

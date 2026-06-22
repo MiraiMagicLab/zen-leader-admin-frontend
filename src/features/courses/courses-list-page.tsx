@@ -53,9 +53,9 @@ import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { CourseResponse } from '@/services/types/domain';
 
 const schema = z.object({
-  code: z.string().trim().min(2, 'Mã phải có ít nhất 2 ký tự'),
-  title: z.string().trim().min(3, 'Tiêu đề phải có ít nhất 3 ký tự'),
-  orderIndex: z.number().int().min(0, 'Thứ tự phải >= 0'),
+  code: z.string().trim().min(2, 'Code must be at least 2 characters'),
+  title: z.string().trim().min(3, 'Title must be at least 3 characters'),
+  orderIndex: z.number().int().min(0, 'Order must be >= 0'),
 });
 
 type FormState = {
@@ -114,9 +114,9 @@ export function CoursesListPage() {
       if (!targetProgramId) {
         setFieldErrors((prev) => ({
           ...prev,
-          programId: 'Chọn chương trình.',
+          programId: 'Select a program.',
         }));
-        throw new Error('Thiếu chương trình.');
+        throw new Error('Missing program.');
       }
       const parsed = schema.safeParse({
         ...form,
@@ -144,7 +144,7 @@ export function CoursesListPage() {
       return coursesApi.create(payload);
     },
     onSuccess: (result) => {
-      toast.success(editing ? 'Đã cập nhật khóa học.' : 'Đã tạo khóa học.');
+      toast.success(editing ? 'Course updated.' : 'Course created.');
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
@@ -159,7 +159,7 @@ export function CoursesListPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => coursesApi.remove(id),
     onSuccess: () => {
-      toast.success('Đã xóa khóa học.');
+      toast.success('Course deleted.');
       setDeleteTarget(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
     },
@@ -192,20 +192,20 @@ export function CoursesListPage() {
 
   const columns = useMemo<ColumnDef<CourseResponse>[]>(() => {
     const base: ColumnDef<CourseResponse>[] = [
-      { accessorKey: 'code', header: 'Mã' },
-      { accessorKey: 'title', header: 'Tiêu đề' },
+      { accessorKey: 'code', header: 'Code' },
+      { accessorKey: 'title', header: 'Title' },
       {
         accessorKey: 'description',
-        header: 'Mô tả',
+        header: 'Description',
         cell: ({ row }) => (
           <span className="text-muted-foreground line-clamp-2 max-w-md text-sm">
-            {stripHtml(row.original.description) || 'Chưa có mô tả'}
+            {stripHtml(row.original.description) || 'No description yet'}
           </span>
         ),
       },
       {
         accessorKey: 'courseRuns',
-        header: 'Đợt học',
+        header: 'Course runs',
         cell: ({ row }) => row.original.courseRuns?.length ?? 0,
       },
     ];
@@ -213,7 +213,7 @@ export function CoursesListPage() {
     if (!isProgramScope) {
       base.splice(2, 0, {
         id: 'program',
-        header: 'Chương trình',
+        header: 'Program',
         cell: ({ row }) => (
           <Button variant="link" className="h-auto p-0" asChild>
             <Link to={ROUTES.programCourses(row.original.programId)}>
@@ -236,17 +236,17 @@ export function CoursesListPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={ROUTES.courseDetail(row.original.id)}>Chi tiết</Link>
+              <Link to={ROUTES.courseDetail(row.original.id)}>Details</Link>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => openEditDialog(row.original)}>
-              Sửa
+              Edit
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
               onClick={() => setDeleteTarget(row.original)}
             >
               <Trash2 className="mr-2 size-4" />
-              Xóa
+              Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -262,7 +262,7 @@ export function CoursesListPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to={ROUTES.programs}>
             <ArrowLeft className="mr-2 size-4" />
-            Quay lại chương trình
+            Back to programs
           </Link>
         </Button>
       ) : null}
@@ -270,18 +270,18 @@ export function CoursesListPage() {
       <PageHeader
         title={
           isProgramScope
-            ? `Khóa học — ${programQuery.data?.title ?? '...'}`
-            : 'Khóa học'
+            ? `Courses — ${programQuery.data?.title ?? '...'}`
+            : 'Courses'
         }
         description={
           isProgramScope
-            ? `Quản lý khóa học thuộc chương trình ${programQuery.data?.code ?? ''}.`
-            : 'Danh sách toàn bộ khóa học. Tạo mới hoặc mở chi tiết để chỉnh giáo trình.'
+            ? `Manage courses for program ${programQuery.data?.code ?? ''}.`
+            : 'All courses. Create new or open details to edit syllabus.'
         }
         actions={
           <Button onClick={openCreateDialog} disabled={saveMutation.isPending}>
             <Plus className="mr-2 size-4" />
-            Thêm khóa học
+            Add course
           </Button>
         }
       />
@@ -291,7 +291,7 @@ export function CoursesListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Tìm theo mã hoặc tiêu đề…"
+            placeholder="Search by code or title…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -316,8 +316,8 @@ export function CoursesListPage() {
         pageOffset={page * 20}
         emptyMessage={
           isProgramScope
-            ? 'Chưa có khóa học. Bấm "Thêm khóa học" để tạo mới.'
-            : 'Chưa có khóa học nào. Bấm "Thêm khóa học" để tạo mới.'
+            ? 'No courses yet. Click "Add course" to create one.'
+            : 'No courses yet. Click "Add course" to create one.'
         }
         showPagination={false}
       />
@@ -329,10 +329,10 @@ export function CoursesListPage() {
           disabled={page <= 0}
           onClick={() => setPage((p) => p - 1)}
         >
-          Trang trước
+          Previous page
         </Button>
         <span className="text-muted-foreground text-sm">
-          Trang {page + 1} / {coursesQuery.data?.totalPages ?? 1}
+          Page {page + 1} / {coursesQuery.data?.totalPages ?? 1}
         </span>
         <Button
           variant="outline"
@@ -340,24 +340,24 @@ export function CoursesListPage() {
           disabled={page + 1 >= (coursesQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Trang sau
+          Next page
         </Button>
       </div>
 
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>{editing ? 'Sửa khóa học' : 'Thêm khóa học'}</SheetTitle>
+            <SheetTitle>{editing ? 'Edit course' : 'Add course'}</SheetTitle>
             {!editing ? (
               <p className="text-muted-foreground text-sm">
-                Sau khi tạo, bạn sẽ được chuyển sang tab Giáo trình để thêm bài học.
+                After creation, you will be taken to the Syllabus tab to add lessons.
               </p>
             ) : null}
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             {!isProgramScope && !editing ? (
               <div className="space-y-2">
-                <Label>Chương trình</Label>
+                <Label>Program</Label>
                 <Select
                   value={form.programId || undefined}
                   onValueChange={(value) => {
@@ -372,7 +372,7 @@ export function CoursesListPage() {
                   }}
                 >
                   <SelectTrigger aria-invalid={Boolean(fieldErrors.programId)}>
-                    <SelectValue placeholder="Chọn chương trình" />
+                    <SelectValue placeholder="Select program" />
                   </SelectTrigger>
                   <SelectContent>
                     {(programsQuery.data ?? []).map((program) => (
@@ -389,7 +389,7 @@ export function CoursesListPage() {
             ) : null}
             {!isProgramScope && editing ? (
               <div className="space-y-2">
-                <Label>Chương trình</Label>
+                <Label>Program</Label>
                 <p className="text-sm">
                   <Button variant="link" className="h-auto p-0" asChild>
                     <Link to={ROUTES.programCourses(editing.programId)}>
@@ -401,7 +401,7 @@ export function CoursesListPage() {
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Mã</Label>
+                <Label>Code</Label>
                 <Input
                   value={form.code}
                   aria-invalid={Boolean(fieldErrors.code)}
@@ -421,7 +421,7 @@ export function CoursesListPage() {
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label>Thứ tự</Label>
+                <Label>Order</Label>
                 <Input
                   type="number"
                   value={form.orderIndex}
@@ -443,7 +443,7 @@ export function CoursesListPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Tiêu đề</Label>
+              <Label>Title</Label>
               <Input
                 value={form.title}
                 aria-invalid={Boolean(fieldErrors.title)}
@@ -463,11 +463,11 @@ export function CoursesListPage() {
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label>Mô tả</Label>
+              <Label>Description</Label>
               <RichTextEditor
                 value={form.description}
                 minHeight="10rem"
-                placeholder="Mô tả ngắn khóa học (có thể bổ sung sau)…"
+                placeholder="Short course description (can be added later)…"
                 onChange={(description) =>
                   setForm((f) => ({ ...f, description }))
                 }
@@ -489,7 +489,7 @@ export function CoursesListPage() {
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              Lưu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -498,17 +498,17 @@ export function CoursesListPage() {
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xóa khóa học?</AlertDialogTitle>
+            <AlertDialogTitle>Delete course?</AlertDialogTitle>
             <AlertDialogDescription>
-              Xóa &quot;{deleteTarget?.title}&quot;
+              Delete &quot;{deleteTarget?.title}&quot;
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
-              Xóa
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -6,30 +6,30 @@ import { User, Download, Settings, Users } from 'lucide-react';
 
 const activities = [
   {
-    action: 'Đăng nhập admin',
+    action: 'Admin login',
     user: 'admin',
-    time: '2 phút trước',
+    time: '2 minutes ago',
     icon: User,
     color: 'text-blue-500',
   },
   {
-    action: 'Xuất danh sách học viên',
+    action: 'Export student list',
     user: 'admin',
-    time: '5 phút trước',
+    time: '5 minutes ago',
     icon: Download,
     color: 'text-green-500',
   },
   {
-    action: 'Cập nhật cài đặt khóa học',
+    action: 'Course settings updated',
     user: 'admin',
-    time: '10 phút trước',
+    time: '10 minutes ago',
     icon: Settings,
     color: 'text-orange-500',
   },
   {
-    action: 'Học viên mới đăng ký',
+    action: 'New student registered',
     user: 'nguyen.van.a@zenleader.online',
-    time: '15 phút trước',
+    time: '15 minutes ago',
     icon: Users,
     color: 'text-purple-500',
   },
@@ -38,7 +38,7 @@ const activities = [
 export const RecentActivity = memo(() => {
   return (
     <div className="border-border bg-card/40 rounded-xl border p-6">
-      <h3 className="mb-4 text-xl font-semibold">Hoạt động gần đây</h3>
+      <h3 className="mb-4 text-xl font-semibold">Recent Activity</h3>
       <div className="space-y-4">
         {activities.map((activity, index) => {
           const Icon = activity.icon;

@@ -70,7 +70,7 @@ function readFileAttachment(
 
 const TYPE_LABELS: Record<string, string> = {
   VIDEO: 'Video',
-  ARTICLE: 'Bài viết',
+  ARTICLE: 'Article',
 };
 
 function normalizeItemType(type: string): string {
@@ -147,13 +147,13 @@ export function SyllabusItemEditorSheet({
     mutationFn: async () => {
       const trimmedTitle = title.trim();
       if (!trimmedTitle) {
-        throw new Error('Vui lòng nhập tiêu đề bài học.');
+        throw new Error('Please enter a lesson title.');
       }
 
       const itemType = type.toUpperCase();
       if (itemType === 'VIDEO') {
         if (!videoFile && !existingVideoAttachment) {
-          throw new Error('Vui lòng chọn file video từ máy.');
+          throw new Error('Please select a video file.');
         }
       }
 
@@ -193,7 +193,7 @@ export function SyllabusItemEditorSheet({
       }
     },
     onSuccess: async () => {
-      toast.success(isEdit ? 'Đã lưu bài học.' : 'Đã tạo bài học.');
+      toast.success(isEdit ? 'Lesson saved.' : 'Lesson created.');
       await invalidate();
       onOpenChange(false);
     },
@@ -206,40 +206,40 @@ export function SyllabusItemEditorSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[640px] sm:max-w-[640px]">
         <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-          <SheetTitle>{isEdit ? 'Sửa bài học' : 'Thêm bài học'}</SheetTitle>
+          <SheetTitle>{isEdit ? 'Edit lesson' : 'Add lesson'}</SheetTitle>
           {sectionTitle ? (
-            <p className="text-muted-foreground text-sm">Chương: {sectionTitle}</p>
+            <p className="text-muted-foreground text-sm">Chapter: {sectionTitle}</p>
           ) : null}
         </SheetHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           <div className="space-y-2">
-            <Label>Tiêu đề *</Label>
+            <Label>Title *</Label>
             <Input
               value={title}
-              placeholder="VD: Buổi 1 — Giới thiệu Zen Leader"
+              placeholder="e.g. Session 1 — Introduction to Zen Leader"
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Loại</Label>
+              <Label>Type</Label>
               <Select value={type} onValueChange={setType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="VIDEO">Video</SelectItem>
-                  <SelectItem value="ARTICLE">Bài viết</SelectItem>
+                  <SelectItem value="ARTICLE">Article</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Mô tả ngắn</Label>
+              <Label>Short description</Label>
               <Input
                 value={description}
-                placeholder="Tuỳ chọn"
+                placeholder="Optional"
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
@@ -247,7 +247,7 @@ export function SyllabusItemEditorSheet({
 
           {itemType === 'VIDEO' ? (
             <div className="space-y-2">
-              <Label>Video từ máy *</Label>
+              <Label>Local video *</Label>
               <Input
                 type="file"
                 accept="video/*"
@@ -255,7 +255,7 @@ export function SyllabusItemEditorSheet({
               />
               {videoFile ? (
                 <p className="text-muted-foreground text-xs">
-                  Đã chọn: {videoFile.name} ({Math.round(videoFile.size / 1024 / 1024)} MB)
+                  Đã chọn: → Selected: {videoFile.name} ({Math.round(videoFile.size / 1024 / 1024)} MB)
                 </p>
               ) : existingVideoAttachment ? (
                 <p className="text-muted-foreground text-xs">
@@ -264,38 +264,38 @@ export function SyllabusItemEditorSheet({
                 </p>
               ) : (
                 <p className="text-muted-foreground text-xs">
-                  Chọn file video trên máy — hệ thống upload lên R2 và gắn vào bài học.
+                  Chọn file video trên máy — hệ thống upload lên R2 và gắn vào bài học. → Select a local video file — the system uploads it to R2 and attaches it to the lesson.
                 </p>
               )}
             </div>
           ) : (
             <div className="space-y-2">
-              <Label>Nội dung bài viết</Label>
+              <Label>Article content</Label>
               <RichTextEditor
                 value={body}
                 minHeight="12rem"
-                placeholder="Soạn nội dung hiển thị trên app…"
+                placeholder="Compose content shown in app…"
                 onChange={setBody}
               />
             </div>
           )}
 
           <details className="rounded-lg border p-3">
-            <summary className="cursor-pointer text-sm font-medium">Tuỳ chọn nâng cao</summary>
+            <summary className="cursor-pointer text-sm font-medium">Advanced options</summary>
             <div className="mt-3 space-y-3">
               <div className="flex flex-wrap gap-6">
                 <label className="flex items-center gap-2 text-sm">
                   <Switch checked={isHidden} onCheckedChange={setIsHidden} />
-                  Ẩn với học viên
+                  Hidden from students
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <Switch checked={isOptional} onCheckedChange={setIsOptional} />
-                  Bài tuỳ chọn
+                  Optional lesson
                 </label>
               </div>
               {isEdit ? (
                 <p className="text-muted-foreground text-xs">
-                  Loại hiện tại: {TYPE_LABELS[itemType] ?? itemType}.
+                  Current type: {TYPE_LABELS[itemType] ?? itemType}.
                 </p>
               ) : null}
             </div>
@@ -304,13 +304,13 @@ export function SyllabusItemEditorSheet({
 
         <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Huỷ
+            Cancel
           </Button>
           <Button
             onClick={() => saveMutation.mutate()}
             disabled={saveMutation.isPending || (isEdit && itemQuery.isLoading)}
           >
-            {isEdit ? 'Lưu' : 'Tạo bài học'}
+            {isEdit ? 'Save' : 'Create lesson'}
           </Button>
         </SheetFooter>
       </SheetContent>

@@ -5,16 +5,16 @@ export function normalizeEventStatus(status: string | null | undefined): string 
 export function eventStatusLabel(status: string | null | undefined): string {
   switch (normalizeEventStatus(status)) {
     case 'DRAFT':
-      return 'Nháp';
+      return 'Draft';
     case 'PUBLISHED':
-      return 'Đã xuất bản';
+      return 'Published';
     case 'COMPLETED':
-      return 'Đã kết thúc';
+      return 'Completed';
     default:
       return status?.trim() || '—';
   }
 }
 
 export function eventTypeLabel(isOfficial: boolean): string {
-  return isOfficial ? 'Hệ thống' : 'Người dùng';
+  return isOfficial ? 'System' : 'User';
 }

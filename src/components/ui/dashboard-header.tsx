@@ -126,7 +126,7 @@ export const DashboardHeader = memo(() => {
               ) : (
                 <Moon className="mr-2 h-4 w-4" />
               )}
-              {isDark ? 'Chế độ sáng' : 'Chế độ tối'}
+              {isDark ? 'Light mode' : 'Dark mode'}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -134,7 +134,7 @@ export const DashboardHeader = memo(() => {
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Đăng xuất
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

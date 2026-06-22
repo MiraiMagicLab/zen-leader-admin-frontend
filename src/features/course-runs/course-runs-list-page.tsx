@@ -76,10 +76,10 @@ export function CourseRunsListPage() {
 
   const columns = useMemo<ColumnDef<CourseRunResponse>[]>(
     () => [
-      { accessorKey: 'code', header: 'Mã lớp' },
+      { accessorKey: 'code', header: 'Class code' },
       {
         id: 'course',
-        header: 'Khóa học',
+        header: 'Course',
         cell: ({ row }) => {
           const label = courseTitleById.get(row.original.courseId);
           if (!label) {
@@ -98,22 +98,22 @@ export function CourseRunsListPage() {
       },
       {
         accessorKey: 'status',
-        header: 'Trạng thái',
+        header: 'Status',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
       },
       {
         accessorKey: 'startsAt',
-        header: 'Bắt đầu',
+        header: 'Start',
         cell: ({ row }) => formatDateTime(row.original.startsAt),
       },
       {
         accessorKey: 'endsAt',
-        header: 'Kết thúc',
+        header: 'End',
         cell: ({ row }) => formatDateTime(row.original.endsAt),
       },
       {
         accessorKey: 'capacity',
-        header: 'Sức chứa',
+        header: 'Capacity',
         cell: ({ row }) => row.original.capacity ?? '—',
       },
       {
@@ -128,7 +128,7 @@ export function CourseRunsListPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link to={ROUTES.courseRunDetail(row.original.id)}>Chi tiết</Link>
+                <Link to={ROUTES.courseRunDetail(row.original.id)}>Details</Link>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -141,12 +141,12 @@ export function CourseRunsListPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Đợt học"
-        description="Danh sách tất cả đợt học. Tạo mới hoặc mở chi tiết để quản lý buổi học và ghi danh."
+        title="Course Runs"
+        description="All course runs. Create new or open details to manage sessions and enrollment."
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 size-4" />
-            Thêm đợt học
+            Add course run
           </Button>
         }
       />
@@ -156,7 +156,7 @@ export function CourseRunsListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Tìm theo mã lớp hoặc khóa học…"
+            placeholder="Search by class code or course…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -168,7 +168,7 @@ export function CourseRunsListPage() {
           <SelectContent>
             {STATUS_OPTIONS.map((s) => (
               <SelectItem key={s} value={s}>
-                {s === 'all' ? 'Tất cả trạng thái' : s}
+                {s === 'all' ? 'All statuses' : s}
               </SelectItem>
             ))}
           </SelectContent>
@@ -181,7 +181,7 @@ export function CourseRunsListPage() {
         isLoading={runsQuery.isLoading}
         showRowIndex
         pageOffset={page * 20}
-        emptyMessage='Chưa có đợt học. Bấm "Thêm đợt học" để tạo lớp mới.'
+        emptyMessage='No course runs yet. Click "Add course run" to create one.'
         showPagination={false}
       />
 
@@ -192,10 +192,10 @@ export function CourseRunsListPage() {
           disabled={page <= 0}
           onClick={() => setPage((p) => p - 1)}
         >
-          Trang trước
+          Previous page
         </Button>
         <span className="text-muted-foreground text-sm">
-          Trang {page + 1} / {runsQuery.data?.totalPages ?? 1}
+          Page {page + 1} / {runsQuery.data?.totalPages ?? 1}
         </span>
         <Button
           variant="outline"
@@ -203,7 +203,7 @@ export function CourseRunsListPage() {
           disabled={page + 1 >= (runsQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Trang sau
+          Next page
         </Button>
       </div>
 

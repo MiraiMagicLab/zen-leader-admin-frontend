@@ -1,9 +1,9 @@
 export const BRAND = {
   name: 'Zen Leader',
   adminTitle: 'Zen Leader Admin',
-  adminSubtitle: 'Bảng điều khiển quản trị',
+  adminSubtitle: 'Admin Dashboard',
   tagline:
-    'Nền tảng học tập và cộng đồng — quản lý khóa học, lớp học và người dùng trong một không gian thống nhất.',
+    'Learning and community platform — manage courses, classes, and users in a unified space.',
   copyright: 'Zen Leader',
   version: 'v0.0.1',
   storageKey: 'zen-leader-admin-auth',

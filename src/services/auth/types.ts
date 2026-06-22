@@ -9,7 +9,7 @@ export type RefreshTokenRequest = {
   refreshToken: string;
 };
 
-/** Khớp AuthenticationResponse từ backend (chỉ chứa token) */
+/** Matches AuthenticationResponse from backend (token only) */
 export type TokenResponseDto = {
   authenticated: boolean;
   accessToken: string;
@@ -31,7 +31,7 @@ export type AuthUserDto = {
   updatedAt?: string;
 };
 
-/** Khớp thông tin session gộp ở Frontend */
+/** Matches merged session info at Frontend */
 export type AuthenticationDto = TokenResponseDto & {
   user: AuthUserDto;
 };

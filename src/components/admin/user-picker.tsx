@@ -25,7 +25,7 @@ type UserPickerProps = {
 export function UserPicker({
   selectedUser,
   onSelect,
-  label = 'Chọn người dùng',
+  label = 'Select user',
   open = true,
 }: UserPickerProps) {
   const [keyword, setKeyword] = useState('');
@@ -66,7 +66,7 @@ export function UserPicker({
             <p className="text-muted-foreground text-xs">{selectedUser.email}</p>
           </div>
           <Button type="button" variant="ghost" size="sm" onClick={() => onSelect(null)}>
-            Đổi
+            Change
           </Button>
         </div>
       ) : (
@@ -75,7 +75,7 @@ export function UserPicker({
             <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               className="pl-9"
-              placeholder="Lọc theo email hoặc tên…"
+              placeholder="Filter by email or name…"
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
             />
@@ -88,7 +88,7 @@ export function UserPicker({
             <ul className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-1">
               {users.length === 0 ? (
                 <li className="text-muted-foreground px-2 py-3 text-center text-sm">
-                  {search ? 'Không tìm thấy người dùng.' : 'Chưa có người dùng nào.'}
+                  {search ? 'No users found.' : 'No users yet.'}
                 </li>
               ) : (
                 users.map((user) => (
@@ -110,7 +110,7 @@ export function UserPicker({
           )}
           {!usersQuery.isLoading && users.length > 0 && !search ? (
             <p className="text-muted-foreground text-xs">
-              Hiển thị {users.length} người dùng gần nhất. Gõ để lọc thêm.
+              Showing {users.length} most recent users. Type to filter more.
             </p>
           ) : null}
         </>

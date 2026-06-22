@@ -27,7 +27,7 @@ function exec(command: string, value?: string) {
 export function RichTextEditor({
   value,
   onChange,
-  placeholder = 'Nhập nội dung…',
+  placeholder = 'Enter content…',
   className,
   minHeight = '12rem',
 }: RichTextEditorProps) {
@@ -56,7 +56,7 @@ export function RichTextEditor({
   }, [onChange]);
 
   const handleLink = () => {
-    const url = window.prompt('URL liên kết');
+    const url = window.prompt('Link URL');
     if (url?.trim()) {
       exec('createLink', url.trim());
       emitChange();
@@ -76,7 +76,7 @@ export function RichTextEditor({
             exec('bold');
             emitChange();
           }}
-          aria-label="In đậm"
+          aria-label="Bold"
         >
           <Bold className="size-4" />
         </Button>
@@ -90,7 +90,7 @@ export function RichTextEditor({
             exec('italic');
             emitChange();
           }}
-          aria-label="In nghiêng"
+          aria-label="Italic"
         >
           <Italic className="size-4" />
         </Button>
@@ -104,7 +104,7 @@ export function RichTextEditor({
             exec('underline');
             emitChange();
           }}
-          aria-label="Gạch chân"
+          aria-label="Underline"
         >
           <Underline className="size-4" />
         </Button>
@@ -118,7 +118,7 @@ export function RichTextEditor({
             exec('insertUnorderedList');
             emitChange();
           }}
-          aria-label="Danh sách"
+          aria-label="Bullet list"
         >
           <List className="size-4" />
         </Button>
@@ -132,7 +132,7 @@ export function RichTextEditor({
             exec('insertOrderedList');
             emitChange();
           }}
-          aria-label="Danh sách số"
+          aria-label="Numbered list"
         >
           <ListOrdered className="size-4" />
         </Button>
@@ -143,7 +143,7 @@ export function RichTextEditor({
           className="size-8"
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleLink}
-          aria-label="Chèn liên kết"
+          aria-label="Insert link"
         >
           <Link className="size-4" />
         </Button>
@@ -157,7 +157,7 @@ export function RichTextEditor({
             exec('removeFormat');
             emitChange();
           }}
-          aria-label="Xóa định dạng"
+          aria-label="Clear formatting"
         >
           <RemoveFormatting className="size-4" />
         </Button>

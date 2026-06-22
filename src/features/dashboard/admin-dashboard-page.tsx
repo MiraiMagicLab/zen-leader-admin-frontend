@@ -35,26 +35,26 @@ import { useAuthStore } from '@/stores/auth-store';
 
 const quickLinks = [
   {
-    title: 'Quản lý người dùng',
-    description: 'Phân quyền, khóa tài khoản và xem hồ sơ học viên.',
+    title: 'Manage users',
+    description: 'Roles, account locks, and student profiles.',
     href: ROUTES.users,
     icon: Users,
   },
   {
-    title: 'Tạo khóa học',
-    description: 'Thêm khóa học, giáo trình và đợt học.',
+    title: 'Create course',
+    description: 'Add courses, syllabus, and course runs.',
     href: ROUTES.courses,
     icon: BookOpen,
   },
   {
-    title: 'Sự kiện & live',
-    description: 'Lên lịch sự kiện và quản lý phiên live.',
+    title: 'Events & live',
+    description: 'Schedule events and manage live sessions.',
     href: ROUTES.events,
     icon: CalendarDays,
   },
   {
-    title: 'Kiểm duyệt nội dung',
-    description: 'Xử lý báo cáo UGC và tin nhắn lớp học.',
+    title: 'Content moderation',
+    description: 'Handle UGC reports and class messages.',
     href: ROUTES.moderation,
     icon: ShieldAlert,
   },
@@ -102,21 +102,21 @@ export function AdminDashboardPage() {
           <div className="space-y-3">
             <div className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium">
               <Sparkles className="size-3.5" />
-              Bảng điều khiển quản trị
+              Admin Dashboard
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
-                Xin chào, {displayName}
+                Hello, {displayName}
               </h1>
               <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed md:text-base">
-                Tổng quan hoạt động nền tảng {BRAND.name} — theo dõi người dùng,
-                nội dung học và vận hành hệ thống.
+                {BRAND.name} platform overview — track users,
+                learning content, and system operations.
               </p>
             </div>
           </div>
           <div className="bg-background/70 grid grid-cols-2 gap-3 rounded-xl border p-4 backdrop-blur-sm sm:min-w-[240px]">
             <div>
-              <p className="text-muted-foreground text-xs">Sự kiện</p>
+              <p className="text-muted-foreground text-xs">Events</p>
               {isLoading ? (
                 <Skeleton className="mt-1 h-7 w-10" />
               ) : (
@@ -126,7 +126,7 @@ export function AdminDashboardPage() {
               )}
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Đợt học</p>
+              <p className="text-muted-foreground text-xs">Course runs</p>
               {isLoading ? (
                 <Skeleton className="mt-1 h-7 w-10" />
               ) : (
@@ -141,14 +141,14 @@ export function AdminDashboardPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold">Thống kê nhanh</h2>
+          <h2 className="text-lg font-semibold">Quick stats</h2>
           <p className="text-muted-foreground text-sm">
-            Số liệu tổng hợp từ backend theo thời gian thực.
+            Real-time aggregated metrics from the backend.
           </p>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            title="Người dùng"
+            title="Users"
             value={formatNumber(stats?.users ?? 0)}
             icon={Users}
             href={ROUTES.users}
@@ -156,7 +156,7 @@ export function AdminDashboardPage() {
             isLoading={isLoading}
           />
           <StatCard
-            title="Chương trình"
+            title="Programs"
             value={formatNumber(stats?.programs ?? 0)}
             icon={GraduationCap}
             href={ROUTES.programs}
@@ -164,7 +164,7 @@ export function AdminDashboardPage() {
             isLoading={isLoading}
           />
           <StatCard
-            title="Khóa học"
+            title="Courses"
             value={formatNumber(stats?.courses ?? 0)}
             icon={BookOpen}
             href={ROUTES.courses}
@@ -172,7 +172,7 @@ export function AdminDashboardPage() {
             isLoading={isLoading}
           />
           <StatCard
-            title="Đợt học"
+            title="Course Runs"
             value={formatNumber(stats?.runs ?? 0)}
             icon={Activity}
             href={ROUTES.courseRuns}
@@ -185,9 +185,9 @@ export function AdminDashboardPage() {
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="shadow-sm xl:col-span-2">
           <CardHeader>
-            <CardTitle>Thao tác nhanh</CardTitle>
+            <CardTitle>Quick actions</CardTitle>
             <CardDescription>
-              Truy cập nhanh các khu vực quản trị thường dùng.
+              Quick access to frequently used admin areas.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -197,13 +197,13 @@ export function AdminDashboardPage() {
 
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Module vận hành</CardTitle>
-            <CardDescription>Các mục hỗ trợ vận hành hàng ngày.</CardDescription>
+            <CardTitle>Operations modules</CardTitle>
+            <CardDescription>Items supporting daily operations.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {[
-              { label: 'Thanh toán & đơn hàng', icon: CreditCard, href: ROUTES.payments },
-              { label: 'Đợt học đang mở', icon: Layers, href: ROUTES.courseRuns },
+              { label: 'Payments & orders', icon: CreditCard, href: ROUTES.payments },
+              { label: 'Active course runs', icon: Layers, href: ROUTES.courseRuns },
             ].map((item) => {
               const Icon = item.icon;
               return (

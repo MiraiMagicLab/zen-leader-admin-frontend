@@ -29,7 +29,7 @@ export function NotificationsPage() {
           : undefined,
       }),
     onSuccess: (result) => {
-      toast.success(`Đã gửi ${result.sentCount} thông báo.`);
+      toast.success(`Sent ${result.sentCount} notifications.`);
       setTitle('');
       setMessage('');
       setUserIds('');
@@ -40,21 +40,21 @@ export function NotificationsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
-        title="Thông báo"
-        description="Gửi thông báo hệ thống tới người dùng cụ thể hoặc toàn bộ user."
+        title="Notifications"
+        description="Send system notifications to specific users or all users."
       />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Broadcast thông báo</CardTitle>
+          <CardTitle className="text-base">Broadcast notification</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Tiêu đề</Label>
+            <Label>Title</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Nội dung</Label>
+            <Label>Content</Label>
             <Textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -62,15 +62,15 @@ export function NotificationsPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label>Loại (type)</Label>
+            <Label>Type</Label>
             <Input value={type} onChange={(e) => setType(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>User IDs (tùy chọn, phân cách bằng dấu phẩy)</Label>
+            <Label>User IDs (optional, comma-separated)</Label>
             <Input
               value={userIds}
               onChange={(e) => setUserIds(e.target.value)}
-              placeholder="Để trống = gửi tất cả user"
+              placeholder="Leave empty = send to all users"
             />
           </div>
           <Button
@@ -78,7 +78,7 @@ export function NotificationsPage() {
             onClick={() => broadcastMutation.mutate()}
           >
             <Send className="mr-2 size-4" />
-            Gửi thông báo
+            Send notification
           </Button>
         </CardContent>
       </Card>

@@ -73,6 +73,6 @@ export const useAuthStore = create<AuthState>()(
   ),
 );
 
-/** Đăng nhập = có access token hợp lệ trong store (single source of truth) */
+/** Logged in = valid access token in store (single source of truth) */
 export const selectIsAuthenticated = (state: AuthState): boolean =>
   Boolean(state.accessToken && state.user);

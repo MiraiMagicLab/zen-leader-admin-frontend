@@ -21,15 +21,15 @@ export const RevenueChart = memo(() => {
         <div>
           <h3 className="flex items-center gap-2 text-lg font-semibold">
             <BarChart3 className="h-5 w-5 text-green-500" />
-            Doanh thu khóa học
+            Course Revenue
           </h3>
           <p className="text-muted-foreground text-sm">
-            Hiệu suất doanh thu theo tháng (VNĐ)
+            Monthly revenue performance (VND)
           </p>
         </div>
         <Button variant="outline" size="sm">
           <Calendar className="mr-2 h-4 w-4" />
-          6 tháng gần nhất
+          Last 6 months
         </Button>
       </div>
 
@@ -68,16 +68,16 @@ export const RevenueChart = memo(() => {
 
       <div className="border-border/50 grid grid-cols-3 gap-4 border-t pt-4">
         <div className="text-center">
-          <div className="text-2xl font-bold text-green-500">27 tỷ</div>
-          <div className="text-muted-foreground text-xs">Tổng doanh thu</div>
+          <div className="text-2xl font-bold text-green-500">27B</div>
+          <div className="text-muted-foreground text-xs">Total Revenue</div>
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-blue-500">+18%</div>
-          <div className="text-muted-foreground text-xs">Tăng trưởng</div>
+          <div className="text-muted-foreground text-xs">Growth</div>
         </div>
         <div className="text-center">
-          <div className="text-2xl font-bold text-purple-500">4,5 tỷ</div>
-          <div className="text-muted-foreground text-xs">Trung bình/tháng</div>
+          <div className="text-2xl font-bold text-purple-500">4.5B</div>
+          <div className="text-muted-foreground text-xs">Average/month</div>
         </div>
       </div>
     </div>
