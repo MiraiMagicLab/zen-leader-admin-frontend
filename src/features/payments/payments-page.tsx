@@ -23,7 +23,7 @@ import { paymentsApi } from '@/services/payments/payments-api';
 import type { AdminPaymentOrderResponse } from '@/services/types/domain';
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'Tất cả' },
+  { value: 'all', label: 'All' },
   { value: 'PENDING', label: 'PENDING' },
   { value: 'PAID', label: 'PAID' },
   { value: 'ENROLL_FAILED', label: 'ENROLL_FAILED' },
@@ -62,7 +62,7 @@ export function PaymentsPage() {
   const retryMutation = useMutation({
     mutationFn: (orderId: string) => paymentsApi.retryEnrollment(orderId),
     onSuccess: () => {
-      toast.success('Đã thử ghi danh lại.');
+      toast.success('Re-enrollment attempted.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -72,14 +72,14 @@ export function PaymentsPage() {
     () => [
       {
         accessorKey: 'orderId',
-        header: 'Mã đơn',
+        header: 'Order code',
         cell: ({ row }) => (
           <span className="font-mono text-xs">{row.original.orderId.slice(0, 8)}…</span>
         ),
       },
       {
         id: 'user',
-        header: 'Người dùng',
+        header: 'User',
         cell: ({ row }) => (
           <div>
             <p className="font-medium">{row.original.userDisplayName}</p>
@@ -89,32 +89,32 @@ export function PaymentsPage() {
       },
       {
         accessorKey: 'courseRunCode',
-        header: 'Đợt học',
+        header: 'Course run',
       },
       {
         accessorKey: 'amount',
-        header: 'Số tiền',
+        header: 'Amount',
         cell: ({ row }) =>
           `${row.original.amount.toLocaleString()} ${row.original.currency}`,
       },
       {
         accessorKey: 'status',
-        header: 'Trạng thái',
+        header: 'Status',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
       },
       {
         accessorKey: 'enrollmentActive',
-        header: 'Ghi danh',
+        header: 'Enrolled',
         cell: ({ row }) =>
           row.original.enrollmentActive ? (
             <Badge>Active</Badge>
           ) : (
-            <Badge variant="outline">Chưa</Badge>
+            <Badge variant="outline">Not yet</Badge>
           ),
       },
       {
         accessorKey: 'createdAt',
-        header: 'Tạo lúc',
+        header: 'Created at',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -129,7 +129,7 @@ export function PaymentsPage() {
               disabled={retryMutation.isPending}
               onClick={() => retryMutation.mutate(row.original.orderId)}
             >
-              Retry ghi danh
+              Retry enrollment
             </Button>
           ) : null,
       },
@@ -140,8 +140,8 @@ export function PaymentsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Thanh toán"
-        description="Theo dõi đơn hàng và xử lý lỗi ghi danh sau thanh toán."
+        title="Payments"
+        description="Track orders and handle enrollment errors after payment."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -162,7 +162,7 @@ export function PaymentsPage() {
               onClick={() => void ordersQuery.refetch()}
             >
               <RefreshCw className="mr-2 size-4" />
-              Làm mới
+               Refresh
             </Button>
           </div>
         }
@@ -173,7 +173,7 @@ export function PaymentsPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Tìm theo tên, email hoặc mã đơn…"
+            placeholder="Search by name, email, or order code…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -184,27 +184,31 @@ export function PaymentsPage() {
         columns={columns}
         data={ordersQuery.data?.data ?? []}
         isLoading={ordersQuery.isLoading}
-        emptyMessage="Chưa có đơn thanh toán."
+        emptyMessage="No payment orders yet."
         showRowIndex
         pageOffset={page * 20}
+        showPagination={false}
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
           disabled={page <= 0}
           onClick={() => setPage((p) => p - 1)}
         >
-          Trang trước
+          Previous page
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Page {page + 1} / {ordersQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"
           disabled={page + 1 >= (ordersQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Trang sau
+          Next page
         </Button>
       </div>
     </div>

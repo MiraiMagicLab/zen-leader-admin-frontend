@@ -67,7 +67,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   if (!hasHydrated || isCheckingSession) {
     return (
       <div className="bg-background flex min-h-svh items-center justify-center">
-        <div className="text-muted-foreground text-sm">Dang tai...</div>
+        <div className="text-muted-foreground text-sm">Loading...</div>
       </div>
     );
   }

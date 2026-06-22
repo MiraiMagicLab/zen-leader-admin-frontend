@@ -13,28 +13,28 @@ interface QuickActionsProps {
 const actions = [
   {
     icon: Users,
-    label: 'Thêm học viên',
+    label: 'Add Student',
     color: 'blue',
     shortcut: 'Ctrl+N',
     action: 'addUser',
   },
   {
     icon: BarChart3,
-    label: 'Xem thống kê',
+    label: 'View Statistics',
     color: 'green',
     shortcut: 'Ctrl+A',
     action: 'analytics',
   },
   {
     icon: Download,
-    label: 'Xuất báo cáo',
+    label: 'Export Report',
     color: 'purple',
     shortcut: 'Ctrl+E',
     action: 'export',
   },
   {
     icon: Settings,
-    label: 'Cài đặt hệ thống',
+    label: 'System Settings',
     color: 'orange',
     shortcut: 'Ctrl+S',
     action: 'settings',
@@ -62,7 +62,7 @@ export const QuickActions = memo(
 
     return (
       <div className="border-border bg-card/40 rounded-xl border p-6">
-        <h3 className="mb-4 text-xl font-semibold">Thao tác nhanh</h3>
+        <h3 className="mb-4 text-xl font-semibold">Quick Actions</h3>
         <div className="space-y-3">
           {actions.map((action) => {
             const Icon = action.icon;

@@ -33,7 +33,7 @@ export function DateTimePicker({
   onChange,
   disabled,
   id,
-  placeholder = 'Chọn ngày giờ',
+  placeholder = 'Select date and time',
   className,
 }: DateTimePickerProps) {
   const [open, setOpen] = useState(false);
@@ -87,7 +87,7 @@ export function DateTimePicker({
           onSelect={pickDate}
         />
         <div className="space-y-2 border-t p-3">
-          <Label className="text-muted-foreground text-xs">Giờ</Label>
+          <Label className="text-muted-foreground text-xs">Hour</Label>
           <Input
             type="time"
             value={timeValue}
@@ -96,10 +96,10 @@ export function DateTimePicker({
           />
           <div className="flex justify-between gap-2 pt-1">
             <Button type="button" variant="ghost" size="sm" onClick={pickNow}>
-              Bây giờ
+              Now
             </Button>
             <Button type="button" size="sm" onClick={() => setOpen(false)}>
-              Xong
+              Done
             </Button>
           </div>
         </div>

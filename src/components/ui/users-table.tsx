@@ -21,14 +21,14 @@ const users = [
     role: 'Admin',
     status: 'active',
     joinDate: '2025-01-15',
-    location: 'Hà Nội, VN',
+    location: 'Hanoi, VN',
   },
   {
     id: 2,
     name: 'Trần Thị Bích',
     email: 'tran.thi.bich@zenleader.online',
     avatar: 'https://i.pravatar.cc/150?u=zen2',
-    role: 'Học viên',
+    role: 'Student',
     status: 'active',
     joinDate: '2025-02-20',
     location: 'TP. HCM, VN',
@@ -38,10 +38,10 @@ const users = [
     name: 'Lê Minh Cường',
     email: 'le.minh.cuong@zenleader.online',
     avatar: 'https://i.pravatar.cc/150?u=zen3',
-    role: 'Học viên',
+    role: 'Student',
     status: 'inactive',
     joinDate: '2025-01-08',
-    location: 'Đà Nẵng, VN',
+    location: 'Da Nang, VN',
   },
 ];
 
@@ -54,9 +54,9 @@ export const UsersTable = memo(({ onAddUser }: UsersTableProps) => {
     <div className="border-border bg-card/40 rounded-xl border p-3 sm:p-6">
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h3 className="text-lg font-semibold sm:text-xl">Học viên gần đây</h3>
+          <h3 className="text-lg font-semibold sm:text-xl">Recent Students</h3>
           <p className="text-muted-foreground text-sm">
-            Đăng ký và hoạt động mới nhất trên nền tảng
+            Latest registrations and platform activity
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -66,8 +66,8 @@ export const UsersTable = memo(({ onAddUser }: UsersTableProps) => {
           </div>
           <Button variant="outline" size="sm" onClick={onAddUser}>
             <Plus className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Thêm học viên</span>
-            <span className="sm:hidden">Thêm</span>
+            <span className="hidden sm:inline">Add student</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         </div>
       </div>

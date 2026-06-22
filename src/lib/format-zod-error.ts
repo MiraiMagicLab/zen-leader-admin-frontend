@@ -1,29 +1,29 @@
 import type { ZodError } from 'zod';
 
 const fieldLabels: Record<string, string> = {
-  code: 'Mã',
-  title: 'Tiêu đề',
-  description: 'Mô tả',
-  orderIndex: 'Thứ tự',
+  code: 'Code',
+  title: 'Title',
+  description: 'Description',
+  orderIndex: 'Order',
   email: 'Email',
-  password: 'Mật khẩu',
+  password: 'Password',
 };
 
 function formatIssue(path: PropertyKey[], code: string, message: string, minimum?: number, maximum?: number) {
-  const field = String(path[0] ?? 'Trường');
+  const field = String(path[0] ?? 'Field');
   const label = fieldLabels[field] ?? field;
 
   if (code === 'too_small' && typeof minimum === 'number') {
-    return `${label} phải có ít nhất ${minimum} ký tự`;
+    return `${label} must be at least ${minimum} characters`;
   }
   if (code === 'too_big' && typeof maximum === 'number') {
-    return `${label} không được vượt quá ${maximum} ký tự`;
+    return `${label} must not exceed ${maximum} characters`;
   }
   if (message.startsWith('Too small') || message.startsWith('Too big')) {
-    return `${label}: dữ liệu không hợp lệ`;
+    return `${label}: invalid value`;
   }
   if (message.includes('Required') || code === 'invalid_type') {
-    return `${label} không được để trống`;
+    return `${label} required`;
   }
   return message.includes(label) ? message : `${label}: ${message}`;
 }

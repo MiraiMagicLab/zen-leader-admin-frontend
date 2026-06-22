@@ -19,17 +19,17 @@ export function assertAdminUser(user: AuthUserDto): void {
     (role) => role.toUpperCase() === ADMIN_ROLE,
   );
   if (!hasAdminRole) {
-    throw new Error('Tài khoản không có quyền truy cập Admin.');
+    throw new Error('Account does not have Admin access.');
   }
   
   const isVerified = user.isVerified ?? user.verified;
   if (!isVerified) {
-    throw new Error('Tài khoản chưa được xác minh email.');
+    throw new Error('Account email has not been verified.');
   }
 
   const isActive = user.isActive ?? user.active;
   if (!isActive) {
-    throw new Error('Tài khoản đã bị vô hiệu hóa.');
+    throw new Error('Account has been disabled.');
   }
 }
 

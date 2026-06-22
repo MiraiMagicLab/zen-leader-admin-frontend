@@ -70,12 +70,12 @@ function isDeletedUser(user: UserResponse): boolean {
 
 function renderStatus(user: UserResponse) {
   if (isDeletedUser(user)) {
-    return { label: 'Đã xóa', variant: 'destructive' as const };
+    return { label: 'Deleted', variant: 'destructive' as const };
   }
   if (user.isActive) {
-    return { label: 'Hoạt động', variant: 'default' as const };
+    return { label: 'Active', variant: 'default' as const };
   }
-  return { label: 'Đã khóa', variant: 'outline' as const };
+  return { label: 'Locked', variant: 'outline' as const };
 }
 
 export function UsersListPage() {
@@ -130,7 +130,7 @@ export function UsersListPage() {
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
       updateUserStatusApi(userId, { isActive }),
     onSuccess: () => {
-      toast.success('Đã cập nhật trạng thái người dùng.');
+      toast.success('User status updated.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -140,7 +140,7 @@ export function UsersListPage() {
     mutationFn: ({ userId, roles }: { userId: string; roles: string[] }) =>
       updateUserRolesApi(userId, { roles }),
     onSuccess: () => {
-      toast.success('Đã cập nhật vai trò.');
+      toast.success('Role updated.');
       setRolesDialogOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
@@ -157,7 +157,7 @@ export function UsersListPage() {
         verified: true,
       }),
     onSuccess: () => {
-      toast.success('Đã tạo người dùng.');
+      toast.success('User created.');
       setCreateDialogOpen(false);
       setCreateForm({ email: '', displayName: '', password: '', role: 'user' });
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
@@ -169,7 +169,7 @@ export function UsersListPage() {
     mutationFn: ({ userId, bannedUntil }: { userId: string; bannedUntil: string | null }) =>
       banUserApi(userId, { bannedUntil }),
     onSuccess: () => {
-      toast.success('Đã cập nhật trạng thái ban.');
+      toast.success('Ban status updated.');
       setBanDialogOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
@@ -203,7 +203,7 @@ export function UsersListPage() {
     () => [
       {
         accessorKey: 'displayName',
-        header: 'Tên hiển thị',
+        header: 'Display name',
         cell: ({ row }) => (
           <div>
             <p className="font-medium">{row.original.displayName}</p>
@@ -213,7 +213,7 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'roles',
-        header: 'Vai trò',
+        header: 'Role',
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
             {getDisplayRoles(row.original).map((role) => (
@@ -226,7 +226,7 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'isActive',
-        header: 'Trạng thái',
+        header: 'Status',
         cell: ({ row }) => {
           const status = renderStatus(row.original);
           return <Badge variant={status.variant}>{status.label}</Badge>;
@@ -234,10 +234,10 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'isVerified',
-        header: 'Xác minh',
+        header: 'Verified',
         cell: ({ row }) => (
           <Badge variant={row.original.isVerified ? 'default' : 'outline'}>
-            {row.original.isVerified ? 'Đã xác minh' : 'Chưa xác minh'}
+            {row.original.isVerified ? 'Verified' : 'Unverified'}
           </Badge>
         ),
       },
@@ -253,7 +253,7 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'deletedAt',
-        header: 'Xóa lúc',
+        header: 'Deleted at',
         cell: ({ row }) =>
           row.original.deletedAt ? (
             <Badge variant="destructive">{formatDateTime(row.original.deletedAt)}</Badge>
@@ -263,7 +263,7 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'createdAt',
-        header: 'Ngày tạo',
+        header: 'Created date',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -278,7 +278,7 @@ export function UsersListPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => openRolesDialog(row.original)}>
-                Sửa vai trò
+                Edit role
               </DropdownMenuItem>
               {!isDeletedUser(row.original) &&
                 (row.original.isActive ? (
@@ -291,7 +291,7 @@ export function UsersListPage() {
                     }
                   >
                     <ShieldOff className="mr-2 size-4" />
-                    Khóa tài khoản
+                    Lock account
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem
@@ -303,7 +303,7 @@ export function UsersListPage() {
                     }
                   >
                     <ShieldCheck className="mr-2 size-4" />
-                    Mở khóa tài khoản
+                    Unlock account
                   </DropdownMenuItem>
                 ))}
               {!isDeletedUser(row.original) && <DropdownMenuSeparator />}
@@ -316,7 +316,7 @@ export function UsersListPage() {
                     }
                   >
                     <Ban className="mr-2 size-4" />
-                    Gỡ ban
+                    Unban
                   </DropdownMenuItem>
                 ) : (
                   <DropdownMenuItem
@@ -324,7 +324,7 @@ export function UsersListPage() {
                     onClick={() => openBanDialog(row.original)}
                   >
                     <Ban className="mr-2 size-4" />
-                    Ban người dùng
+                    Ban user
                   </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>
@@ -338,17 +338,17 @@ export function UsersListPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Người dùng"
-        description="Hiển thị cả tài khoản đang hoạt động lẫn tài khoản đã tự xóa để admin theo dõi đầy đủ vòng đời người dùng."
+        title="Users"
+        description="Shows both active and self-deleted accounts for full user lifecycle tracking."
         actions={
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
               <Plus className="mr-2 size-4" />
-              Thêm người dùng
+              Add user
             </Button>
             <Button variant="outline" size="sm" onClick={() => void usersQuery.refetch()}>
               <RefreshCw className="mr-2 size-4" />
-              Làm mới
+              Refresh
             </Button>
           </div>
         }
@@ -359,7 +359,7 @@ export function UsersListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Tìm theo email hoặc tên..."
+            placeholder="Search by email or name..."
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
           />
@@ -369,7 +369,7 @@ export function UsersListPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả vai trò</SelectItem>
+            <SelectItem value="all">All roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
             <SelectItem value="user">User</SelectItem>
           </SelectContent>
@@ -379,11 +379,11 @@ export function UsersListPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả trạng thái</SelectItem>
-            <SelectItem value="active">Hoạt động</SelectItem>
-            <SelectItem value="inactive">Bị khóa</SelectItem>
-            <SelectItem value="banned">Đang bị ban</SelectItem>
-            <SelectItem value="deleted">Đã xóa</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Locked</SelectItem>
+            <SelectItem value="banned">Banned</SelectItem>
+            <SelectItem value="deleted">Deleted</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -392,31 +392,35 @@ export function UsersListPage() {
         columns={columns}
         data={usersQuery.data?.data ?? []}
         isLoading={usersQuery.isLoading}
-        emptyMessage="Không tìm thấy người dùng."
+        emptyMessage="No users found."
         showRowIndex
         pageOffset={(page - 1) * 10}
+        showPagination={false}
       />
 
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-sm">
-          Tổng: {usersQuery.data?.totalElement ?? 0} người dùng
+          Total: {usersQuery.data?.totalElement ?? 0} users
         </p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             disabled={page <= 1}
             onClick={() => setPage((current) => current - 1)}
           >
-            Trang trước
+            Previous page
           </Button>
+          <span className="text-muted-foreground text-sm">
+            Page {page} / {usersQuery.data?.totalPages ?? 1}
+          </span>
           <Button
             variant="outline"
             size="sm"
             disabled={page >= (usersQuery.data?.totalPages ?? 1)}
             onClick={() => setPage((current) => current + 1)}
           >
-            Trang sau
+            Next page
           </Button>
         </div>
       </div>
@@ -432,7 +436,7 @@ export function UsersListPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Thêm người dùng</DialogTitle>
+            <DialogTitle>Add user</DialogTitle>
           </DialogHeader>
           <form
             className="space-y-4"
@@ -456,7 +460,7 @@ export function UsersListPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-user-name">Tên hiển thị</Label>
+              <Label htmlFor="create-user-name">Display name</Label>
               <Input
                 id="create-user-name"
                 name="create-user-name"
@@ -471,7 +475,7 @@ export function UsersListPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-user-password">Mật khẩu</Label>
+              <Label htmlFor="create-user-password">Password</Label>
               <Input
                 id="create-user-password"
                 name="create-user-password"
@@ -484,7 +488,7 @@ export function UsersListPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Vai trò</Label>
+              <Label>Role</Label>
               <Select
                 value={createForm.role}
                 onValueChange={(role) =>
@@ -504,7 +508,7 @@ export function UsersListPage() {
               </Select>
             </div>
             <p className="text-muted-foreground text-xs">
-              Tài khoản được tạo ở trạng thái đã xác minh email và có thể đăng nhập ngay.
+              Account is created with verified email and can log in immediately.
             </p>
             <DialogFooter>
               <Button
@@ -516,7 +520,7 @@ export function UsersListPage() {
                   createForm.password.length < 6
                 }
               >
-                Tạo tài khoản
+                Create account
               </Button>
             </DialogFooter>
           </form>
@@ -526,14 +530,14 @@ export function UsersListPage() {
       <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cập nhật vai trò</DialogTitle>
+            <DialogTitle>Update role</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
               {selectedUser?.displayName} ({selectedUser?.email})
             </p>
             <div className="space-y-2">
-              <Label>Vai trò chính</Label>
+              <Label>Primary role</Label>
               <Select
                 value={selectedRoles[0] ?? 'user'}
                 onValueChange={(value) => setSelectedRoles([value])}
@@ -564,7 +568,7 @@ export function UsersListPage() {
               }}
               disabled={rolesMutation.isPending}
             >
-              Lưu
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -573,7 +577,7 @@ export function UsersListPage() {
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Ban người dùng</DialogTitle>
+            <DialogTitle>Ban user</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
@@ -586,12 +590,12 @@ export function UsersListPage() {
                 onCheckedChange={(checked) => setBanPermanent(checked === true)}
               />
               <Label htmlFor="ban-permanent" className="cursor-pointer">
-                Ban vĩnh viễn
+                Permanent ban
               </Label>
             </div>
             {!banPermanent ? (
               <div className="space-y-2">
-                <Label htmlFor="ban-date">Ngày hết hạn ban</Label>
+                <Label htmlFor="ban-date">Ban expiry date</Label>
                 <Input
                   id="ban-date"
                   type="date"
@@ -602,20 +606,20 @@ export function UsersListPage() {
               </div>
             ) : (
               <p className="text-muted-foreground text-xs">
-                Người dùng sẽ bị ban cho đến khi admin gỡ ban thủ công.
+                User will be banned until admin manually unbans.
               </p>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
-              Hủy
+              Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleBanSubmit}
               disabled={banMutation.isPending || (!banPermanent && !banDate)}
             >
-              Xác nhận ban
+              Confirm ban
             </Button>
           </DialogFooter>
         </DialogContent>

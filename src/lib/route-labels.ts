@@ -2,23 +2,23 @@ import { ROUTES } from '@/routes/paths';
 
 const exactLabels: Record<string, string> = {
   [ROUTES.home]: 'Tổng quan',
-  [ROUTES.users]: 'Người dùng',
-  [ROUTES.programs]: 'Chương trình',
-  [ROUTES.courses]: 'Khóa học',
-  [ROUTES.courseRuns]: 'Đợt học',
-  [ROUTES.events]: 'Sự kiện',
-  [ROUTES.payments]: 'Thanh toán',
-  [ROUTES.moderation]: 'Kiểm duyệt',
+  [ROUTES.users]: 'Users',
+  [ROUTES.programs]: 'Programs',
+  [ROUTES.courses]: 'Courses',
+  [ROUTES.courseRuns]: 'Course Runs',
+  [ROUTES.events]: 'Events',
+  [ROUTES.payments]: 'Payments',
+  [ROUTES.moderation]: 'Moderation',
   [ROUTES.auditLogs]: 'Audit log',
 };
 
 const prefixLabels: { prefix: string; label: string }[] = [
-  { prefix: '/users/', label: 'Chi tiết người dùng' },
-  { prefix: '/programs/', label: 'Khóa học chương trình' },
-  { prefix: '/courses/', label: 'Chi tiết khóa học' },
-  { prefix: '/course-runs/', label: 'Chi tiết đợt học' },
-  { prefix: '/syllabus-items/', label: 'Chi tiết mục giáo trình' },
-  { prefix: '/events/', label: 'Chi tiết sự kiện' },
+  { prefix: '/users/', label: 'User Details' },
+  { prefix: '/programs/', label: 'Program Courses' },
+  { prefix: '/courses/', label: 'Course Details' },
+  { prefix: '/course-runs/', label: 'Course Run Details' },
+  { prefix: '/syllabus-items/', label: 'Syllabus Item Details' },
+  { prefix: '/events/', label: 'Event Details' },
 ];
 
 export function getRouteLabel(pathname: string): string {

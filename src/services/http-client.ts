@@ -75,7 +75,7 @@ async function refreshAccessTokenSingleFlight(
     refreshPromise = httpClient
       .post<ApiResponse<TokenResponseDto>>(AUTH_API.refresh, { refreshToken })
       .then(({ data }) =>
-        unwrapAuthResponse(data, 'Phiên đăng nhập đã hết hạn.'),
+        unwrapAuthResponse(data, 'Session expired.'),
       )
       .finally(() => {
         refreshPromise = null;

@@ -58,14 +58,14 @@ const schema = z.object({
   code: z
     .string()
     .trim()
-    .min(2, 'Mã phải có ít nhất 2 ký tự')
-    .max(50, 'Mã tối đa 50 ký tự'),
+    .min(2, 'Code must be at least 2 characters')
+    .max(50, 'Code max 50 characters'),
   title: z
     .string()
     .trim()
-    .min(3, 'Tiêu đề phải có ít nhất 3 ký tự')
-    .max(120, 'Tiêu đề tối đa 120 ký tự'),
-  description: z.string().trim().max(5000, 'Mô tả tối đa 5000 ký tự').optional(),
+    .min(3, 'Title must be at least 3 characters')
+    .max(120, 'Title max 120 characters'),
+  description: z.string().trim().max(5000, 'Description max 5000 characters').optional(),
 });
 
 type FormState = {
@@ -128,7 +128,7 @@ export function ProgramsListPage() {
       return programsApi.create(payload);
     },
     onSuccess: () => {
-      toast.success(editing ? 'Đã cập nhật chương trình.' : 'Đã tạo chương trình.');
+      toast.success(editing ? 'Program updated.' : 'Program created.');
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
@@ -140,7 +140,7 @@ export function ProgramsListPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => programsApi.remove(id),
     onSuccess: () => {
-      toast.success('Đã xóa chương trình.');
+      toast.success('Program deleted.');
       setDeleteTarget(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.programs.all });
     },
@@ -149,25 +149,25 @@ export function ProgramsListPage() {
 
   const columns = useMemo<ColumnDef<ProgramResponse>[]>(
     () => [
-      { accessorKey: 'code', header: 'Mã' },
-      { accessorKey: 'title', header: 'Tiêu đề' },
+      { accessorKey: 'code', header: 'Code' },
+      { accessorKey: 'title', header: 'Title' },
       {
         accessorKey: 'isPublished',
-        header: 'Trạng thái',
+        header: 'Status',
         cell: ({ row }) => (
           <Badge variant={row.original.isPublished ? 'default' : 'outline'}>
-            {row.original.isPublished ? 'Đã xuất bản' : 'Nháp'}
+            {row.original.isPublished ? 'Published' : 'Draft'}
           </Badge>
         ),
       },
       {
         accessorKey: 'courses',
-        header: 'Khóa học',
+        header: 'Courses',
         cell: ({ row }) => row.original.courses?.length ?? 0,
       },
       {
         accessorKey: 'createdAt',
-        header: 'Ngày tạo',
+        header: 'Created date',
         cell: ({ row }) => formatDate(row.original.createdAt),
       },
       {
@@ -183,7 +183,7 @@ export function ProgramsListPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
                 <Link to={ROUTES.programCourses(row.original.id)}>
-                  Khóa học
+                  Courses
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -201,14 +201,14 @@ export function ProgramsListPage() {
                   setDialogOpen(true);
                 }}
               >
-                Chỉnh sửa
+                Edit
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
                 onClick={() => setDeleteTarget(row.original)}
               >
                 <Trash2 className="mr-2 size-4" />
-                Xóa
+                Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -221,8 +221,8 @@ export function ProgramsListPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Chương trình"
-        description="Quản lý chương trình đào tạo và khóa học liên quan."
+        title="Programs"
+        description="Manage training programs and related courses."
         actions={
           <Button
             onClick={() => {
@@ -233,7 +233,7 @@ export function ProgramsListPage() {
             }}
           >
             <Plus className="mr-2 size-4" />
-            Thêm chương trình
+            Add program
           </Button>
         }
       />
@@ -243,7 +243,7 @@ export function ProgramsListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Tìm theo mã hoặc tiêu đề…"
+            placeholder="Search by code or title…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -253,9 +253,9 @@ export function ProgramsListPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Tất cả</SelectItem>
-            <SelectItem value="published">Đã xuất bản</SelectItem>
-            <SelectItem value="draft">Nháp</SelectItem>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="published">Published</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -277,24 +277,28 @@ export function ProgramsListPage() {
         isLoading={programsQuery.isLoading}
         showRowIndex
         pageOffset={page * 20}
+        showPagination={false}
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
           disabled={page <= 0}
           onClick={() => setPage((p) => p - 1)}
         >
-          Trang trước
+          Previous page
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Page {page + 1} / {programsQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"
           disabled={page + 1 >= (programsQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Trang sau
+          Next page
         </Button>
       </div>
 
@@ -302,12 +306,12 @@ export function ProgramsListPage() {
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>
-              {editing ? 'Sửa chương trình' : 'Thêm chương trình'}
+              {editing ? 'Edit program' : 'Add program'}
             </SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label htmlFor="code">Mã</Label>
+              <Label htmlFor="code">Code</Label>
               <Input
                 id="code"
                 value={form.code}
@@ -328,7 +332,7 @@ export function ProgramsListPage() {
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="title">Tiêu đề</Label>
+              <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
                 value={form.title}
@@ -349,27 +353,27 @@ export function ProgramsListPage() {
               ) : null}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Mô tả</Label>
+              <Label htmlFor="description">Description</Label>
               <RichTextEditor
                 value={form.description}
                 minHeight="14rem"
-                placeholder="Nhập mô tả chương trình với định dạng phong phú…"
+                placeholder="Enter program description with rich formatting…"
                 onChange={(description) =>
                   setForm((f) => ({ ...f, description }))
                 }
               />
               <p className="text-muted-foreground text-xs">
-                {form.description.length}/5000 ký tự
+                {form.description.length}/5000 characters
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Xem trước mô tả</Label>
+              <Label>Preview description</Label>
               <div className="rounded-md border bg-muted/20 p-4">
                 <RichTextPreview value={form.description} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="thumbnail">Ảnh thumbnail</Label>
+              <Label htmlFor="thumbnail">Thumbnail image</Label>
               <Input
                 id="thumbnail"
                 type="file"
@@ -389,12 +393,12 @@ export function ProgramsListPage() {
                   setForm((f) => ({ ...f, isPublished: checked }))
                 }
               />
-              <Label>Xuất bản</Label>
+              <Label>Publish</Label>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
-              Lưu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -403,17 +407,17 @@ export function ProgramsListPage() {
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xóa chương trình?</AlertDialogTitle>
+            <AlertDialogTitle>Delete program?</AlertDialogTitle>
             <AlertDialogDescription>
-              Xóa &quot;{deleteTarget?.title}&quot; — thao tác không thể hoàn tác.
+              Delete &quot;{deleteTarget?.title}&quot; — this action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
-              Xóa
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

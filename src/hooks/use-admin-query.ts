@@ -9,7 +9,7 @@ type AdminQueryOptions<TData> = Omit<
   'queryKey' | 'queryFn'
 >;
 
-/** Wrapper useQuery — kế thừa no-cache defaults từ queryClient */
+/** Wrapper useQuery — inherits no-cache defaults from queryClient */
 export function useAdminQuery<TData>(
   queryKey: QueryKey,
   queryFn: () => Promise<TData>,

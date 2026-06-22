@@ -23,7 +23,7 @@ import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { LiveSessionResponse } from '@/services/types/domain';
 
 const STATUS_OPTIONS = [
-  { value: 'all', label: 'Tất cả' },
+  { value: 'all', label: 'All' },
   { value: 'ACTIVE', label: 'ACTIVE' },
   { value: 'ENDED', label: 'ENDED' },
 ];
@@ -46,7 +46,7 @@ export function LiveSessionsPage() {
   const endMutation = useMutation({
     mutationFn: (sessionId: string) => liveSessionsApi.end(sessionId),
     onSuccess: () => {
-      toast.success('Đã kết thúc phiên live.');
+      toast.success('Live session ended.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.liveSessions.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -55,7 +55,7 @@ export function LiveSessionsPage() {
   const deleteMutation = useMutation({
     mutationFn: (sessionId: string) => liveSessionsApi.remove(sessionId),
     onSuccess: () => {
-      toast.success('Đã xóa phiên live.');
+      toast.success('Live session deleted.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.liveSessions.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -73,10 +73,10 @@ export function LiveSessionsPage() {
   const columns = useMemo<ColumnDef<LiveSessionResponse>[]>(
     () => [
       { accessorKey: 'roomCode', header: 'Room' },
-      { accessorKey: 'type', header: 'Loại' },
+      { accessorKey: 'type', header: 'Type' },
       {
         accessorKey: 'status',
-        header: 'Trạng thái',
+        header: 'Status',
         cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
       },
       {
@@ -93,7 +93,7 @@ export function LiveSessionsPage() {
       },
       {
         accessorKey: 'createdAt',
-        header: 'Tạo lúc',
+        header: 'Created at',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -115,7 +115,7 @@ export function LiveSessionsPage() {
                 size="sm"
                 onClick={() => endMutation.mutate(row.original.id)}
               >
-                Kết thúc
+                End
               </Button>
             )}
             <Button
@@ -124,7 +124,7 @@ export function LiveSessionsPage() {
               className="text-destructive"
               onClick={() => deleteMutation.mutate(row.original.id)}
             >
-              Xóa
+              Delete
             </Button>
           </div>
         ),
@@ -137,7 +137,7 @@ export function LiveSessionsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Live sessions"
-        description="Quản lý phòng họp và phiên live trên hệ thống."
+        description="Manage meeting rooms and live sessions on the system."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -154,7 +154,7 @@ export function LiveSessionsPage() {
             </Select>
             <Button variant="outline" size="sm" onClick={() => void sessionsQuery.refetch()}>
               <RefreshCw className="mr-2 size-4" />
-              Làm mới
+               Refresh
             </Button>
           </div>
         }
@@ -164,20 +164,24 @@ export function LiveSessionsPage() {
         columns={columns}
         data={sessionsQuery.data?.data ?? []}
         isLoading={sessionsQuery.isLoading}
-        emptyMessage="Chưa có phiên live."
+        emptyMessage="No live sessions yet."
+        showPagination={false}
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>
-          Trang trước
+          Previous page
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Page {page + 1} / {sessionsQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"
           disabled={page + 1 >= (sessionsQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((p) => p + 1)}
         >
-          Trang sau
+          Next page
         </Button>
       </div>
     </div>

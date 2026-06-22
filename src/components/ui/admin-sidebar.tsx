@@ -43,31 +43,31 @@ type MenuGroup = {
 
 const menuGroups: MenuGroup[] = [
   {
-    label: 'Tổng quan',
+    label: 'Overview',
     items: [
       { title: 'Dashboard', icon: LayoutDashboard, to: ROUTES.home, end: true },
     ],
   },
   {
-    label: 'Nội dung học',
+    label: 'Learning',
     items: [
-      { title: 'Chương trình', icon: GraduationCap, to: ROUTES.programs },
-      { title: 'Khóa học', icon: BookOpen, to: ROUTES.courses },
-      { title: 'Đợt học', icon: Layers, to: ROUTES.courseRuns },
+      { title: 'Programs', icon: GraduationCap, to: ROUTES.programs },
+      { title: 'Courses', icon: BookOpen, to: ROUTES.courses },
+      { title: 'Course Runs', icon: Layers, to: ROUTES.courseRuns },
     ],
   },
   {
-    label: 'Cộng đồng',
+    label: 'Community',
     items: [
-      { title: 'Sự kiện', icon: CalendarDays, to: ROUTES.events },
+      { title: 'Events', icon: CalendarDays, to: ROUTES.events },
     ],
   },
   {
-    label: 'Vận hành',
+    label: 'Operations',
     items: [
-      { title: 'Người dùng', icon: Users, to: ROUTES.users },
-      { title: 'Thanh toán', icon: CreditCard, to: ROUTES.payments },
-      { title: 'Kiểm duyệt', icon: ShieldAlert, to: ROUTES.moderation },
+      { title: 'Users', icon: Users, to: ROUTES.users },
+      { title: 'Payments', icon: CreditCard, to: ROUTES.payments },
+      { title: 'Moderation', icon: ShieldAlert, to: ROUTES.moderation },
       { title: 'Audit log', icon: ScrollText, to: ROUTES.auditLogs },
     ],
   },

@@ -81,7 +81,7 @@ export function SyllabusItemDetailPage() {
     if (item) {
       setForm({
         syllabusSectionId: item.syllabusSectionId,
-        type: item.type,
+        type: item.type.toUpperCase() === 'VIDEO' ? 'VIDEO' : 'ARTICLE',
         title: item.title,
         description: item.description ?? '',
         orderIndex: item.orderIndex,
@@ -95,7 +95,7 @@ export function SyllabusItemDetailPage() {
   const updateMutation = useMutation({
     mutationFn: () => syllabusItemsApi.update(itemId!, form),
     onSuccess: () => {
-      toast.success('Đã cập nhật mục giáo trình.');
+      toast.success('Syllabus item updated.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusItems.all });
       void queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all });
     },
@@ -105,7 +105,7 @@ export function SyllabusItemDetailPage() {
   const deleteMutation = useMutation({
     mutationFn: () => syllabusItemsApi.remove(itemId!),
     onSuccess: () => {
-      toast.success('Đã xóa mục giáo trình.');
+      toast.success('Syllabus item deleted.');
       navigate(-1);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -114,7 +114,7 @@ export function SyllabusItemDetailPage() {
   const uploadMutation = useMutation({
     mutationFn: () => syllabusItemsApi.uploadFile(itemId!, uploadFile!),
     onSuccess: () => {
-      toast.success('Đã upload file.');
+      toast.success('File uploaded.');
       setUploadFile(null);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.syllabusItems.detail(itemId!),
@@ -154,7 +154,7 @@ export function SyllabusItemDetailPage() {
   const deleteAssetMutation = useMutation({
     mutationFn: (key: string) => assetsApi.remove(key),
     onSuccess: () => {
-      toast.success('Đã xóa file trên storage.');
+      toast.success('File deleted from storage.');
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -196,11 +196,11 @@ export function SyllabusItemDetailPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 size-4" />
-        Quay lại
+        Back
       </Button>
 
       <PageHeader
-        title={item?.title ?? 'Mục giáo trình'}
+        title={item?.title ?? 'Syllabus Item'}
         description={item?.syllabusSectionTitle}
         actions={
           <Button
@@ -209,35 +209,35 @@ export function SyllabusItemDetailPage() {
             onClick={() => deleteMutation.mutate()}
           >
             <Trash2 className="mr-2 size-4" />
-            Xóa
+            Delete
           </Button>
         }
       />
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Thông tin mục giáo trình</CardTitle>
+          <CardTitle className="text-base">Syllabus Item Info</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Tiêu đề</Label>
+            <Label>Title</Label>
             <Input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             />
           </div>
           <div className="space-y-2">
-            <Label>Mô tả ngắn</Label>
+            <Label>Short description</Label>
             <Textarea
               value={form.description ?? ''}
               rows={3}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="Tóm tắt hiển thị trên danh sách"
+              placeholder="Summary shown in lists"
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>Loại</Label>
+              <Label>Type</Label>
               <Select
                 value={form.type}
                 onValueChange={(value) => setForm((f) => ({ ...f, type: value }))}
@@ -246,14 +246,13 @@ export function SyllabusItemDetailPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="VIDEO">VIDEO</SelectItem>
-                  <SelectItem value="ARTICLE">ARTICLE</SelectItem>
-                  <SelectItem value="QUIZ">QUIZ</SelectItem>
+                  <SelectItem value="VIDEO">Video</SelectItem>
+                  <SelectItem value="ARTICLE">Article</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Thứ tự</Label>
+              <Label>Order</Label>
               <Input
                 type="number"
                 value={form.orderIndex}
@@ -271,7 +270,7 @@ export function SyllabusItemDetailPage() {
                   setForm((f) => ({ ...f, isHidden: checked }))
                 }
               />
-              Ẩn mục
+              Hidden
             </label>
             <label className="flex items-center gap-2">
               <Switch
@@ -280,30 +279,28 @@ export function SyllabusItemDetailPage() {
                   setForm((f) => ({ ...f, isOptional: checked }))
                 }
               />
-              Tùy chọn
+              Optional
             </label>
           </div>
           <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
-            Lưu thay đổi
+            Save changes
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Nội dung</CardTitle>
+          <CardTitle className="text-base">Content</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Lưu vào <code className="text-xs">contentData</code> — app mobile đọc các
-            field này (API đã hỗ trợ sẵn qua PUT syllabus-item).
+            Saved to <code className="text-xs">contentData</code> — mobile app reads these
+            fields (API already supports via PUT syllabus-item).
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {itemType === 'ARTICLE' || itemType === 'QUIZ' ? (
+          {itemType === 'ARTICLE' ? (
             <>
               <div className="space-y-2">
-                <Label>
-                  {itemType === 'QUIZ' ? 'Nội dung / câu hỏi' : 'Nội dung bài viết'}
-                </Label>
+                <Label>Article content</Label>
                 <RichTextEditor
                   value={articleBody}
                   onChange={(body) => {
@@ -315,75 +312,83 @@ export function SyllabusItemDetailPage() {
                       }),
                     }));
                   }}
-                  placeholder="Soạn nội dung hiển thị trên app (HTML)…"
+                  placeholder="Compose content shown in app (HTML)…"
                   minHeight="16rem"
                 />
                 <p className="text-muted-foreground text-xs">
-                  Mobile hiển thị <strong>body</strong> trước; nếu trống sẽ fallback sang
-                  mô tả ngắn phía trên.
+                  Mobile shows <strong>body</strong> first; if empty, falls back to
+                  the short description above.
                 </p>
               </div>
-              {itemType === 'ARTICLE' ? (
-                <>
-                  <div className="space-y-2">
-                    <Label>Trích dẫn (quote)</Label>
-                    <Input
-                      value={quote}
-                      onChange={(e) => setContentField('quote', e.target.value)}
-                      placeholder="Câu trích dẫn nổi bật (tuỳ chọn)"
-                    />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Ảnh minh hoạ (imageUrl)</Label>
-                      <Input
-                        value={imageUrl}
-                        onChange={(e) =>
-                          setContentField('imageUrl', e.target.value)
-                        }
-                        placeholder="https://…"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Ảnh bìa (coverUrl / thumbnailUrl)</Label>
-                      <Input
-                        value={thumbnailUrl}
-                        onChange={(e) => {
-                          const url = e.target.value;
-                          setForm((f) => ({
-                            ...f,
-                            contentData: patchContentData(f.contentData ?? {}, {
-                              coverUrl: url,
-                              thumbnailUrl: url,
-                            }),
-                          }));
-                        }}
-                        placeholder="https://…"
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : null}
+              <div className="space-y-2">
+                <Label>Quote</Label>
+                <Input
+                  value={quote}
+                  onChange={(e) => setContentField('quote', e.target.value)}
+                  placeholder="Featured quote (optional)"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Illustration (imageUrl)</Label>
+                  <Input
+                    value={imageUrl}
+                    onChange={(e) => setContentField('imageUrl', e.target.value)}
+                    placeholder="https://…"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cover image (coverUrl / thumbnailUrl)</Label>
+                  <Input
+                    value={thumbnailUrl}
+                    onChange={(e) => {
+                      const url = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        contentData: patchContentData(f.contentData ?? {}, {
+                          coverUrl: url,
+                          thumbnailUrl: url,
+                        }),
+                      }));
+                    }}
+                    placeholder="https://…"
+                  />
+                </div>
+              </div>
             </>
           ) : null}
 
           {itemType === 'VIDEO' ? (
             <>
               <div className="space-y-2">
-                <Label>URL video (videoUrl)</Label>
+                <Label>Local video</Label>
                 <Input
-                  value={videoUrl}
-                  onChange={(e) => setContentField('videoUrl', e.target.value)}
-                  placeholder="https://… hoặc upload file bên dưới"
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
                 />
-                <p className="text-muted-foreground text-xs">
-                  Có thể dán link trực tiếp hoặc upload file — app lấy{' '}
-                  <strong>videoUrl</strong> hoặc <strong>fileAttachment.url</strong>.
-                </p>
+                {uploadFile ? (
+                  <p className="text-muted-foreground text-xs">
+                    Selected: {uploadFile.name} — click Upload to push to R2.
+                  </p>
+                ) : fileAttachment?.url ? (
+                  <p className="text-muted-foreground text-xs">
+                    Current video: {fileAttachment.fileName ?? fileAttachment.url}
+                  </p>
+                ) : videoUrl ? (
+                  <p className="text-muted-foreground text-xs">
+                    Legacy URL: {videoUrl}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground text-xs">
+                    Select a local video file and upload — app reads{' '}
+                    <strong>fileAttachment.url</strong>.
+                  </p>
+                )}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Thời lượng (phút)</Label>
+                  <Label>Duration (minutes)</Label>
                   <Input
                     type="number"
                     min={0}
@@ -412,7 +417,7 @@ export function SyllabusItemDetailPage() {
           ) : null}
 
           <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
-            Lưu nội dung
+            Save content
           </Button>
         </CardContent>
       </Card>
@@ -421,8 +426,8 @@ export function SyllabusItemDetailPage() {
         <CardHeader>
           <CardTitle className="text-base">Upload file</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Tuỳ chọn — gắn file vào <code className="text-xs">contentData.fileAttachment</code>{' '}
-            (video/PDF…). Không thay thế soạn nội dung ARTICLE ở trên.
+            Optional — attach file to <code className="text-xs">contentData.fileAttachment</code>{' '}
+            (video/PDF…). Does not replace the ARTICLE content above.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -437,7 +442,7 @@ export function SyllabusItemDetailPage() {
               onClick={() => uploadFile && uploadMutation.mutate()}
             >
               <Upload className="mr-2 size-4" />
-              Upload trực tiếp
+              Direct upload
             </Button>
             <Button
               variant="outline"
@@ -450,13 +455,13 @@ export function SyllabusItemDetailPage() {
           {fileAttachment?.url || fileAttachment?.publicId ? (
             <div className="space-y-2 rounded-md border p-3">
               <p className="text-sm font-medium">
-                File đính kèm: {fileAttachment.fileName ?? fileAttachment.publicId}
+                Attached file: {fileAttachment.fileName ?? fileAttachment.publicId}
               </p>
               <div className="flex flex-wrap gap-2">
                 {fileAttachment.url ? (
                   <Button variant="outline" size="sm" asChild>
                     <Link to={String(fileAttachment.url)} target="_blank">
-                      Mở URL
+                      Open URL
                     </Link>
                   </Button>
                 ) : null}
@@ -469,18 +474,18 @@ export function SyllabusItemDetailPage() {
                         downloadAssetMutation.mutate(fileAttachment.publicId!)
                       }
                     >
-                      Tải presigned
+                      Get presigned URL
                     </Button>
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => {
-                        if (window.confirm('Xóa file trên storage?')) {
+                        if (window.confirm('Delete file from storage?')) {
                           deleteAssetMutation.mutate(fileAttachment.publicId!);
                         }
                       }}
                     >
-                      Xóa asset
+                      Delete asset
                     </Button>
                   </>
                 ) : null}
@@ -488,7 +493,7 @@ export function SyllabusItemDetailPage() {
             </div>
           ) : item?.contentData?.url ? (
             <p className="text-muted-foreground text-sm">
-              File hiện tại:{' '}
+              Current file:{' '}
               <Link to={String(item.contentData.url)} target="_blank" className="underline">
                 {String(item.contentData.url)}
               </Link>

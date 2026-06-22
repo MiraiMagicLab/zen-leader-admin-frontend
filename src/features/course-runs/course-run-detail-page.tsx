@@ -57,8 +57,6 @@ import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import {
   enrollmentsApi,
   sessionsApi,
-  syllabusItemsApi,
-  syllabusSectionsApi,
 } from '@/services/lms/lms-api';
 import { messagingApi } from '@/services/messaging/messaging-api';
 import type {
@@ -66,7 +64,6 @@ import type {
   EnrollmentImportResponse,
   EnrollmentResponse,
   SessionResponse,
-  SyllabusSectionResponse,
   UserResponse,
 } from '@/services/types/domain';
 
@@ -88,12 +85,6 @@ type SessionForm = {
   scheduledAt: string;
   durationMinutes: string;
   status: string;
-};
-
-type SectionForm = {
-  id: string;
-  title: string;
-  orderIndex: number;
 };
 
 const DETAIL_PAGE_SIZE = 100;
@@ -140,8 +131,6 @@ export function CourseRunDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [createSectionOpen, setCreateSectionOpen] = useState(false);
-  const [createItemSectionId, setCreateItemSectionId] = useState<string | null>(null);
   const [createSessionOpen, setCreateSessionOpen] = useState(false);
   const [editSession, setEditSession] = useState<{
     id: string;
@@ -151,9 +140,6 @@ export function CourseRunDetailPage() {
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [runSettingsOpen, setRunSettingsOpen] = useState(false);
-  const [sectionTitle, setSectionTitle] = useState('');
-  const [itemTitle, setItemTitle] = useState('');
-  const [itemType, setItemType] = useState('VIDEO');
   const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm);
   const [enrollUser, setEnrollUser] = useState<UserResponse | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -162,7 +148,6 @@ export function CourseRunDetailPage() {
   const [editRole, setEditRole] = useState('STUDENT');
   const [messagePage, setMessagePage] = useState(1);
   const [enrollmentPage, setEnrollmentPage] = useState(1);
-  const [editSection, setEditSection] = useState<SectionForm | null>(null);
   const [viewEnrollmentId, setViewEnrollmentId] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<EnrollmentImportResponse | null>(null);
   const [runSettings, setRunSettings] = useState<RunSettingsForm | null>(null);
@@ -176,13 +161,6 @@ export function CourseRunDetailPage() {
   const courseQuery = useQuery({
     queryKey: queryKeys.courses.detail(runQuery.data?.courseId ?? ''),
     queryFn: () => coursesApi.getById(runQuery.data!.courseId),
-    enabled: Boolean(runQuery.data?.courseId),
-  });
-
-  const sectionsQuery = useQuery({
-    queryKey: queryKeys.syllabusSections.list(runQuery.data?.courseId ?? ''),
-    queryFn: () =>
-      syllabusSectionsApi.getPage(0, DETAIL_PAGE_SIZE, runQuery.data!.courseId),
     enabled: Boolean(runQuery.data?.courseId),
   });
 
@@ -225,9 +203,9 @@ export function CourseRunDetailPage() {
   const run = runQuery.data;
   const course = courseQuery.data;
   const sessions = sessionsQuery.data?.data ?? run?.courseSessions ?? [];
-  const sections = sectionsQuery.data?.data ?? [];
   const enrollments = enrollmentsQuery.data?.data ?? [];
-  const totalSyllabusItems = sections.reduce(
+  const syllabusSections = course?.syllabusSections ?? [];
+  const totalSyllabusItems = syllabusSections.reduce(
     (count, section) => count + (section.items?.length ?? 0),
     0,
   );
@@ -239,13 +217,6 @@ export function CourseRunDetailPage() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.courses.detail(run?.courseId ?? ''),
       }),
-    ]);
-  };
-
-  const invalidateSections = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(run?.courseId ?? '') }),
     ]);
   };
 
@@ -263,44 +234,8 @@ export function CourseRunDetailPage() {
   const deleteMessageMutation = useMutation({
     mutationFn: (messageId: string) => messagingApi.deleteMessage(messageId),
     onSuccess: async () => {
-      toast.success('Da xoa tin nhan.');
+      toast.success('Message deleted.');
       await queryClient.invalidateQueries({ queryKey: queryKeys.messaging.all });
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const createSectionMutation = useMutation({
-    mutationFn: () =>
-      syllabusSectionsApi.create({
-        courseId: run!.courseId,
-        title: sectionTitle,
-        orderIndex: sections.length,
-      }),
-    onSuccess: async () => {
-      toast.success('Da them chuong.');
-      setCreateSectionOpen(false);
-      setSectionTitle('');
-      await invalidateSections();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const createItemMutation = useMutation({
-    mutationFn: (syllabusSectionId: string) => {
-      const section = sections.find((entry) => entry.id === syllabusSectionId);
-      return syllabusItemsApi.create({
-        syllabusSectionId,
-        type: itemType,
-        title: itemTitle,
-        orderIndex: section?.items?.length ?? 0,
-      });
-    },
-    onSuccess: async () => {
-      toast.success('Da them muc giao trinh.');
-      setCreateItemSectionId(null);
-      setItemTitle('');
-      setItemType('VIDEO');
-      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -322,7 +257,7 @@ export function CourseRunDetailPage() {
         status: sessionForm.status,
       }),
     onSuccess: async () => {
-      toast.success('Da them buoi hoc.');
+      toast.success('Session added.');
       setCreateSessionOpen(false);
       setSessionForm(emptySessionForm);
       await invalidateSessions();
@@ -347,7 +282,7 @@ export function CourseRunDetailPage() {
         status: editSession!.form.status,
       }),
     onSuccess: async () => {
-      toast.success('Da cap nhat buoi hoc.');
+      toast.success('Session updated.');
       setEditSession(null);
       await invalidateSessions();
     },
@@ -357,7 +292,7 @@ export function CourseRunDetailPage() {
   const deleteSessionMutation = useMutation({
     mutationFn: (sessionId: string) => sessionsApi.remove(sessionId),
     onSuccess: async () => {
-      toast.success('Da xoa buoi hoc.');
+      toast.success('Session deleted.');
       await invalidateSessions();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -367,7 +302,7 @@ export function CourseRunDetailPage() {
     mutationFn: () =>
       enrollmentsApi.manualEnroll({ userId: enrollUser!.id, courseRunId: runId! }),
     onSuccess: async () => {
-      toast.success('Da ghi danh hoc vien.');
+      toast.success('Student enrolled.');
       setEnrollOpen(false);
       setEnrollUser(null);
       await invalidateEnrollments();
@@ -378,7 +313,7 @@ export function CourseRunDetailPage() {
   const importMutation = useMutation({
     mutationFn: () => enrollmentsApi.importByExcel(runId!, importFile!, false),
     onSuccess: async (result) => {
-      toast.success(`Import xong: ${result.successCount} thanh cong, ${result.failedCount} loi.`);
+      toast.success(`Import done: ${result.successCount} succeeded, ${result.failedCount} failed.`);
       setImportFile(null);
       setImportPreview(null);
       setImportOpen(false);
@@ -391,10 +326,10 @@ export function CourseRunDetailPage() {
     mutationFn: () =>
       enrollmentsApi.update(editEnrollment!.id, {
         status: editStatus as 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED',
-        role: editRole as 'STUDENT' | 'LECTURE' | 'ADMIN' | 'NO_ROLE',
+        role: editRole as 'STUDENT' | 'INSTRUCTOR',
       }),
     onSuccess: async () => {
-      toast.success('Da cap nhat ghi danh.');
+      toast.success('Enrollment updated.');
       setEditEnrollment(null);
       await invalidateEnrollments();
     },
@@ -404,41 +339,8 @@ export function CourseRunDetailPage() {
   const deleteEnrollmentMutation = useMutation({
     mutationFn: (enrollmentId: string) => enrollmentsApi.remove(enrollmentId),
     onSuccess: async () => {
-      toast.success('Da xoa ghi danh.');
+      toast.success('Enrollment deleted.');
       await invalidateEnrollments();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const updateSectionMutation = useMutation({
-    mutationFn: () =>
-      syllabusSectionsApi.update(editSection!.id, {
-        courseId: run!.courseId,
-        title: editSection!.title,
-        orderIndex: editSection!.orderIndex,
-      }),
-    onSuccess: async () => {
-      toast.success('Da cap nhat chuong.');
-      setEditSection(null);
-      await invalidateSections();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const deleteSectionMutation = useMutation({
-    mutationFn: (sectionId: string) => syllabusSectionsApi.remove(sectionId),
-    onSuccess: async () => {
-      toast.success('Da xoa chuong.');
-      await invalidateSections();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const deleteItemMutation = useMutation({
-    mutationFn: (itemId: string) => syllabusItemsApi.remove(itemId),
-    onSuccess: async () => {
-      toast.success('Da xoa muc giao trinh.');
-      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -447,7 +349,7 @@ export function CourseRunDetailPage() {
     mutationFn: () => enrollmentsApi.importByExcel(runId!, importFile!, true),
     onSuccess: (result) => {
       setImportPreview(result);
-      toast.success('Da xem truoc import.');
+      toast.success('Import previewed.');
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -472,7 +374,7 @@ export function CourseRunDetailPage() {
       });
     },
     onSuccess: async () => {
-      toast.success('Da cap nhat dot hoc.');
+      toast.success('Course run updated.');
       setRunSettingsOpen(false);
       await invalidateRunQueries();
     },
@@ -482,7 +384,7 @@ export function CourseRunDetailPage() {
   const deleteRunMutation = useMutation({
     mutationFn: () => courseRunsApi.remove(runId!),
     onSuccess: () => {
-      toast.success('Da xoa dot hoc.');
+      toast.success('Course run deleted.');
       navigate(run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -505,14 +407,6 @@ export function CourseRunDetailPage() {
     });
   };
 
-  const openEditSection = (section: SyllabusSectionResponse) => {
-    setEditSection({
-      id: section.id,
-      title: section.title,
-      orderIndex: section.orderIndex,
-    });
-  };
-
   if (!runId) {
     return null;
   }
@@ -522,35 +416,35 @@ export function CourseRunDetailPage() {
       <Button variant="ghost" size="sm" asChild>
         <Link to={run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns}>
           <ArrowLeft className="mr-2 size-4" />
-          {run?.courseId ? 'Quay lai khoa hoc' : 'Quay lai dot hoc'}
+          {run?.courseId ? 'Back to course' : 'Back to course run'}
         </Link>
       </Button>
 
       <PageHeader
-        title={run?.code ?? 'Dot hoc'}
+        title={run?.code ?? 'Course run'}
         description={
           run
-            ? `${course?.title ?? 'Khoa hoc'} · ${formatDateTime(run.startsAt)} -> ${formatDateTime(run.endsAt)}`
-            : 'Quan ly buoi hoc, giao trinh, ghi danh va chat lop.'
+            ? `${course?.title ?? 'Course'} · ${formatDateTime(run.startsAt)} → ${formatDateTime(run.endsAt)}`
+            : 'Manage live sessions, enrollment, and class chat.'
         }
         actions={
           run ? (
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={openRunSettings}>
                 <Settings2 className="mr-2 size-4" />
-                Cai dat dot hoc
+                Course run settings
               </Button>
               <Button
                 variant="destructive"
                 disabled={deleteRunMutation.isPending}
                 onClick={() => {
-                  if (window.confirm('Xoa dot hoc nay?')) {
+                  if (window.confirm('Delete this course run?')) {
                     deleteRunMutation.mutate();
                   }
                 }}
               >
                 <Trash2 className="mr-2 size-4" />
-                Xoa
+                Delete
               </Button>
             </div>
           ) : undefined
@@ -568,44 +462,44 @@ export function CourseRunDetailPage() {
                     {course ? (
                       <Button variant="outline" size="sm" asChild>
                         <Link to={ROUTES.courseDetail(course.id)}>
-                          Mo khoa hoc {course.code}
+                          Open course {course.code}
                         </Link>
                       </Button>
                     ) : null}
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Khoa hoc lien ket</p>
-                    <p className="font-medium">{course?.title ?? 'Dang tai...'}</p>
+                    <p className="text-muted-foreground text-sm">Linked course</p>
+                    <p className="font-medium">{course?.title ?? 'Loading...'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Mua gio</p>
+                    <p className="text-muted-foreground text-sm">Timezone</p>
                     <p className="font-medium">{run.timezone ?? 'Asia/Ho_Chi_Minh'}</p>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-muted-foreground text-sm">Bat dau</p>
+                    <p className="text-muted-foreground text-sm">Start</p>
                     <p className="font-medium">{formatDateTime(run.startsAt)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Ket thuc</p>
+                    <p className="text-muted-foreground text-sm">End</p>
                     <p className="font-medium">{formatDateTime(run.endsAt)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Mo dang ky</p>
+                    <p className="text-muted-foreground text-sm">Open enrollment</p>
                     <p className="font-medium">{formatDateTime(run.enrollmentStartDate)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Dong dang ky</p>
+                    <p className="text-muted-foreground text-sm">Close enrollment</p>
                     <p className="font-medium">{formatDateTime(run.enrollmentEndDate)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Suc chua</p>
-                    <p className="font-medium">{run.capacity ?? 'Khong gioi han'}</p>
+                    <p className="text-muted-foreground text-sm">Capacity</p>
+                    <p className="font-medium">{run.capacity ?? 'Unlimited'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Cap nhat</p>
+                    <p className="text-muted-foreground text-sm">Updated</p>
                     <p className="font-medium">{formatDateTime(run.updatedAt)}</p>
                   </div>
                 </div>
@@ -617,17 +511,25 @@ export function CourseRunDetailPage() {
                 <CardContent className="flex items-start gap-4 p-6">
                   <CalendarDays className="text-muted-foreground mt-1 size-5" />
                   <div>
-                    <p className="text-muted-foreground text-sm">Buoi hoc</p>
+                    <p className="text-muted-foreground text-sm">Sessions</p>
                     <p className="text-2xl font-semibold">{sessions.length}</p>
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="transition-colors hover:bg-muted/30">
                 <CardContent className="flex items-start gap-4 p-6">
                   <BookOpen className="text-muted-foreground mt-1 size-5" />
-                  <div>
-                    <p className="text-muted-foreground text-sm">Muc giao trinh</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-muted-foreground text-sm">Syllabus lessons</p>
                     <p className="text-2xl font-semibold">{totalSyllabusItems}</p>
+                    {course ? (
+                      <Link
+                        to={ROUTES.courseDetail(course.id, 'syllabus')}
+                        className="text-primary mt-1 inline-block text-sm hover:underline"
+                      >
+                        Open syllabus →
+                      </Link>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>
@@ -635,7 +537,7 @@ export function CourseRunDetailPage() {
                 <CardContent className="flex items-start gap-4 p-6">
                   <Users className="text-muted-foreground mt-1 size-5" />
                   <div>
-                    <p className="text-muted-foreground text-sm">Ghi danh</p>
+                    <p className="text-muted-foreground text-sm">Enrollment</p>
                     <p className="text-2xl font-semibold">
                       {enrollmentsQuery.data?.totalElement ?? 0}
                     </p>
@@ -646,7 +548,7 @@ export function CourseRunDetailPage() {
                 <CardContent className="flex items-start gap-4 p-6">
                   <MessageSquare className="text-muted-foreground mt-1 size-5" />
                   <div>
-                    <p className="text-muted-foreground text-sm">Chat lop</p>
+                    <p className="text-muted-foreground text-sm">Class chat</p>
                     <p className="text-2xl font-semibold">
                       {conversationQuery.data?.participants.length ?? 0}
                     </p>
@@ -656,28 +558,44 @@ export function CourseRunDetailPage() {
             </div>
           </div>
 
+          {course ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Course syllabus</p>
+                  <p className="text-muted-foreground text-sm">
+                    {syllabusSections.length} chapters · {totalSyllabusItems} lessons — managed at course
+                    level, shared across all runs.
+                  </p>
+                </div>
+                <Button variant="secondary" size="sm" asChild>
+                  <Link to={ROUTES.courseDetail(course.id, 'syllabus')}>Open syllabus</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Tabs defaultValue="sessions" className="space-y-4">
             <TabsList className="h-auto flex-wrap justify-start">
-              <TabsTrigger value="sessions">Buoi hoc ({sessions.length})</TabsTrigger>
-              <TabsTrigger value="syllabus">Giao trinh ({sections.length})</TabsTrigger>
+              <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
               <TabsTrigger value="enrollments">
-                Ghi danh ({enrollmentsQuery.data?.totalElement ?? 0})
+                Enrollment ({enrollmentsQuery.data?.totalElement ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="chat">Chat lop</TabsTrigger>
+              <TabsTrigger value="chat">Class chat</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sessions" className="space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Buoi hoc</CardTitle>
+                  <CardTitle className="text-base">Live sessions</CardTitle>
                   <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
                     <Plus className="mr-2 size-4" />
-                    Them buoi hoc
+                    Add session
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   {sessions.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Chua co buoi hoc nao.</p>
+                    <p className="text-muted-foreground text-sm">No sessions yet.</p>
                   ) : (
                     sessions.map((session) => (
                       <div
@@ -694,12 +612,12 @@ export function CourseRunDetailPage() {
                           <p className="text-muted-foreground text-sm">
                             {session.scheduledAt
                               ? formatDateTime(session.scheduledAt)
-                              : 'Chua len lich'}
+                              : 'Not scheduled'}
                           </p>
                           <p className="text-muted-foreground text-sm">
                             {session.durationMinutes != null
-                              ? `${session.durationMinutes} phut`
-                              : 'Chua co thoi luong'}
+                              ? `${session.durationMinutes} min`
+                              : 'No duration set'}
                           </p>
                           {session.description ? (
                             <p className="text-sm">{session.description}</p>
@@ -713,17 +631,17 @@ export function CourseRunDetailPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditSession(session)}>
-                              Sua buoi hoc
+                              Edit session
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => {
-                                if (window.confirm('Xoa buoi hoc nay?')) {
+                                if (window.confirm('Delete this session?')) {
                                   deleteSessionMutation.mutate(session.id);
                                 }
                               }}
                             >
-                              Xoa buoi hoc
+                              Delete session
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -734,112 +652,14 @@ export function CourseRunDetailPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="syllabus" className="space-y-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Giao trinh</CardTitle>
-                  <Button size="sm" onClick={() => setCreateSectionOpen(true)}>
-                    <Plus className="mr-2 size-4" />
-                    Them chuong
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-0">
-                  {sections.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Chua co chuong trinh day.</p>
-                  ) : (
-                    sections.map((section) => (
-                      <Card key={section.id}>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base">{section.title}</CardTitle>
-                            <p className="text-muted-foreground mt-1 text-sm">
-                              {section.items?.length ?? 0} muc giao trinh
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCreateItemSectionId(section.id)}
-                            >
-                              <Plus className="mr-2 size-4" />
-                              Them muc
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="size-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openEditSection(section)}>
-                                  Sua chuong
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => {
-                                    if (window.confirm('Xoa chuong nay?')) {
-                                      deleteSectionMutation.mutate(section.id);
-                                    }
-                                  }}
-                                >
-                                  Xoa chuong
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          {(section.items ?? []).length === 0 ? (
-                            <p className="text-muted-foreground text-sm">
-                              Chua co muc giao trinh.
-                            </p>
-                          ) : (
-                            section.items.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                              >
-                                <div>
-                                  <p className="font-medium">{item.title}</p>
-                                  <p className="text-muted-foreground text-sm">{item.type}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" asChild>
-                                    <Link to={ROUTES.syllabusItemDetail(item.id)}>Sua chi tiet</Link>
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      if (window.confirm('Xoa muc giao trinh nay?')) {
-                                        deleteItemMutation.mutate(item.id);
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="size-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
             <TabsContent value="enrollments" className="space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Ghi danh</CardTitle>
+                  <CardTitle className="text-base">Enrollment</CardTitle>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => setEnrollOpen(true)}>
                       <Plus className="mr-2 size-4" />
-                      Ghi danh thu cong
+                      Manual enrollment
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                       <FileSpreadsheet className="mr-2 size-4" />
@@ -849,7 +669,7 @@ export function CourseRunDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   {enrollments.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Chua co ghi danh nao.</p>
+                    <p className="text-muted-foreground text-sm">No enrollments yet.</p>
                   ) : (
                     enrollments.map((enrollment) => (
                       <div
@@ -859,15 +679,15 @@ export function CourseRunDetailPage() {
                         <div className="space-y-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className="font-medium">
-                              {enrollment.userDisplayName ?? enrollment.userEmail ?? 'Nguoi dung'}
+                              {enrollment.userDisplayName ?? enrollment.userEmail ?? 'User'}
                             </p>
                             <Badge>{enrollment.status}</Badge>
                           </div>
                           <p className="text-muted-foreground text-sm">
-                            {enrollment.userEmail ?? 'Khong co email'} · {enrollment.role ?? 'STUDENT'}
+                            {enrollment.userEmail ?? 'No email'} · {enrollment.role ?? 'STUDENT'}
                           </p>
                           <p className="text-muted-foreground text-sm">
-                            Ghi danh luc {formatDateTime(enrollment.enrolledAt)}
+                            Enrolled at {formatDateTime(enrollment.enrolledAt)}
                           </p>
                         </div>
                         <DropdownMenu>
@@ -878,7 +698,7 @@ export function CourseRunDetailPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setViewEnrollmentId(enrollment.id)}>
-                              Xem chi tiet
+                              View details
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
@@ -887,17 +707,17 @@ export function CourseRunDetailPage() {
                                 setEditRole(enrollment.role ?? 'STUDENT');
                               }}
                             >
-                              Sua ghi danh
+                              Edit enrollment
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => {
-                                if (window.confirm('Xoa ghi danh nay?')) {
+                                if (window.confirm('Delete this enrollment?')) {
                                   deleteEnrollmentMutation.mutate(enrollment.id);
                                 }
                               }}
                             >
-                              Xoa ghi danh
+                              Delete enrollment
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -911,7 +731,7 @@ export function CourseRunDetailPage() {
                       disabled={enrollmentPage <= 1}
                       onClick={() => setEnrollmentPage((page) => page - 1)}
                     >
-                      Trang truoc
+                      Previous
                     </Button>
                     <Button
                       variant="outline"
@@ -919,7 +739,7 @@ export function CourseRunDetailPage() {
                       disabled={enrollmentPage >= (enrollmentsQuery.data?.totalPages ?? 1)}
                       onClick={() => setEnrollmentPage((page) => page + 1)}
                     >
-                      Trang sau
+                      Next
                     </Button>
                   </div>
                 </CardContent>
@@ -929,17 +749,17 @@ export function CourseRunDetailPage() {
             <TabsContent value="chat" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Chat lop</CardTitle>
+                  <CardTitle className="text-base">Class chat</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-0">
                   {!conversationQuery.data ? (
                     <p className="text-muted-foreground text-sm">
-                      Lop nay chua co hoi thoai nhom hoac chua duoc tao.
+                      This class has no group conversation yet.
                     </p>
                   ) : (
                     <>
                       <p className="text-muted-foreground text-sm">
-                        {conversationQuery.data.participants.length} thanh vien ·{' '}
+                        {conversationQuery.data.participants.length} members ·{' '}
                         {conversationQuery.data.status}
                       </p>
                       <div className="space-y-3">
@@ -962,7 +782,7 @@ export function CourseRunDetailPage() {
                               size="icon"
                               className="text-destructive"
                               onClick={() => {
-                                if (window.confirm('Xoa tin nhan nay?')) {
+                                if (window.confirm('Delete this message?')) {
                                   deleteMessageMutation.mutate(message.id);
                                 }
                               }}
@@ -979,7 +799,7 @@ export function CourseRunDetailPage() {
                           disabled={messagePage <= 1}
                           onClick={() => setMessagePage((page) => page - 1)}
                         >
-                          Trang truoc
+                          Previous
                         </Button>
                         <Button
                           variant="outline"
@@ -987,7 +807,7 @@ export function CourseRunDetailPage() {
                           disabled={messagePage >= (messagesQuery.data?.totalPages ?? 1)}
                           onClick={() => setMessagePage((page) => page + 1)}
                         >
-                          Trang sau
+                          Next
                         </Button>
                       </div>
                     </>
@@ -1000,7 +820,7 @@ export function CourseRunDetailPage() {
       ) : (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Dang tai chi tiet dot hoc...
+            Loading course run details...
           </CardContent>
         </Card>
       )}
@@ -1008,13 +828,13 @@ export function CourseRunDetailPage() {
       <Sheet open={runSettingsOpen} onOpenChange={setRunSettingsOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Cai dat dot hoc</SheetTitle>
+            <SheetTitle>Course run settings</SheetTitle>
           </SheetHeader>
           {runSettings ? (
             <>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                 <div className="space-y-2">
-                  <Label>Ma lop</Label>
+                  <Label>Class code</Label>
                   <Input
                     value={runSettings.code}
                     onChange={(event) =>
@@ -1024,7 +844,7 @@ export function CourseRunDetailPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Trang thai</Label>
+                    <Label>Status</Label>
                     <Select
                       value={runSettings.status}
                       onValueChange={(value) =>
@@ -1044,7 +864,7 @@ export function CourseRunDetailPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Suc chua</Label>
+                    <Label>Capacity</Label>
                     <Input
                       type="number"
                       value={runSettings.capacity}
@@ -1058,7 +878,7 @@ export function CourseRunDetailPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Bat dau</Label>
+                    <Label>Start</Label>
                     <DateTimePicker
                       value={runSettings.startsAt}
                       onChange={(startsAt) =>
@@ -1067,7 +887,7 @@ export function CourseRunDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Ket thuc</Label>
+                    <Label>End</Label>
                     <DateTimePicker
                       value={runSettings.endsAt}
                       onChange={(endsAt) =>
@@ -1078,7 +898,7 @@ export function CourseRunDetailPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Mo dang ky</Label>
+                    <Label>Open enrollment</Label>
                     <DateTimePicker
                       value={runSettings.enrollmentStartDate}
                       onChange={(enrollmentStartDate) =>
@@ -1089,7 +909,7 @@ export function CourseRunDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Dong dang ky</Label>
+                    <Label>Close enrollment</Label>
                     <DateTimePicker
                       value={runSettings.enrollmentEndDate}
                       onChange={(enrollmentEndDate) =>
@@ -1103,7 +923,7 @@ export function CourseRunDetailPage() {
               </div>
               <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
                 <Button onClick={() => updateRunMutation.mutate()} disabled={updateRunMutation.isPending}>
-                  Luu
+                  Save
                 </Button>
               </SheetFooter>
             </>
@@ -1114,11 +934,11 @@ export function CourseRunDetailPage() {
       <Sheet open={createSessionOpen} onOpenChange={setCreateSessionOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Them buoi hoc</SheetTitle>
+            <SheetTitle>Add session</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Tieu de</Label>
+              <Label>Title</Label>
               <Input
                 value={sessionForm.title}
                 onChange={(event) =>
@@ -1127,7 +947,7 @@ export function CourseRunDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Mo ta</Label>
+              <Label>Description</Label>
               <Textarea
                 value={sessionForm.description}
                 onChange={(event) =>
@@ -1137,7 +957,7 @@ export function CourseRunDetailPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>So buoi</Label>
+                <Label>Session number</Label>
                 <Input
                   type="number"
                   value={sessionForm.sessionNumber}
@@ -1150,7 +970,7 @@ export function CourseRunDetailPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Thoi luong (phut)</Label>
+                <Label>Duration (minutes)</Label>
                 <Input
                   type="number"
                   value={sessionForm.durationMinutes}
@@ -1164,7 +984,7 @@ export function CourseRunDetailPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Lich hoc</Label>
+              <Label>Schedule</Label>
               <DateTimePicker
                 value={sessionForm.scheduledAt}
                 onChange={(scheduledAt) =>
@@ -1173,7 +993,7 @@ export function CourseRunDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Trang thai</Label>
+              <Label>Status</Label>
               <Select
                 value={sessionForm.status}
                 onValueChange={(value) =>
@@ -1194,7 +1014,7 @@ export function CourseRunDetailPage() {
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => createSessionMutation.mutate()} disabled={createSessionMutation.isPending}>
-              Luu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -1208,13 +1028,13 @@ export function CourseRunDetailPage() {
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sua buoi hoc</SheetTitle>
+            <SheetTitle>Edit session</SheetTitle>
           </SheetHeader>
           {editSession ? (
             <>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                 <div className="space-y-2">
-                  <Label>Tieu de</Label>
+                  <Label>Title</Label>
                   <Input
                     value={editSession.form.title}
                     onChange={(event) =>
@@ -1228,7 +1048,7 @@ export function CourseRunDetailPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Mo ta</Label>
+                  <Label>Description</Label>
                   <Textarea
                     value={editSession.form.description}
                     onChange={(event) =>
@@ -1243,7 +1063,7 @@ export function CourseRunDetailPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>So buoi</Label>
+                    <Label>Session number</Label>
                     <Input
                       type="number"
                       value={editSession.form.sessionNumber}
@@ -1258,7 +1078,7 @@ export function CourseRunDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Thoi luong (phut)</Label>
+                    <Label>Duration (minutes)</Label>
                     <Input
                       type="number"
                       value={editSession.form.durationMinutes}
@@ -1274,7 +1094,7 @@ export function CourseRunDetailPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Lich hoc</Label>
+                  <Label>Schedule</Label>
                   <DateTimePicker
                     value={editSession.form.scheduledAt}
                     onChange={(scheduledAt) =>
@@ -1288,7 +1108,7 @@ export function CourseRunDetailPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Trang thai</Label>
+                  <Label>Status</Label>
                   <Select
                     value={editSession.form.status}
                     onValueChange={(value) =>
@@ -1314,91 +1134,7 @@ export function CourseRunDetailPage() {
               </div>
               <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
                 <Button onClick={() => updateSessionMutation.mutate()} disabled={updateSessionMutation.isPending}>
-                  Luu
-                </Button>
-              </SheetFooter>
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={createSectionOpen} onOpenChange={setCreateSectionOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Them chuong</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label>Tieu de</Label>
-              <Input value={sectionTitle} onChange={(event) => setSectionTitle(event.target.value)} />
-            </div>
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => createSectionMutation.mutate()} disabled={createSectionMutation.isPending}>
-              Luu
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={Boolean(createItemSectionId)} onOpenChange={() => setCreateItemSectionId(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Them muc giao trinh</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label>Tieu de</Label>
-              <Input value={itemTitle} onChange={(event) => setItemTitle(event.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Loai</Label>
-              <Select value={itemType} onValueChange={setItemType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="VIDEO">VIDEO</SelectItem>
-                  <SelectItem value="ARTICLE">ARTICLE</SelectItem>
-                  <SelectItem value="QUIZ">QUIZ</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => createItemSectionId && createItemMutation.mutate(createItemSectionId)}
-              disabled={!createItemSectionId || createItemMutation.isPending}
-            >
-              Luu
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sua chuong</SheetTitle>
-          </SheetHeader>
-          {editSection ? (
-            <>
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-                <div className="space-y-2">
-                  <Label>Tieu de</Label>
-                  <Input
-                    value={editSection.title}
-                    onChange={(event) =>
-                      setEditSection((current) =>
-                        current && { ...current, title: event.target.value },
-                      )
-                    }
-                  />
-                </div>
-              </div>
-              <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-                <Button onClick={() => updateSectionMutation.mutate()} disabled={updateSectionMutation.isPending}>
-                  Luu
+                  Save
                 </Button>
               </SheetFooter>
             </>
@@ -1417,14 +1153,14 @@ export function CourseRunDetailPage() {
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Ghi danh thu cong</SheetTitle>
+            <SheetTitle>Manual enrollment</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             <UserPicker open={enrollOpen} selectedUser={enrollUser} onSelect={setEnrollUser} />
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => enrollMutation.mutate()} disabled={!enrollUser || enrollMutation.isPending}>
-              Ghi danh
+              Enroll
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -1442,11 +1178,11 @@ export function CourseRunDetailPage() {
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Import ghi danh bang Excel</SheetTitle>
+            <SheetTitle>Import enrollments via Excel</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-              Tai file mau, dien du lieu hoc vien, xem truoc ket qua roi moi thuc hien import.
+              Download template, fill in student data, preview results, then import.
             </div>
             <Button
               variant="outline"
@@ -1462,10 +1198,10 @@ export function CourseRunDetailPage() {
               }}
             >
               <FileSpreadsheet className="mr-2 size-4" />
-              Tai mau Excel
+              Download template
             </Button>
             <div className="space-y-2">
-              <Label>Chon file</Label>
+              <Label>Choose file</Label>
               <Input
                 type="file"
                 accept=".xlsx,.xls"
@@ -1476,14 +1212,14 @@ export function CourseRunDetailPage() {
               <Card>
                 <CardContent className="space-y-2 p-4 text-sm">
                   <p>
-                    Xem truoc: {importPreview.successCount} OK, {importPreview.failedCount} loi,{' '}
-                    {importPreview.skippedCount} bo qua / {importPreview.totalRows} dong
+                    Preview: {importPreview.successCount} OK, {importPreview.failedCount} failed,{' '}
+                    {importPreview.skippedCount} skipped / {importPreview.totalRows} rows
                   </p>
                   {importPreview.failures.length > 0 ? (
                     <div className="space-y-2">
                       {importPreview.failures.slice(0, 10).map((failure) => (
                         <div key={`${failure.rowNumber}-${failure.email ?? 'unknown'}`} className="rounded-md border p-3">
-                          <p className="font-medium">Dong {failure.rowNumber}</p>
+                          <p className="font-medium">Row {failure.rowNumber}</p>
                           <p className="text-muted-foreground">{failure.reason}</p>
                         </div>
                       ))}
@@ -1500,7 +1236,7 @@ export function CourseRunDetailPage() {
               onClick={() => importFile && previewImportMutation.mutate()}
             >
               <Eye className="mr-2 size-4" />
-              Xem truoc
+              Preview
             </Button>
             <Button
               disabled={!importFile || importMutation.isPending}
@@ -1516,38 +1252,38 @@ export function CourseRunDetailPage() {
       <Sheet open={Boolean(viewEnrollmentId)} onOpenChange={() => setViewEnrollmentId(null)}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Chi tiet ghi danh</SheetTitle>
+            <SheetTitle>Enrollment details</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 text-sm">
             {enrollmentDetailQuery.data ? (
               <>
                 <div>
-                  <p className="text-muted-foreground">Nguoi dung</p>
+                  <p className="text-muted-foreground">User</p>
                   <p className="font-medium">{enrollmentDetailQuery.data.userEmail}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Trang thai</p>
+                  <p className="text-muted-foreground">Status</p>
                   <p className="font-medium">{enrollmentDetailQuery.data.status}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Vai tro</p>
+                  <p className="text-muted-foreground">Role</p>
                   <p className="font-medium">{enrollmentDetailQuery.data.role ?? 'STUDENT'}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Phuong thuc</p>
+                  <p className="text-muted-foreground">Method</p>
                   <p className="font-medium">
-                    {enrollmentDetailQuery.data.enrolmentMethod ?? 'Khong xac dinh'}
+                    {enrollmentDetailQuery.data.enrolmentMethod ?? 'Unknown'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Tien do</p>
+                  <p className="text-muted-foreground">Progress</p>
                   <p className="font-medium">
                     {enrollmentDetailQuery.data.progressPercent ?? '0'}%
                   </p>
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground">Dang tai...</p>
+              <p className="text-muted-foreground">Loading...</p>
             )}
           </div>
         </SheetContent>
@@ -1556,11 +1292,11 @@ export function CourseRunDetailPage() {
       <Sheet open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sua ghi danh</SheetTitle>
+            <SheetTitle>Edit enrollment</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Trang thai</Label>
+              <Label>Status</Label>
               <Select value={editStatus} onValueChange={setEditStatus}>
                 <SelectTrigger>
                   <SelectValue />
@@ -1574,23 +1310,21 @@ export function CourseRunDetailPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Vai tro</Label>
+              <Label>Role</Label>
               <Select value={editRole} onValueChange={setEditRole}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="STUDENT">STUDENT</SelectItem>
-                  <SelectItem value="LECTURE">LECTURE</SelectItem>
-                  <SelectItem value="ADMIN">ADMIN</SelectItem>
-                  <SelectItem value="NO_ROLE">NO_ROLE</SelectItem>
+                  <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button onClick={() => updateEnrollmentMutation.mutate()} disabled={updateEnrollmentMutation.isPending}>
-              Luu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>

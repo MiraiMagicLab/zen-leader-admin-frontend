@@ -2,7 +2,7 @@ import type { ApiResponse } from '@/services/types/api';
 
 export function unwrapApiResponse<T>(
   response: ApiResponse<T>,
-  fallbackMessage = 'Yêu cầu thất bại.',
+  fallbackMessage = 'Request failed.',
 ): T {
   if (!response.success || response.data === undefined) {
     throw new Error(

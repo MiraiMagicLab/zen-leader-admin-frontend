@@ -15,7 +15,7 @@ export async function loginApi(payload: LoginRequest): Promise<TokenResponseDto>
     payload,
   );
 
-  return unwrapAuthResponse(data, 'Đăng nhập thất bại.');
+  return unwrapAuthResponse(data, 'Login failed.');
 }
 
 export async function getUserMeApi(token: string): Promise<AuthUserDto> {
@@ -29,7 +29,7 @@ export async function getUserMeApi(token: string): Promise<AuthUserDto> {
     throw new Error(
       data.errorMessage?.message ??
         data.message ??
-        'Không thể lấy thông tin người dùng.',
+        'Unable to fetch user info.',
     );
   }
 

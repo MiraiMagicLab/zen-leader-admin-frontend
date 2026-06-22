@@ -33,13 +33,13 @@ import { cn } from '@/lib/utils';
 const highlights = [
   {
     icon: ShieldCheck,
-    title: 'Bảo mật đa lớp',
-    description: 'Phân quyền admin, audit log và kiểm soát truy cập theo thời gian thực.',
+    title: 'Multi-layer security',
+    description: 'Admin roles, audit logs, and real-time access control.',
   },
   {
     icon: Sparkles,
-    title: 'Quản trị LMS',
-    description: 'Theo dõi học viên, khóa học, đợt học và hoạt động nền tảng.',
+    title: 'LMS Administration',
+    description: 'Track students, courses, course runs, and platform activity.',
   },
 ];
 
@@ -168,13 +168,13 @@ export function LoginPage() {
                   variant="secondary"
                   className="mb-2 w-fit border-primary/20 bg-primary/10 text-primary"
                 >
-                  Truy cập bảo mật
+                  Secure Access
                 </Badge>
                 <CardTitle className="text-2xl font-bold tracking-tight">
-                  Chào mừng trở lại
+                  Welcome back
                 </CardTitle>
                 <CardDescription className="text-base">
-                  Đăng nhập để truy cập bảng điều khiển {BRAND.name}.
+                  Sign in to access the {BRAND.name} admin panel.
                 </CardDescription>
               </CardHeader>
 
@@ -187,7 +187,7 @@ export function LoginPage() {
                   ) : null}
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email / tài khoản</Label>
+                    <Label htmlFor="email">Email / account</Label>
                     <div className="relative">
                       <User className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                       <Input
@@ -205,12 +205,12 @@ export function LoginPage() {
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="password">Mật khẩu</Label>
+                      <Label htmlFor="password">Password</Label>
                       <button
                         type="button"
                         className="text-muted-foreground hover:text-foreground text-xs transition-colors"
                       >
-                        Quên mật khẩu?
+                        Forgot password?
                       </button>
                     </div>
                     <div className="relative">
@@ -237,7 +237,7 @@ export function LoginPage() {
                       isSubmitting && 'opacity-80',
                     )}
                   >
-                    {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+                    {isSubmitting ? 'Signing in...' : 'Sign in'}
                     {!isSubmitting ? (
                       <ArrowRight className="size-4" />
                     ) : null}

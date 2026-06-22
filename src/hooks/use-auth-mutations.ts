@@ -44,5 +44,5 @@ export function useLogoutMutation() {
 }
 
 export function getAuthMutationErrorMessage(error: unknown): string {
-  return getApiErrorMessage(error, 'Đăng nhập thất bại. Vui lòng thử lại.');
+  return getApiErrorMessage(error, 'Login failed. Please try again.');
 }

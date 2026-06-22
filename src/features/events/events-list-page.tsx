@@ -47,6 +47,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
+import { eventStatusLabel, eventTypeLabel, normalizeEventStatus } from '@/lib/event-labels';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
@@ -134,7 +135,7 @@ export function EventsListPage() {
       });
     },
     onSuccess: () => {
-      toast.success('Event created successfully.');
+      toast.success('Event created.');
       setSheetOpen(false);
       setForm(emptyForm);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
@@ -154,7 +155,7 @@ export function EventsListPage() {
   const unpublishMutation = useMutation({
     mutationFn: (id: string) => eventsApi.unpublish(id),
     onSuccess: () => {
-      toast.success('Event moved back to draft.');
+      toast.success('Event moved to draft.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -213,7 +214,7 @@ export function EventsListPage() {
           <div className="space-y-1">
             <p className="font-medium">{row.original.title}</p>
             <p className="text-muted-foreground line-clamp-2 text-xs">
-              {row.original.description || 'No description yet.'}
+              {row.original.description || 'No description yet'}
             </p>
           </div>
         ),
@@ -223,23 +224,26 @@ export function EventsListPage() {
         header: 'Type',
         cell: ({ row }) => (
           <Badge variant={row.original.isOfficial ? 'default' : 'secondary'}>
-            {row.original.isOfficial ? 'System' : 'User'}
+            {eventTypeLabel(row.original.isOfficial)}
           </Badge>
         ),
       },
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        cell: ({ row }) => (
+          <Badge variant="secondary">{eventStatusLabel(row.original.status)}</Badge>
+        ),
       },
       {
         id: 'author',
-        header: 'Owner',
-        cell: ({ row }) => (row.original.isOfficial ? 'ZenLeader System' : row.original.author.name),
+        header: 'Creator',
+        cell: ({ row }) =>
+          row.original.isOfficial ? 'Zen Leader System' : row.original.author.name,
       },
       {
         accessorKey: 'startTime',
-        header: 'Starts',
+        header: 'Start',
         cell: ({ row }) => formatDateTime(row.original.startTime),
       },
       {
@@ -256,7 +260,7 @@ export function EventsListPage() {
               <DropdownMenuItem asChild>
                 <Link to={ROUTES.eventDetail(row.original.id)}>Details</Link>
               </DropdownMenuItem>
-              {row.original.status !== 'PUBLISHED' ? (
+              {normalizeEventStatus(row.original.status) !== 'PUBLISHED' ? (
                 <DropdownMenuItem
                   onClick={() =>
                     openActionDialog(row.original.id, row.original.title, 'publish')
@@ -265,7 +269,7 @@ export function EventsListPage() {
                   Publish
                 </DropdownMenuItem>
               ) : null}
-              {row.original.status !== 'DRAFT' ? (
+              {normalizeEventStatus(row.original.status) !== 'DRAFT' ? (
                 <DropdownMenuItem
                   onClick={() =>
                     openActionDialog(row.original.id, row.original.title, 'unpublish')
@@ -292,7 +296,7 @@ export function EventsListPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Events"
-        description="Manage system events and community-created sessions with the internal meet flow."
+        description="Manage system events and community-created sessions via internal meet flow."
         actions={
           <Button
             onClick={() => {
@@ -301,7 +305,7 @@ export function EventsListPage() {
             }}
           >
             <Plus className="mr-2 size-4" />
-            Create event
+            Add event
           </Button>
         }
       />
@@ -311,7 +315,7 @@ export function EventsListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search title or description"
+            placeholder="Search by title or description…"
             value={keyword}
             onChange={(event) => {
               setKeyword(event.target.value);
@@ -320,7 +324,7 @@ export function EventsListPage() {
           />
         </div>
         <Input
-          placeholder="Filter by author name or email"
+          placeholder="Filter by creator name or email"
           value={authorKeyword}
           onChange={(event) => {
             setAuthorKeyword(event.target.value);
@@ -355,9 +359,9 @@ export function EventsListPage() {
             <SelectValue placeholder="Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All event types</SelectItem>
-            <SelectItem value="official">System events</SelectItem>
-            <SelectItem value="community">User-created events</SelectItem>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="official">System event</SelectItem>
+            <SelectItem value="community">User event</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -368,33 +372,39 @@ export function EventsListPage() {
         isLoading={eventsQuery.isLoading}
         showRowIndex
         pageOffset={(eventsQuery.data?.currentPage ?? page) * PAGE_SIZE}
+        showPagination={false}
+        emptyMessage="No events yet."
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
           disabled={(eventsQuery.data?.currentPage ?? page) <= 0}
           onClick={() => setPage((currentPage) => currentPage - 1)}
         >
-          Previous
+          Previous page
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Page {(eventsQuery.data?.currentPage ?? page) + 1} /{' '}
+          {eventsQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"
           disabled={(eventsQuery.data?.currentPage ?? page) + 1 >= (eventsQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((currentPage) => currentPage + 1)}
         >
-          Next
+          Next page
         </Button>
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Create event</SheetTitle>
+            <SheetTitle>Add event</SheetTitle>
             <SheetDescription>
-              ZenLeader will generate the meeting room and join target with the internal meet service.
+              The system will create a meet room and join link via the internal meet service.
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
@@ -444,7 +454,7 @@ export function EventsListPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="event-thumbnail">Thumbnail</Label>
+              <Label htmlFor="event-thumbnail">Thumbnail image</Label>
               <Input
                 id="event-thumbnail"
                 type="file"
@@ -506,15 +516,15 @@ export function EventsListPage() {
               {pendingAction?.action === 'publish'
                 ? 'Publish this event?'
                 : pendingAction?.action === 'unpublish'
-                  ? 'Move this event back to draft?'
+                  ? 'Move event to draft?'
                   : 'Delete this event?'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingAction?.action === 'publish'
-                ? `"${pendingAction.eventTitle}" will become visible in public event feeds.`
+                ? `"${pendingAction.eventTitle}" will appear on the public events feed.`
                 : pendingAction?.action === 'unpublish'
-                  ? `"${pendingAction.eventTitle}" will be hidden from public event feeds until it is published again.`
-                  : `"${pendingAction?.eventTitle}" will be removed from admin management and public feeds.`}
+                  ? `"${pendingAction.eventTitle}" will be hidden from the public feed until republished.`
+                  : `"${pendingAction?.eventTitle}" will be deleted from admin and the public feed.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -529,7 +539,7 @@ export function EventsListPage() {
               onClick={confirmPendingAction}
             >
               {pendingAction?.action === 'publish'
-                ? 'Publish event'
+                ? 'Publish'
                 : pendingAction?.action === 'unpublish'
                   ? 'Move to draft'
                   : 'Delete event'}
