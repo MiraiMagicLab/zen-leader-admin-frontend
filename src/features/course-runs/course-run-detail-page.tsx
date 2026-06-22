@@ -57,8 +57,6 @@ import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import {
   enrollmentsApi,
   sessionsApi,
-  syllabusItemsApi,
-  syllabusSectionsApi,
 } from '@/services/lms/lms-api';
 import { messagingApi } from '@/services/messaging/messaging-api';
 import type {
@@ -66,7 +64,6 @@ import type {
   EnrollmentImportResponse,
   EnrollmentResponse,
   SessionResponse,
-  SyllabusSectionResponse,
   UserResponse,
 } from '@/services/types/domain';
 
@@ -88,12 +85,6 @@ type SessionForm = {
   scheduledAt: string;
   durationMinutes: string;
   status: string;
-};
-
-type SectionForm = {
-  id: string;
-  title: string;
-  orderIndex: number;
 };
 
 const DETAIL_PAGE_SIZE = 100;
@@ -140,8 +131,6 @@ export function CourseRunDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const [createSectionOpen, setCreateSectionOpen] = useState(false);
-  const [createItemSectionId, setCreateItemSectionId] = useState<string | null>(null);
   const [createSessionOpen, setCreateSessionOpen] = useState(false);
   const [editSession, setEditSession] = useState<{
     id: string;
@@ -151,9 +140,6 @@ export function CourseRunDetailPage() {
   const [enrollOpen, setEnrollOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [runSettingsOpen, setRunSettingsOpen] = useState(false);
-  const [sectionTitle, setSectionTitle] = useState('');
-  const [itemTitle, setItemTitle] = useState('');
-  const [itemType, setItemType] = useState('VIDEO');
   const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm);
   const [enrollUser, setEnrollUser] = useState<UserResponse | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -162,7 +148,6 @@ export function CourseRunDetailPage() {
   const [editRole, setEditRole] = useState('STUDENT');
   const [messagePage, setMessagePage] = useState(1);
   const [enrollmentPage, setEnrollmentPage] = useState(1);
-  const [editSection, setEditSection] = useState<SectionForm | null>(null);
   const [viewEnrollmentId, setViewEnrollmentId] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<EnrollmentImportResponse | null>(null);
   const [runSettings, setRunSettings] = useState<RunSettingsForm | null>(null);
@@ -176,13 +161,6 @@ export function CourseRunDetailPage() {
   const courseQuery = useQuery({
     queryKey: queryKeys.courses.detail(runQuery.data?.courseId ?? ''),
     queryFn: () => coursesApi.getById(runQuery.data!.courseId),
-    enabled: Boolean(runQuery.data?.courseId),
-  });
-
-  const sectionsQuery = useQuery({
-    queryKey: queryKeys.syllabusSections.list(runQuery.data?.courseId ?? ''),
-    queryFn: () =>
-      syllabusSectionsApi.getPage(0, DETAIL_PAGE_SIZE, runQuery.data!.courseId),
     enabled: Boolean(runQuery.data?.courseId),
   });
 
@@ -225,9 +203,9 @@ export function CourseRunDetailPage() {
   const run = runQuery.data;
   const course = courseQuery.data;
   const sessions = sessionsQuery.data?.data ?? run?.courseSessions ?? [];
-  const sections = sectionsQuery.data?.data ?? [];
   const enrollments = enrollmentsQuery.data?.data ?? [];
-  const totalSyllabusItems = sections.reduce(
+  const syllabusSections = course?.syllabusSections ?? [];
+  const totalSyllabusItems = syllabusSections.reduce(
     (count, section) => count + (section.items?.length ?? 0),
     0,
   );
@@ -239,13 +217,6 @@ export function CourseRunDetailPage() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.courses.detail(run?.courseId ?? ''),
       }),
-    ]);
-  };
-
-  const invalidateSections = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.syllabusSections.all }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(run?.courseId ?? '') }),
     ]);
   };
 
@@ -265,42 +236,6 @@ export function CourseRunDetailPage() {
     onSuccess: async () => {
       toast.success('Da xoa tin nhan.');
       await queryClient.invalidateQueries({ queryKey: queryKeys.messaging.all });
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const createSectionMutation = useMutation({
-    mutationFn: () =>
-      syllabusSectionsApi.create({
-        courseId: run!.courseId,
-        title: sectionTitle,
-        orderIndex: sections.length,
-      }),
-    onSuccess: async () => {
-      toast.success('Da them chuong.');
-      setCreateSectionOpen(false);
-      setSectionTitle('');
-      await invalidateSections();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const createItemMutation = useMutation({
-    mutationFn: (syllabusSectionId: string) => {
-      const section = sections.find((entry) => entry.id === syllabusSectionId);
-      return syllabusItemsApi.create({
-        syllabusSectionId,
-        type: itemType,
-        title: itemTitle,
-        orderIndex: section?.items?.length ?? 0,
-      });
-    },
-    onSuccess: async () => {
-      toast.success('Da them muc giao trinh.');
-      setCreateItemSectionId(null);
-      setItemTitle('');
-      setItemType('VIDEO');
-      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -391,7 +326,7 @@ export function CourseRunDetailPage() {
     mutationFn: () =>
       enrollmentsApi.update(editEnrollment!.id, {
         status: editStatus as 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED',
-        role: editRole as 'STUDENT' | 'LECTURE' | 'ADMIN' | 'NO_ROLE',
+        role: editRole as 'STUDENT' | 'INSTRUCTOR',
       }),
     onSuccess: async () => {
       toast.success('Da cap nhat ghi danh.');
@@ -406,39 +341,6 @@ export function CourseRunDetailPage() {
     onSuccess: async () => {
       toast.success('Da xoa ghi danh.');
       await invalidateEnrollments();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const updateSectionMutation = useMutation({
-    mutationFn: () =>
-      syllabusSectionsApi.update(editSection!.id, {
-        courseId: run!.courseId,
-        title: editSection!.title,
-        orderIndex: editSection!.orderIndex,
-      }),
-    onSuccess: async () => {
-      toast.success('Da cap nhat chuong.');
-      setEditSection(null);
-      await invalidateSections();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const deleteSectionMutation = useMutation({
-    mutationFn: (sectionId: string) => syllabusSectionsApi.remove(sectionId),
-    onSuccess: async () => {
-      toast.success('Da xoa chuong.');
-      await invalidateSections();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const deleteItemMutation = useMutation({
-    mutationFn: (itemId: string) => syllabusItemsApi.remove(itemId),
-    onSuccess: async () => {
-      toast.success('Da xoa muc giao trinh.');
-      await invalidateSections();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -505,14 +407,6 @@ export function CourseRunDetailPage() {
     });
   };
 
-  const openEditSection = (section: SyllabusSectionResponse) => {
-    setEditSection({
-      id: section.id,
-      title: section.title,
-      orderIndex: section.orderIndex,
-    });
-  };
-
   if (!runId) {
     return null;
   }
@@ -522,23 +416,23 @@ export function CourseRunDetailPage() {
       <Button variant="ghost" size="sm" asChild>
         <Link to={run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns}>
           <ArrowLeft className="mr-2 size-4" />
-          {run?.courseId ? 'Quay lai khoa hoc' : 'Quay lai dot hoc'}
+          {run?.courseId ? 'Quay lại khóa học' : 'Quay lại đợt học'}
         </Link>
       </Button>
 
       <PageHeader
-        title={run?.code ?? 'Dot hoc'}
+        title={run?.code ?? 'Đợt học'}
         description={
           run
-            ? `${course?.title ?? 'Khoa hoc'} · ${formatDateTime(run.startsAt)} -> ${formatDateTime(run.endsAt)}`
-            : 'Quan ly buoi hoc, giao trinh, ghi danh va chat lop.'
+            ? `${course?.title ?? 'Khóa học'} · ${formatDateTime(run.startsAt)} → ${formatDateTime(run.endsAt)}`
+            : 'Quản lý buổi học live, ghi danh và chat lớp.'
         }
         actions={
           run ? (
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={openRunSettings}>
                 <Settings2 className="mr-2 size-4" />
-                Cai dat dot hoc
+                Cài đặt đợt học
               </Button>
               <Button
                 variant="destructive"
@@ -568,44 +462,44 @@ export function CourseRunDetailPage() {
                     {course ? (
                       <Button variant="outline" size="sm" asChild>
                         <Link to={ROUTES.courseDetail(course.id)}>
-                          Mo khoa hoc {course.code}
+                          Mở khóa học {course.code}
                         </Link>
                       </Button>
                     ) : null}
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Khoa hoc lien ket</p>
-                    <p className="font-medium">{course?.title ?? 'Dang tai...'}</p>
+                    <p className="text-muted-foreground text-sm">Khóa học liên kết</p>
+                    <p className="font-medium">{course?.title ?? 'Đang tải...'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Mua gio</p>
+                    <p className="text-muted-foreground text-sm">Múi giờ</p>
                     <p className="font-medium">{run.timezone ?? 'Asia/Ho_Chi_Minh'}</p>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-muted-foreground text-sm">Bat dau</p>
+                    <p className="text-muted-foreground text-sm">Bắt đầu</p>
                     <p className="font-medium">{formatDateTime(run.startsAt)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Ket thuc</p>
+                    <p className="text-muted-foreground text-sm">Kết thúc</p>
                     <p className="font-medium">{formatDateTime(run.endsAt)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Mo dang ky</p>
+                    <p className="text-muted-foreground text-sm">Mở đăng ký</p>
                     <p className="font-medium">{formatDateTime(run.enrollmentStartDate)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Dong dang ky</p>
+                    <p className="text-muted-foreground text-sm">Đóng đăng ký</p>
                     <p className="font-medium">{formatDateTime(run.enrollmentEndDate)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Suc chua</p>
-                    <p className="font-medium">{run.capacity ?? 'Khong gioi han'}</p>
+                    <p className="text-muted-foreground text-sm">Sức chứa</p>
+                    <p className="font-medium">{run.capacity ?? 'Không giới hạn'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground text-sm">Cap nhat</p>
+                    <p className="text-muted-foreground text-sm">Cập nhật</p>
                     <p className="font-medium">{formatDateTime(run.updatedAt)}</p>
                   </div>
                 </div>
@@ -622,12 +516,20 @@ export function CourseRunDetailPage() {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
+              <Card className="transition-colors hover:bg-muted/30">
                 <CardContent className="flex items-start gap-4 p-6">
                   <BookOpen className="text-muted-foreground mt-1 size-5" />
-                  <div>
-                    <p className="text-muted-foreground text-sm">Muc giao trinh</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-muted-foreground text-sm">Bài học giáo trình</p>
                     <p className="text-2xl font-semibold">{totalSyllabusItems}</p>
+                    {course ? (
+                      <Link
+                        to={ROUTES.courseDetail(course.id, 'syllabus')}
+                        className="text-primary mt-1 inline-block text-sm hover:underline"
+                      >
+                        Mở giáo trình →
+                      </Link>
+                    ) : null}
                   </div>
                 </CardContent>
               </Card>
@@ -656,28 +558,44 @@ export function CourseRunDetailPage() {
             </div>
           </div>
 
+          {course ? (
+            <Card className="border-dashed">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Giáo trình khóa học</p>
+                  <p className="text-muted-foreground text-sm">
+                    {syllabusSections.length} chương · {totalSyllabusItems} bài — quản lý ở cấp khóa
+                    học, dùng chung mọi đợt.
+                  </p>
+                </div>
+                <Button variant="secondary" size="sm" asChild>
+                  <Link to={ROUTES.courseDetail(course.id, 'syllabus')}>Mở giáo trình</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <Tabs defaultValue="sessions" className="space-y-4">
             <TabsList className="h-auto flex-wrap justify-start">
-              <TabsTrigger value="sessions">Buoi hoc ({sessions.length})</TabsTrigger>
-              <TabsTrigger value="syllabus">Giao trinh ({sections.length})</TabsTrigger>
+              <TabsTrigger value="sessions">Buổi học ({sessions.length})</TabsTrigger>
               <TabsTrigger value="enrollments">
                 Ghi danh ({enrollmentsQuery.data?.totalElement ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="chat">Chat lop</TabsTrigger>
+              <TabsTrigger value="chat">Chat lớp</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sessions" className="space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Buoi hoc</CardTitle>
+                  <CardTitle className="text-base">Buổi học live</CardTitle>
                   <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
                     <Plus className="mr-2 size-4" />
-                    Them buoi hoc
+                    Thêm buổi học
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   {sessions.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Chua co buoi hoc nao.</p>
+                    <p className="text-muted-foreground text-sm">Chưa có buổi học nào.</p>
                   ) : (
                     sessions.map((session) => (
                       <div
@@ -694,12 +612,12 @@ export function CourseRunDetailPage() {
                           <p className="text-muted-foreground text-sm">
                             {session.scheduledAt
                               ? formatDateTime(session.scheduledAt)
-                              : 'Chua len lich'}
+                              : 'Chưa lên lịch'}
                           </p>
                           <p className="text-muted-foreground text-sm">
                             {session.durationMinutes != null
-                              ? `${session.durationMinutes} phut`
-                              : 'Chua co thoi luong'}
+                              ? `${session.durationMinutes} phút`
+                              : 'Chưa có thời lượng'}
                           </p>
                           {session.description ? (
                             <p className="text-sm">{session.description}</p>
@@ -713,119 +631,21 @@ export function CourseRunDetailPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => openEditSession(session)}>
-                              Sua buoi hoc
+                              Sửa buổi học
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-destructive"
                               onClick={() => {
-                                if (window.confirm('Xoa buoi hoc nay?')) {
+                                if (window.confirm('Xóa buổi học này?')) {
                                   deleteSessionMutation.mutate(session.id);
                                 }
                               }}
                             >
-                              Xoa buoi hoc
+                              Xóa buổi học
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    ))
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="syllabus" className="space-y-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base">Giao trinh</CardTitle>
-                  <Button size="sm" onClick={() => setCreateSectionOpen(true)}>
-                    <Plus className="mr-2 size-4" />
-                    Them chuong
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-0">
-                  {sections.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">Chua co chuong trinh day.</p>
-                  ) : (
-                    sections.map((section) => (
-                      <Card key={section.id}>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base">{section.title}</CardTitle>
-                            <p className="text-muted-foreground mt-1 text-sm">
-                              {section.items?.length ?? 0} muc giao trinh
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setCreateItemSectionId(section.id)}
-                            >
-                              <Plus className="mr-2 size-4" />
-                              Them muc
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="size-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => openEditSection(section)}>
-                                  Sua chuong
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => {
-                                    if (window.confirm('Xoa chuong nay?')) {
-                                      deleteSectionMutation.mutate(section.id);
-                                    }
-                                  }}
-                                >
-                                  Xoa chuong
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          {(section.items ?? []).length === 0 ? (
-                            <p className="text-muted-foreground text-sm">
-                              Chua co muc giao trinh.
-                            </p>
-                          ) : (
-                            section.items.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
-                              >
-                                <div>
-                                  <p className="font-medium">{item.title}</p>
-                                  <p className="text-muted-foreground text-sm">{item.type}</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Button variant="outline" size="sm" asChild>
-                                    <Link to={ROUTES.syllabusItemDetail(item.id)}>Sua chi tiet</Link>
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-destructive"
-                                    onClick={() => {
-                                      if (window.confirm('Xoa muc giao trinh nay?')) {
-                                        deleteItemMutation.mutate(item.id);
-                                      }
-                                    }}
-                                  >
-                                    <Trash2 className="size-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </CardContent>
-                      </Card>
                     ))
                   )}
                 </CardContent>
@@ -1322,90 +1142,6 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={createSectionOpen} onOpenChange={setCreateSectionOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Them chuong</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label>Tieu de</Label>
-              <Input value={sectionTitle} onChange={(event) => setSectionTitle(event.target.value)} />
-            </div>
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => createSectionMutation.mutate()} disabled={createSectionMutation.isPending}>
-              Luu
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={Boolean(createItemSectionId)} onOpenChange={() => setCreateItemSectionId(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Them muc giao trinh</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label>Tieu de</Label>
-              <Input value={itemTitle} onChange={(event) => setItemTitle(event.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Loai</Label>
-              <Select value={itemType} onValueChange={setItemType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="VIDEO">VIDEO</SelectItem>
-                  <SelectItem value="ARTICLE">ARTICLE</SelectItem>
-                  <SelectItem value="QUIZ">QUIZ</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => createItemSectionId && createItemMutation.mutate(createItemSectionId)}
-              disabled={!createItemSectionId || createItemMutation.isPending}
-            >
-              Luu
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sua chuong</SheetTitle>
-          </SheetHeader>
-          {editSection ? (
-            <>
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-                <div className="space-y-2">
-                  <Label>Tieu de</Label>
-                  <Input
-                    value={editSection.title}
-                    onChange={(event) =>
-                      setEditSection((current) =>
-                        current && { ...current, title: event.target.value },
-                      )
-                    }
-                  />
-                </div>
-              </div>
-              <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-                <Button onClick={() => updateSectionMutation.mutate()} disabled={updateSectionMutation.isPending}>
-                  Luu
-                </Button>
-              </SheetFooter>
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
-
       <Sheet
         open={enrollOpen}
         onOpenChange={(open) => {
@@ -1581,9 +1317,7 @@ export function CourseRunDetailPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="STUDENT">STUDENT</SelectItem>
-                  <SelectItem value="LECTURE">LECTURE</SelectItem>
-                  <SelectItem value="ADMIN">ADMIN</SelectItem>
-                  <SelectItem value="NO_ROLE">NO_ROLE</SelectItem>
+                  <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
                 </SelectContent>
               </Select>
             </div>

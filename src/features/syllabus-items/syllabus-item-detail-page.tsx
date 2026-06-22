@@ -81,7 +81,7 @@ export function SyllabusItemDetailPage() {
     if (item) {
       setForm({
         syllabusSectionId: item.syllabusSectionId,
-        type: item.type,
+        type: item.type.toUpperCase() === 'VIDEO' ? 'VIDEO' : 'ARTICLE',
         title: item.title,
         description: item.description ?? '',
         orderIndex: item.orderIndex,
@@ -246,9 +246,8 @@ export function SyllabusItemDetailPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="VIDEO">VIDEO</SelectItem>
-                  <SelectItem value="ARTICLE">ARTICLE</SelectItem>
-                  <SelectItem value="QUIZ">QUIZ</SelectItem>
+                  <SelectItem value="VIDEO">Video</SelectItem>
+                  <SelectItem value="ARTICLE">Bài viết</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -298,12 +297,10 @@ export function SyllabusItemDetailPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
-          {itemType === 'ARTICLE' || itemType === 'QUIZ' ? (
+          {itemType === 'ARTICLE' ? (
             <>
               <div className="space-y-2">
-                <Label>
-                  {itemType === 'QUIZ' ? 'Nội dung / câu hỏi' : 'Nội dung bài viết'}
-                </Label>
+                <Label>Nội dung bài viết</Label>
                 <RichTextEditor
                   value={articleBody}
                   onChange={(body) => {
@@ -323,63 +320,71 @@ export function SyllabusItemDetailPage() {
                   mô tả ngắn phía trên.
                 </p>
               </div>
-              {itemType === 'ARTICLE' ? (
-                <>
-                  <div className="space-y-2">
-                    <Label>Trích dẫn (quote)</Label>
-                    <Input
-                      value={quote}
-                      onChange={(e) => setContentField('quote', e.target.value)}
-                      placeholder="Câu trích dẫn nổi bật (tuỳ chọn)"
-                    />
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Ảnh minh hoạ (imageUrl)</Label>
-                      <Input
-                        value={imageUrl}
-                        onChange={(e) =>
-                          setContentField('imageUrl', e.target.value)
-                        }
-                        placeholder="https://…"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Ảnh bìa (coverUrl / thumbnailUrl)</Label>
-                      <Input
-                        value={thumbnailUrl}
-                        onChange={(e) => {
-                          const url = e.target.value;
-                          setForm((f) => ({
-                            ...f,
-                            contentData: patchContentData(f.contentData ?? {}, {
-                              coverUrl: url,
-                              thumbnailUrl: url,
-                            }),
-                          }));
-                        }}
-                        placeholder="https://…"
-                      />
-                    </div>
-                  </div>
-                </>
-              ) : null}
+              <div className="space-y-2">
+                <Label>Trích dẫn (quote)</Label>
+                <Input
+                  value={quote}
+                  onChange={(e) => setContentField('quote', e.target.value)}
+                  placeholder="Câu trích dẫn nổi bật (tuỳ chọn)"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Ảnh minh hoạ (imageUrl)</Label>
+                  <Input
+                    value={imageUrl}
+                    onChange={(e) => setContentField('imageUrl', e.target.value)}
+                    placeholder="https://…"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ảnh bìa (coverUrl / thumbnailUrl)</Label>
+                  <Input
+                    value={thumbnailUrl}
+                    onChange={(e) => {
+                      const url = e.target.value;
+                      setForm((f) => ({
+                        ...f,
+                        contentData: patchContentData(f.contentData ?? {}, {
+                          coverUrl: url,
+                          thumbnailUrl: url,
+                        }),
+                      }));
+                    }}
+                    placeholder="https://…"
+                  />
+                </div>
+              </div>
             </>
           ) : null}
 
           {itemType === 'VIDEO' ? (
             <>
               <div className="space-y-2">
-                <Label>URL video (videoUrl)</Label>
+                <Label>Video từ máy</Label>
                 <Input
-                  value={videoUrl}
-                  onChange={(e) => setContentField('videoUrl', e.target.value)}
-                  placeholder="https://… hoặc upload file bên dưới"
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
                 />
-                <p className="text-muted-foreground text-xs">
-                  Có thể dán link trực tiếp hoặc upload file — app lấy{' '}
-                  <strong>videoUrl</strong> hoặc <strong>fileAttachment.url</strong>.
-                </p>
+                {uploadFile ? (
+                  <p className="text-muted-foreground text-xs">
+                    Đã chọn: {uploadFile.name} — bấm Upload để đẩy lên R2.
+                  </p>
+                ) : fileAttachment?.url ? (
+                  <p className="text-muted-foreground text-xs">
+                    Video hiện tại: {fileAttachment.fileName ?? fileAttachment.url}
+                  </p>
+                ) : videoUrl ? (
+                  <p className="text-muted-foreground text-xs">
+                    Legacy URL: {videoUrl}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground text-xs">
+                    Chọn file video trên máy và upload — app đọc{' '}
+                    <strong>fileAttachment.url</strong>.
+                  </p>
+                )}
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">

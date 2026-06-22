@@ -1,14 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { RichTextEditor } from '@/components/rich-text-editor';
-import { RichTextPreview } from '@/components/rich-text-preview';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -37,6 +36,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { stripHtml } from '@/lib/html';
 import { queryKeys } from '@/hooks/query-keys';
 import { ROUTES } from '@/routes/paths';
@@ -58,6 +64,7 @@ type FormState = {
   description: string;
   orderIndex: number;
   thumbnailFile: File | null;
+  programId: string;
 };
 
 const emptyForm: FormState = {
@@ -66,10 +73,12 @@ const emptyForm: FormState = {
   description: '',
   orderIndex: 0,
   thumbnailFile: null,
+  programId: '',
 };
 
 export function CoursesListPage() {
   const { programId } = useParams();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isProgramScope = Boolean(programId);
   const [page, setPage] = useState(0);
@@ -93,10 +102,20 @@ export function CoursesListPage() {
       isProgramScope ? coursesApi.getPage(page, 20, programId) : coursesApi.getPage(page, 20),
   });
 
+  const programsQuery = useQuery({
+    queryKey: queryKeys.programs.all,
+    queryFn: () => programsApi.getAll(),
+    enabled: dialogOpen && !isProgramScope && !editing,
+  });
+
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const targetProgramId = editing?.programId ?? programId;
+      const targetProgramId = editing?.programId ?? programId ?? form.programId;
       if (!targetProgramId) {
+        setFieldErrors((prev) => ({
+          ...prev,
+          programId: 'Chọn chương trình.',
+        }));
         throw new Error('Thiếu chương trình.');
       }
       const parsed = schema.safeParse({
@@ -124,12 +143,15 @@ export function CoursesListPage() {
       if (editing) return coursesApi.update(editing.id, payload);
       return coursesApi.create(payload);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       toast.success(editing ? 'Đã cập nhật khóa học.' : 'Đã tạo khóa học.');
       setDialogOpen(false);
       setEditing(null);
       setForm(emptyForm);
       void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
+      if (!editing && result?.id) {
+        void navigate(ROUTES.courseDetail(result.id, 'syllabus'));
+      }
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -146,7 +168,10 @@ export function CoursesListPage() {
 
   const openCreateDialog = () => {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      programId: programId ?? '',
+    });
     setFieldErrors({});
     setDialogOpen(true);
   };
@@ -159,6 +184,7 @@ export function CoursesListPage() {
       description: course.description ?? '',
       orderIndex: course.orderIndex,
       thumbnailFile: null,
+      programId: course.programId,
     });
     setFieldErrors({});
     setDialogOpen(true);
@@ -250,19 +276,13 @@ export function CoursesListPage() {
         description={
           isProgramScope
             ? `Quản lý khóa học thuộc chương trình ${programQuery.data?.code ?? ''}.`
-            : 'Danh sách toàn bộ khóa học. Thêm khóa học mới từ trang Chương trình.'
+            : 'Danh sách toàn bộ khóa học. Tạo mới hoặc mở chi tiết để chỉnh giáo trình.'
         }
         actions={
-          isProgramScope ? (
-            <Button onClick={openCreateDialog} disabled={saveMutation.isPending}>
-              <Plus className="mr-2 size-4" />
-              Thêm khóa học
-            </Button>
-          ) : (
-            <Button variant="outline" asChild>
-              <Link to={ROUTES.programs}>Đi tới Chương trình</Link>
-            </Button>
-          )
+          <Button onClick={openCreateDialog} disabled={saveMutation.isPending}>
+            <Plus className="mr-2 size-4" />
+            Thêm khóa học
+          </Button>
         }
       />
 
@@ -297,11 +317,12 @@ export function CoursesListPage() {
         emptyMessage={
           isProgramScope
             ? 'Chưa có khóa học. Bấm "Thêm khóa học" để tạo mới.'
-            : 'Chưa có khóa học nào.'
+            : 'Chưa có khóa học nào. Bấm "Thêm khóa học" để tạo mới.'
         }
+        showPagination={false}
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -310,6 +331,9 @@ export function CoursesListPage() {
         >
           Trang trước
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Trang {page + 1} / {coursesQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"
@@ -324,8 +348,57 @@ export function CoursesListPage() {
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>{editing ? 'Sửa khóa học' : 'Thêm khóa học'}</SheetTitle>
+            {!editing ? (
+              <p className="text-muted-foreground text-sm">
+                Sau khi tạo, bạn sẽ được chuyển sang tab Giáo trình để thêm bài học.
+              </p>
+            ) : null}
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            {!isProgramScope && !editing ? (
+              <div className="space-y-2">
+                <Label>Chương trình</Label>
+                <Select
+                  value={form.programId || undefined}
+                  onValueChange={(value) => {
+                    setForm((f) => ({ ...f, programId: value }));
+                    if (fieldErrors.programId) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.programId;
+                        return next;
+                      });
+                    }
+                  }}
+                >
+                  <SelectTrigger aria-invalid={Boolean(fieldErrors.programId)}>
+                    <SelectValue placeholder="Chọn chương trình" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(programsQuery.data ?? []).map((program) => (
+                      <SelectItem key={program.id} value={program.id}>
+                        {program.code} — {program.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldErrors.programId ? (
+                  <p className="text-destructive text-sm">{fieldErrors.programId}</p>
+                ) : null}
+              </div>
+            ) : null}
+            {!isProgramScope && editing ? (
+              <div className="space-y-2">
+                <Label>Chương trình</Label>
+                <p className="text-sm">
+                  <Button variant="link" className="h-auto p-0" asChild>
+                    <Link to={ROUTES.programCourses(editing.programId)}>
+                      {editing.programCode ?? editing.programId}
+                    </Link>
+                  </Button>
+                </p>
+              </div>
+            ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Mã</Label>
@@ -393,18 +466,12 @@ export function CoursesListPage() {
               <Label>Mô tả</Label>
               <RichTextEditor
                 value={form.description}
-                minHeight="14rem"
-                placeholder="Nhập mô tả khóa học với định dạng phong phú…"
+                minHeight="10rem"
+                placeholder="Mô tả ngắn khóa học (có thể bổ sung sau)…"
                 onChange={(description) =>
                   setForm((f) => ({ ...f, description }))
                 }
               />
-            </div>
-            <div className="space-y-2">
-              <Label>Xem trước mô tả</Label>
-              <div className="rounded-md border bg-muted/20 p-4">
-                <RichTextPreview value={form.description} />
-              </div>
             </div>
             <div className="space-y-2">
               <Label>Thumbnail</Label>

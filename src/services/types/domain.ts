@@ -277,7 +277,7 @@ export type ManualEnrollmentRequest = {
 
 export type EnrollmentUpdateRequest = {
   status?: 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED';
-  role?: 'STUDENT' | 'LECTURE' | 'ADMIN' | 'NO_ROLE';
+  role?: 'STUDENT' | 'INSTRUCTOR';
   enrolmentMethod?: string;
   lastAccessedAt?: string;
   completedAt?: string;

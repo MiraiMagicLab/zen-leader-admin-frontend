@@ -42,7 +42,7 @@ const quickLinks = [
   },
   {
     title: 'Tạo khóa học',
-    description: 'Thêm chương trình, khóa học và đợt học mới.',
+    description: 'Thêm khóa học, giáo trình và đợt học.',
     href: ROUTES.courses,
     icon: BookOpen,
   },

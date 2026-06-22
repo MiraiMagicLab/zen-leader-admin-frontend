@@ -47,6 +47,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
+import { eventStatusLabel, eventTypeLabel, normalizeEventStatus } from '@/lib/event-labels';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
@@ -134,7 +135,7 @@ export function EventsListPage() {
       });
     },
     onSuccess: () => {
-      toast.success('Event created successfully.');
+      toast.success('Đã tạo sự kiện.');
       setSheetOpen(false);
       setForm(emptyForm);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
@@ -145,7 +146,7 @@ export function EventsListPage() {
   const publishMutation = useMutation({
     mutationFn: (id: string) => eventsApi.publish(id),
     onSuccess: () => {
-      toast.success('Event published.');
+      toast.success('Đã xuất bản sự kiện.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -154,7 +155,7 @@ export function EventsListPage() {
   const unpublishMutation = useMutation({
     mutationFn: (id: string) => eventsApi.unpublish(id),
     onSuccess: () => {
-      toast.success('Event moved back to draft.');
+      toast.success('Đã chuyển sự kiện về nháp.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -163,7 +164,7 @@ export function EventsListPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => eventsApi.remove(id),
     onSuccess: () => {
-      toast.success('Event deleted.');
+      toast.success('Đã xóa sự kiện.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -208,38 +209,41 @@ export function EventsListPage() {
     () => [
       {
         accessorKey: 'title',
-        header: 'Event',
+        header: 'Sự kiện',
         cell: ({ row }) => (
           <div className="space-y-1">
             <p className="font-medium">{row.original.title}</p>
             <p className="text-muted-foreground line-clamp-2 text-xs">
-              {row.original.description || 'No description yet.'}
+              {row.original.description || 'Chưa có mô tả'}
             </p>
           </div>
         ),
       },
       {
         id: 'type',
-        header: 'Type',
+        header: 'Loại',
         cell: ({ row }) => (
           <Badge variant={row.original.isOfficial ? 'default' : 'secondary'}>
-            {row.original.isOfficial ? 'System' : 'User'}
+            {eventTypeLabel(row.original.isOfficial)}
           </Badge>
         ),
       },
       {
         accessorKey: 'status',
-        header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        header: 'Trạng thái',
+        cell: ({ row }) => (
+          <Badge variant="secondary">{eventStatusLabel(row.original.status)}</Badge>
+        ),
       },
       {
         id: 'author',
-        header: 'Owner',
-        cell: ({ row }) => (row.original.isOfficial ? 'ZenLeader System' : row.original.author.name),
+        header: 'Người tạo',
+        cell: ({ row }) =>
+          row.original.isOfficial ? 'Hệ thống Zen Leader' : row.original.author.name,
       },
       {
         accessorKey: 'startTime',
-        header: 'Starts',
+        header: 'Bắt đầu',
         cell: ({ row }) => formatDateTime(row.original.startTime),
       },
       {
@@ -254,31 +258,31 @@ export function EventsListPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link to={ROUTES.eventDetail(row.original.id)}>Details</Link>
+                <Link to={ROUTES.eventDetail(row.original.id)}>Chi tiết</Link>
               </DropdownMenuItem>
-              {row.original.status !== 'PUBLISHED' ? (
+              {normalizeEventStatus(row.original.status) !== 'PUBLISHED' ? (
                 <DropdownMenuItem
                   onClick={() =>
                     openActionDialog(row.original.id, row.original.title, 'publish')
                   }
                 >
-                  Publish
+                  Xuất bản
                 </DropdownMenuItem>
               ) : null}
-              {row.original.status !== 'DRAFT' ? (
+              {normalizeEventStatus(row.original.status) !== 'DRAFT' ? (
                 <DropdownMenuItem
                   onClick={() =>
                     openActionDialog(row.original.id, row.original.title, 'unpublish')
                   }
                 >
-                  Move to draft
+                  Chuyển về nháp
                 </DropdownMenuItem>
               ) : null}
               <DropdownMenuItem
                 className="text-destructive"
                 onClick={() => openActionDialog(row.original.id, row.original.title, 'delete')}
               >
-                Delete
+                Xóa
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -291,8 +295,8 @@ export function EventsListPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Events"
-        description="Manage system events and community-created sessions with the internal meet flow."
+        title="Sự kiện"
+        description="Quản lý sự kiện hệ thống và phiên do cộng đồng tạo qua luồng meet nội bộ."
         actions={
           <Button
             onClick={() => {
@@ -301,7 +305,7 @@ export function EventsListPage() {
             }}
           >
             <Plus className="mr-2 size-4" />
-            Create event
+            Thêm sự kiện
           </Button>
         }
       />
@@ -311,7 +315,7 @@ export function EventsListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search title or description"
+            placeholder="Tìm theo tiêu đề hoặc mô tả…"
             value={keyword}
             onChange={(event) => {
               setKeyword(event.target.value);
@@ -320,7 +324,7 @@ export function EventsListPage() {
           />
         </div>
         <Input
-          placeholder="Filter by author name or email"
+          placeholder="Lọc theo tên hoặc email người tạo"
           value={authorKeyword}
           onChange={(event) => {
             setAuthorKeyword(event.target.value);
@@ -335,13 +339,13 @@ export function EventsListPage() {
           }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Trạng thái" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="PUBLISHED">Published</SelectItem>
-            <SelectItem value="COMPLETED">Completed</SelectItem>
+            <SelectItem value="all">Tất cả trạng thái</SelectItem>
+            <SelectItem value="DRAFT">Nháp</SelectItem>
+            <SelectItem value="PUBLISHED">Đã xuất bản</SelectItem>
+            <SelectItem value="COMPLETED">Đã kết thúc</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -352,12 +356,12 @@ export function EventsListPage() {
           }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Type" />
+            <SelectValue placeholder="Loại" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All event types</SelectItem>
-            <SelectItem value="official">System events</SelectItem>
-            <SelectItem value="community">User-created events</SelectItem>
+            <SelectItem value="all">Tất cả loại</SelectItem>
+            <SelectItem value="official">Sự kiện hệ thống</SelectItem>
+            <SelectItem value="community">Sự kiện người dùng</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -368,38 +372,44 @@ export function EventsListPage() {
         isLoading={eventsQuery.isLoading}
         showRowIndex
         pageOffset={(eventsQuery.data?.currentPage ?? page) * PAGE_SIZE}
+        showPagination={false}
+        emptyMessage="Chưa có sự kiện nào."
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
           disabled={(eventsQuery.data?.currentPage ?? page) <= 0}
           onClick={() => setPage((currentPage) => currentPage - 1)}
         >
-          Previous
+          Trang trước
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Trang {(eventsQuery.data?.currentPage ?? page) + 1} /{' '}
+          {eventsQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"
           disabled={(eventsQuery.data?.currentPage ?? page) + 1 >= (eventsQuery.data?.totalPages ?? 1)}
           onClick={() => setPage((currentPage) => currentPage + 1)}
         >
-          Next
+          Trang sau
         </Button>
       </div>
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Create event</SheetTitle>
+            <SheetTitle>Thêm sự kiện</SheetTitle>
             <SheetDescription>
-              ZenLeader will generate the meeting room and join target with the internal meet service.
+              Hệ thống sẽ tạo phòng meet và liên kết tham gia qua dịch vụ meet nội bộ.
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label htmlFor="event-title">Title</Label>
+              <Label htmlFor="event-title">Tiêu đề</Label>
               <Input
                 id="event-title"
                 value={form.title}
@@ -407,7 +417,7 @@ export function EventsListPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="event-description">Description</Label>
+              <Label htmlFor="event-description">Mô tả</Label>
               <Textarea
                 id="event-description"
                 value={form.description}
@@ -417,7 +427,7 @@ export function EventsListPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="event-content">Content</Label>
+              <Label htmlFor="event-content">Nội dung</Label>
               <Textarea
                 id="event-content"
                 rows={6}
@@ -429,14 +439,14 @@ export function EventsListPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Start time</Label>
+                <Label>Thời gian bắt đầu</Label>
                 <DateTimePicker
                   value={form.startTime}
                   onChange={(startTime) => setForm((current) => ({ ...current, startTime }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>End time</Label>
+                <Label>Thời gian kết thúc</Label>
                 <DateTimePicker
                   value={form.endTime}
                   onChange={(endTime) => setForm((current) => ({ ...current, endTime }))}
@@ -444,7 +454,7 @@ export function EventsListPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="event-thumbnail">Thumbnail</Label>
+              <Label htmlFor="event-thumbnail">Ảnh thumbnail</Label>
               <Input
                 id="event-thumbnail"
                 type="file"
@@ -464,7 +474,7 @@ export function EventsListPage() {
                   setForm((current) => ({ ...current, publishImmediately: checked }))
                 }
               />
-              <Label>Publish immediately</Label>
+              <Label>Xuất bản ngay</Label>
             </div>
             <div className="flex items-center gap-2">
               <Switch
@@ -473,7 +483,7 @@ export function EventsListPage() {
                   setForm((current) => ({ ...current, isOfficial: checked }))
                 }
               />
-              <Label>System event</Label>
+              <Label>Sự kiện hệ thống</Label>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
@@ -486,7 +496,7 @@ export function EventsListPage() {
                 !form.endTime
               }
             >
-              Create event
+              Tạo sự kiện
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -504,21 +514,21 @@ export function EventsListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>
               {pendingAction?.action === 'publish'
-                ? 'Publish this event?'
+                ? 'Xuất bản sự kiện này?'
                 : pendingAction?.action === 'unpublish'
-                  ? 'Move this event back to draft?'
-                  : 'Delete this event?'}
+                  ? 'Chuyển sự kiện về nháp?'
+                  : 'Xóa sự kiện này?'}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {pendingAction?.action === 'publish'
-                ? `"${pendingAction.eventTitle}" will become visible in public event feeds.`
+                ? `"${pendingAction.eventTitle}" sẽ hiển thị trên feed sự kiện công khai.`
                 : pendingAction?.action === 'unpublish'
-                  ? `"${pendingAction.eventTitle}" will be hidden from public event feeds until it is published again.`
-                  : `"${pendingAction?.eventTitle}" will be removed from admin management and public feeds.`}
+                  ? `"${pendingAction.eventTitle}" sẽ ẩn khỏi feed công khai cho đến khi xuất bản lại.`
+                  : `"${pendingAction?.eventTitle}" sẽ bị xóa khỏi quản trị và feed công khai.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isConfirmingAction}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isConfirmingAction}>Huỷ</AlertDialogCancel>
             <AlertDialogAction
               className={
                 pendingAction?.action === 'delete'
@@ -529,10 +539,10 @@ export function EventsListPage() {
               onClick={confirmPendingAction}
             >
               {pendingAction?.action === 'publish'
-                ? 'Publish event'
+                ? 'Xuất bản'
                 : pendingAction?.action === 'unpublish'
-                  ? 'Move to draft'
-                  : 'Delete event'}
+                  ? 'Chuyển về nháp'
+                  : 'Xóa sự kiện'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

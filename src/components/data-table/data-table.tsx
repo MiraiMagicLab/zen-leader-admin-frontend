@@ -30,6 +30,8 @@ type DataTableProps<TData, TValue> = {
   pageSize?: number;
   showRowIndex?: boolean;
   pageOffset?: number;
+  /** Client pagination inside the table. Set false when the page handles server paging. */
+  showPagination?: boolean;
 };
 
 function rowIndexColumn<TData>(): ColumnDef<TData, unknown> {
@@ -57,6 +59,7 @@ export function DataTable<TData, TValue>({
   pageSize = 10,
   showRowIndex = false,
   pageOffset = 0,
+  showPagination = true,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -68,11 +71,11 @@ export function DataTable<TData, TValue>({
     data,
     columns: allColumns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
+    ...(showPagination ? { getPaginationRowModel: getPaginationRowModel() } : {}),
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     state: { sorting },
-    initialState: { pagination: { pageSize } },
+    initialState: { pagination: { pageSize: showPagination ? pageSize : data.length || pageSize } },
   });
 
   return (
@@ -138,28 +141,30 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Trước
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Trang {table.getState().pagination.pageIndex + 1} /{' '}
-          {table.getPageCount() || 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Sau
-        </Button>
-      </div>
+      {showPagination ? (
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            Trước
+          </Button>
+          <span className="text-muted-foreground text-sm">
+            Trang {table.getState().pagination.pageIndex + 1} /{' '}
+            {table.getPageCount() || 1}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            Sau
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

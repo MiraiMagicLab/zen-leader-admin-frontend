@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  BookOpen,
+  CalendarDays,
   Image as ImageIcon,
+  Layers,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -43,7 +46,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { stripHtml } from '@/lib/html';
+import { SyllabusEditor } from '@/features/courses/components/syllabus-editor';
+import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
 import { queryKeys } from '@/hooks/query-keys';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
@@ -97,7 +103,22 @@ const emptyCourseForm: CourseForm = {
 export function CourseDetailPage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const deepLinkItemId = searchParams.get('itemId');
+  const activeTab =
+    searchParams.get('tab') ?? (deepLinkItemId ? 'syllabus' : 'overview');
+  const setActiveTab = (tab: string) => {
+    setSearchParams(tab === 'overview' ? {} : { tab }, { replace: true });
+  };
+  const clearDeepLinkItem = () => {
+    if (!searchParams.has('itemId')) {
+      return;
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete('itemId');
+    setSearchParams(next, { replace: true });
+  };
   const [createRunOpen, setCreateRunOpen] = useState(false);
   const [editCourseOpen, setEditCourseOpen] = useState(false);
   const [editIapOpen, setEditIapOpen] = useState(false);
@@ -106,6 +127,11 @@ export function CourseDetailPage() {
   const [courseForm, setCourseForm] = useState<CourseForm>(emptyCourseForm);
   const [appleProductId, setAppleProductId] = useState('');
   const [androidProductId, setAndroidProductId] = useState('');
+
+  const openCreateRun = () => {
+    setActiveTab('runs');
+    setCreateRunOpen(true);
+  };
 
   const courseQuery = useQuery({
     queryKey: queryKeys.courses.detail(courseId ?? ''),
@@ -170,32 +196,6 @@ export function CourseDetailPage() {
     onSuccess: async () => {
       toast.success('Đã cập nhật IAP mapping.');
       setEditIapOpen(false);
-      await invalidateCourseQueries();
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
-
-  const createRunMutation = useMutation({
-    mutationFn: () =>
-      courseRunsApi.create({
-        courseId: courseId!,
-        code: runForm.code,
-        status: runForm.status,
-        startsAt: new Date(runForm.startsAt).toISOString(),
-        endsAt: new Date(runForm.endsAt).toISOString(),
-        timezone: runForm.timezone,
-        capacity: runForm.capacity ? Number(runForm.capacity) : null,
-        enrollmentStartDate: runForm.enrollmentStartDate
-          ? new Date(runForm.enrollmentStartDate).toISOString()
-          : null,
-        enrollmentEndDate: runForm.enrollmentEndDate
-          ? new Date(runForm.enrollmentEndDate).toISOString()
-          : null,
-      }),
-    onSuccess: async () => {
-      toast.success('Đã tạo đợt học.');
-      setCreateRunOpen(false);
-      setRunForm(emptyRunForm);
       await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -406,141 +406,208 @@ export function CourseDetailPage() {
               <Trash2 className="mr-2 size-4" />
               Xóa
             </Button>
-            <Button onClick={() => setCreateRunOpen(true)} disabled={!course}>
-              <Plus className="mr-2 size-4" />
-              Thêm đợt học
-            </Button>
           </div>
         }
       />
 
       {course ? (
         <>
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <Card>
-              <CardContent className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
-                <div className="bg-muted/30 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border">
-                  {course.thumbnailUrl ? (
-                    <img
-                      src={course.thumbnailUrl}
-                      alt={course.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="text-muted-foreground flex flex-col items-center gap-2 text-sm">
-                      <ImageIcon className="size-8" />
-                      <span>Chưa có thumbnail</span>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full max-w-lg grid-cols-3">
+              <TabsTrigger value="overview">Tổng quan</TabsTrigger>
+              <TabsTrigger value="syllabus">
+                Giáo trình ({totalSyllabusItems})
+              </TabsTrigger>
+              <TabsTrigger value="runs">Đợt học ({courseRuns.length})</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="mt-6 space-y-6">
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="grid gap-4 p-5 sm:grid-cols-3">
+                  <div className="flex gap-3">
+                    <div className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full border">
+                      <BookOpen className="size-4" />
                     </div>
-                  )}
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{course.code}</Badge>
+                    <div>
+                      <p className="text-sm font-medium">1. Giáo trình</p>
+                      <p className="text-muted-foreground text-xs">
+                        Thêm chương & bài học — dùng chung mọi lớp
+                      </p>
+                      <Button
+                        variant="link"
+                        className="h-auto px-0 text-xs"
+                        onClick={() => setActiveTab('syllabus')}
+                      >
+                        {totalSyllabusItems > 0 ? 'Sửa giáo trình' : 'Tạo giáo trình'}
+                      </Button>
+                    </div>
                   </div>
+                  <div className="flex gap-3">
+                    <div className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full border">
+                      <CalendarDays className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">2. Đợt học</p>
+                      <p className="text-muted-foreground text-xs">Mở lớp, lịch live, ghi danh</p>
+                      <Button
+                        variant="link"
+                        className="h-auto px-0 text-xs"
+                        onClick={openCreateRun}
+                      >
+                        {courseRuns.length > 0 ? 'Thêm đợt học' : 'Tạo đợt học'}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full border">
+                      <Layers className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">3. Xuất bản</p>
+                      <p className="text-muted-foreground text-xs">
+                        {totalSyllabusItems} bài · {courseRuns.length} lớp · {totalSessions} buổi
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="sm:col-span-2">
-                      <p className="text-muted-foreground text-sm">Thuộc chương trình</p>
-                      {course.programId ? (
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <p className="font-medium">{programDisplayName}</p>
-                          <Button variant="outline" size="sm" asChild>
-                            <Link to={ROUTES.programCourses(course.programId)}>
-                              Mở danh sách khóa học
-                            </Link>
-                          </Button>
-                        </div>
+              <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <Card>
+                  <CardContent className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
+                    <div className="bg-muted/30 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border">
+                      {course.thumbnailUrl ? (
+                        <img
+                          src={course.thumbnailUrl}
+                          alt={course.title}
+                          className="h-full w-full object-cover"
+                        />
                       ) : (
-                        <p className="font-medium">Chưa gắn với chương trình nào</p>
+                        <div className="text-muted-foreground flex flex-col items-center gap-2 text-sm">
+                          <ImageIcon className="size-8" />
+                          <span>Chưa có thumbnail</span>
+                        </div>
                       )}
                     </div>
-                    <div>
-                      <p className="text-muted-foreground text-sm">Thứ tự</p>
-                      <p className="font-medium">{course.orderIndex ?? 0}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-sm">Ngày cập nhật</p>
-                      <p className="font-medium">{formatDateTime(course.updatedAt)}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-sm">Chương</p>
-                      <p className="font-medium">{syllabusSections.length}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-sm">Mục giáo trình</p>
-                      <p className="font-medium">{totalSyllabusItems}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-sm">Đợt học</p>
-                      <p className="font-medium">{courseRuns.length}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-sm">Tổng buổi học</p>
-                      <p className="font-medium">{totalSessions}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <ShoppingBag className="size-4" />
-                  Cấu hình bán khóa học
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-sm font-medium">Apple Product ID</p>
-                  <p className="text-muted-foreground mt-1 break-all text-sm">
-                    {appleProductId || 'Chưa cấu hình'}
-                  </p>
-                </div>
-                <div className="rounded-lg border bg-muted/20 p-4">
-                  <p className="text-sm font-medium">Android Product ID</p>
-                  <p className="text-muted-foreground mt-1 break-all text-sm">
-                    {androidProductId || 'Chưa cấu hình'}
-                  </p>
-                </div>
-                <Button
-                  variant="secondary"
-                  disabled={iapMutation.isPending}
-                  onClick={() => setEditIapOpen(true)}
-                >
-                  Thiết lập IAP mapping
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+                    <div className="space-y-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="secondary">{course.code}</Badge>
+                      </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Mô tả khóa học</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RichTextPreview value={course.description} />
-            </CardContent>
-          </Card>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                          <p className="text-muted-foreground text-sm">Thuộc chương trình</p>
+                          {course.programId ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <p className="font-medium">{programDisplayName}</p>
+                              <Button variant="outline" size="sm" asChild>
+                                <Link to={ROUTES.programCourses(course.programId)}>
+                                  Mở danh sách khóa học
+                                </Link>
+                              </Button>
+                            </div>
+                          ) : (
+                            <p className="font-medium">Chưa gắn với chương trình nào</p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-sm">Thứ tự</p>
+                          <p className="font-medium">{course.orderIndex ?? 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-sm">Ngày cập nhật</p>
+                          <p className="font-medium">{formatDateTime(course.updatedAt)}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-sm">Chương</p>
+                          <p className="font-medium">{syllabusSections.length}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground text-sm">Bài học</p>
+                          <p className="font-medium">{totalSyllabusItems}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Đợt học</CardTitle>
-              <Button size="sm" onClick={() => setCreateRunOpen(true)}>
-                <Plus className="mr-2 size-4" />
-                Tạo đợt học
-              </Button>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <DataTable
-                columns={columns}
-                data={courseRuns}
-                isLoading={runsQuery.isLoading || courseQuery.isLoading}
-                emptyMessage="Chưa có đợt học nào."
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <ShoppingBag className="size-4" />
+                      Cấu hình bán khóa học
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <p className="text-sm font-medium">Apple Product ID</p>
+                      <p className="text-muted-foreground mt-1 break-all text-sm">
+                        {appleProductId || 'Chưa cấu hình'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border bg-muted/20 p-4">
+                      <p className="text-sm font-medium">Android Product ID</p>
+                      <p className="text-muted-foreground mt-1 break-all text-sm">
+                        {androidProductId || 'Chưa cấu hình'}
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      disabled={iapMutation.isPending}
+                      onClick={() => setEditIapOpen(true)}
+                    >
+                      Thiết lập IAP mapping
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Mô tả khóa học</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RichTextPreview value={course.description} />
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="syllabus" className="mt-6">
+              <SyllabusEditor
+                courseId={courseId}
+                courseTitle={course.title}
+                initialItemId={deepLinkItemId}
+                onInitialItemHandled={clearDeepLinkItem}
               />
-            </CardContent>
-          </Card>
+            </TabsContent>
+
+            <TabsContent value="runs" className="mt-6 space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">Đợt học (lớp chạy)</CardTitle>
+                    <p className="text-muted-foreground mt-1 text-sm">
+                      Mỗi đợt học có lịch live, ghi danh và chat riêng. Giáo trình dùng chung ở tab
+                      Giáo trình.
+                    </p>
+                  </div>
+                  <Button size="sm" onClick={() => setCreateRunOpen(true)}>
+                    <Plus className="mr-2 size-4" />
+                    Thêm đợt học
+                  </Button>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <DataTable
+                    columns={columns}
+                    data={courseRuns}
+                    isLoading={runsQuery.isLoading || courseQuery.isLoading}
+                    emptyMessage="Chưa có đợt học. Tạo đợt học để mở lớp và ghi danh học viên."
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
       ) : (
         <Card>
@@ -550,92 +617,15 @@ export function CourseDetailPage() {
         </Card>
       )}
 
-      <Sheet open={createRunOpen} onOpenChange={setCreateRunOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Tạo đợt học mới</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label>Mã lớp</Label>
-              <Input
-                value={runForm.code}
-                onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Trạng thái</Label>
-              <Select
-                value={runForm.status}
-                onValueChange={(value) => setRunForm((prev) => ({ ...prev, status: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DRAFT">DRAFT</SelectItem>
-                  <SelectItem value="OPEN">OPEN</SelectItem>
-                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Bắt đầu</Label>
-                <DateTimePicker
-                  value={runForm.startsAt}
-                  onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Kết thúc</Label>
-                <DateTimePicker
-                  value={runForm.endsAt}
-                  onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Mở đăng ký</Label>
-                <DateTimePicker
-                  value={runForm.enrollmentStartDate}
-                  onChange={(value) =>
-                    setRunForm((prev) => ({ ...prev, enrollmentStartDate: value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Đóng đăng ký</Label>
-                <DateTimePicker
-                  value={runForm.enrollmentEndDate}
-                  onChange={(value) =>
-                    setRunForm((prev) => ({ ...prev, enrollmentEndDate: value }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Sức chứa</Label>
-              <Input
-                type="number"
-                value={runForm.capacity}
-                onChange={(e) => setRunForm((prev) => ({ ...prev, capacity: e.target.value }))}
-              />
-            </div>
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => createRunMutation.mutate()}
-              disabled={createRunMutation.isPending}
-            >
-              Tạo
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <CreateCourseRunSheet
+        open={createRunOpen}
+        onOpenChange={setCreateRunOpen}
+        courseId={courseId}
+        onCreated={(created) => {
+          void invalidateCourseQueries();
+          void navigate(ROUTES.courseRunDetail(created.id));
+        }}
+      />
 
       <Sheet open={editCourseOpen} onOpenChange={setEditCourseOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">

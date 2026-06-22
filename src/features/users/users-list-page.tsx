@@ -395,13 +395,14 @@ export function UsersListPage() {
         emptyMessage="Không tìm thấy người dùng."
         showRowIndex
         pageOffset={(page - 1) * 10}
+        showPagination={false}
       />
 
       <div className="flex items-center justify-between">
         <p className="text-muted-foreground text-sm">
           Tổng: {usersQuery.data?.totalElement ?? 0} người dùng
         </p>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -410,6 +411,9 @@ export function UsersListPage() {
           >
             Trang trước
           </Button>
+          <span className="text-muted-foreground text-sm">
+            Trang {page} / {usersQuery.data?.totalPages ?? 1}
+          </span>
           <Button
             variant="outline"
             size="sm"

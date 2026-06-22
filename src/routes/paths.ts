@@ -5,7 +5,17 @@ export const ROUTES = {
   programs: '/programs',
   programCourses: (programId: string) => `/programs/${programId}/courses`,
   courses: '/courses',
-  courseDetail: (courseId: string) => `/courses/${courseId}`,
+  courseDetail: (courseId: string, tab?: 'syllabus' | 'runs', itemId?: string) => {
+    const params = new URLSearchParams();
+    if (tab) {
+      params.set('tab', tab);
+    }
+    if (itemId) {
+      params.set('itemId', itemId);
+    }
+    const query = params.toString();
+    return query ? `/courses/${courseId}?${query}` : `/courses/${courseId}`;
+  },
   courseRuns: '/course-runs',
   courseRunDetail: (runId: string) => `/course-runs/${runId}`,
   syllabusItemDetail: (itemId: string) => `/syllabus-items/${itemId}`,

@@ -32,6 +32,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
+import { eventStatusLabel, eventTypeLabel, normalizeEventStatus } from '@/lib/event-labels';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
@@ -271,18 +272,18 @@ export function EventDetailPage() {
         actions={
           event ? (
             <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{event.status}</Badge>
-              {event.isOfficial ? <Badge>System event</Badge> : null}
+              <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
+              {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
               <Button variant="outline" size="sm" onClick={openEditSheet}>
                 <Pencil className="mr-2 size-4" />
                 Edit
               </Button>
-              {event.status !== 'PUBLISHED' ? (
+              {normalizeEventStatus(event.status) !== 'PUBLISHED' ? (
                 <Button variant="outline" size="sm" onClick={() => openEventActionDialog('publish')}>
                   Publish
                 </Button>
               ) : null}
-              {event.status !== 'DRAFT' ? (
+              {normalizeEventStatus(event.status) !== 'DRAFT' ? (
                 <Button variant="outline" size="sm" onClick={() => openEventActionDialog('unpublish')}>
                   Move to draft
                 </Button>
@@ -323,7 +324,11 @@ export function EventDetailPage() {
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Visibility</p>
-              <p>{event.status === 'PUBLISHED' ? 'Visible in public feeds' : 'Hidden from public feeds'}</p>
+              <p>
+                {normalizeEventStatus(event.status) === 'PUBLISHED'
+                  ? 'Hiển thị trên feed công khai'
+                  : 'Ẩn khỏi feed công khai'}
+              </p>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Meeting target</p>
@@ -399,22 +404,25 @@ export function EventDetailPage() {
               />
             ))
           )}
-          <div className="flex justify-end gap-2">
+          <div className="flex items-center justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
               disabled={commentPage <= 0}
               onClick={() => setCommentPage((currentPage) => currentPage - 1)}
             >
-              Previous
+              Trang trước
             </Button>
+            <span className="text-muted-foreground text-sm">
+              Trang {commentPage + 1} / {commentsQuery.data?.totalPages ?? 1}
+            </span>
             <Button
               variant="outline"
               size="sm"
               disabled={commentPage + 1 >= (commentsQuery.data?.totalPages ?? 1)}
               onClick={() => setCommentPage((currentPage) => currentPage + 1)}
             >
-              Next
+              Trang sau
             </Button>
           </div>
         </CardContent>

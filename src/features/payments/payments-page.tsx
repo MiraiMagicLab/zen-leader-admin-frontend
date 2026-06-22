@@ -187,9 +187,10 @@ export function PaymentsPage() {
         emptyMessage="Chưa có đơn thanh toán."
         showRowIndex
         pageOffset={page * 20}
+        showPagination={false}
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
@@ -198,6 +199,9 @@ export function PaymentsPage() {
         >
           Trang trước
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Trang {page + 1} / {ordersQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"

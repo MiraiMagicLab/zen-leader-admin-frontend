@@ -165,12 +165,16 @@ export function LiveSessionsPage() {
         data={sessionsQuery.data?.data ?? []}
         isLoading={sessionsQuery.isLoading}
         emptyMessage="Chưa có phiên live."
+        showPagination={false}
       />
 
-      <div className="flex justify-end gap-2">
+      <div className="flex items-center justify-end gap-2">
         <Button variant="outline" size="sm" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>
           Trang trước
         </Button>
+        <span className="text-muted-foreground text-sm">
+          Trang {page + 1} / {sessionsQuery.data?.totalPages ?? 1}
+        </span>
         <Button
           variant="outline"
           size="sm"
