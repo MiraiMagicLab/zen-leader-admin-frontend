@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -386,6 +387,39 @@ export function UsersListPage() {
             <SelectItem value="deleted">Deleted</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Users on page</p>
+            <p className="mt-2 text-2xl font-semibold">{usersQuery.data?.data?.length ?? 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Active</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {usersQuery.data?.data?.filter((user) => user.isActive && !isDeletedUser(user)).length ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Banned or locked</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {usersQuery.data?.data?.filter((user) => !user.isActive || Boolean(user.bannedUntil)).length ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Admin note</p>
+            <p className="mt-2 text-sm">
+              Use this screen for account access, role control, and moderation. Course enrollment is managed on each course run.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <DataTable

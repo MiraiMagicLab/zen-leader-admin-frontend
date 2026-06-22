@@ -8,9 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { notificationsApi } from '@/services/notifications/notifications-api';
+
+const NOTIFICATION_TYPES = ['SYSTEM', 'ANNOUNCEMENT', 'REMINDER', 'PAYMENT', 'LMS'];
 
 export function NotificationsPage() {
   const [title, setTitle] = useState('');
@@ -44,6 +53,31 @@ export function NotificationsPage() {
         description="Send system notifications to specific users or all users."
       />
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Target mode</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {userIds.trim() ? 'Selected users' : 'Broadcast'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Notification type</p>
+            <p className="mt-2 text-2xl font-semibold">{type}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Admin note</p>
+            <p className="mt-2 text-sm">
+              Leave user IDs empty only for a real global broadcast. Use targeted sends for payment or LMS support cases whenever possible.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Broadcast notification</CardTitle>
@@ -63,7 +97,18 @@ export function NotificationsPage() {
           </div>
           <div className="space-y-2">
             <Label>Type</Label>
-            <Input value={type} onChange={(e) => setType(e.target.value)} />
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NOTIFICATION_TYPES.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label>User IDs (optional, comma-separated)</Label>

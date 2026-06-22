@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -364,6 +365,41 @@ export function EventsListPage() {
             <SelectItem value="community">User event</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Events on page</p>
+            <p className="mt-2 text-2xl font-semibold">{eventsQuery.data?.data?.length ?? 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Published</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {eventsQuery.data?.data?.filter(
+                (event) => normalizeEventStatus(event.status) === 'PUBLISHED',
+              ).length ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">System events</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {eventsQuery.data?.data?.filter((event) => event.isOfficial).length ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Admin note</p>
+            <p className="mt-2 text-sm">
+              Creating an event here uses the internal meet flow. Publish only when schedule, content, and thumbnail are ready.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <DataTable

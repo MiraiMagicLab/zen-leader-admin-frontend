@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -258,6 +259,39 @@ export function ProgramsListPage() {
             <SelectItem value="draft">Draft</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Programs on page</p>
+            <p className="mt-2 text-2xl font-semibold">{programsQuery.data?.data?.length ?? 0}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Published</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {programsQuery.data?.data?.filter((program) => program.isPublished).length ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Courses on page</p>
+            <p className="mt-2 text-2xl font-semibold">
+              {programsQuery.data?.data?.reduce((count, program) => count + (program.courses?.length ?? 0), 0) ?? 0}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-5">
+            <p className="text-muted-foreground text-sm">Admin note</p>
+            <p className="mt-2 text-sm">
+              Programs are the top-level catalog grouping. Open a program to manage courses, then configure runs and pricing inside each course.
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       <DataTable
