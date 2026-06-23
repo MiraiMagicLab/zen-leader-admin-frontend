@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,6 +21,7 @@ import { toast } from 'sonner';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { UserPicker } from '@/components/admin/user-picker';
+import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +68,7 @@ import {
 } from '@/services/lms/lms-api';
 import { messagingApi } from '@/services/messaging/messaging-api';
 import type {
+  ChatMessageResponse,
   CourseRunResponse,
   EnrollmentImportResponse,
   EnrollmentResponse,
@@ -159,6 +162,7 @@ export function CourseRunDetailPage() {
   const [viewEnrollmentId, setViewEnrollmentId] = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<EnrollmentImportResponse | null>(null);
   const [runSettings, setRunSettings] = useState<RunSettingsForm | null>(null);
+  const [activeTab, setActiveTab] = useState('sessions');
 
   const runQuery = useQuery({
     queryKey: queryKeys.courseRuns.detail(runId ?? ''),
@@ -419,16 +423,211 @@ export function CourseRunDetailPage() {
     });
   };
 
+  const sessionColumns = useMemo<ColumnDef<SessionResponse>[]>(
+    () => [
+      {
+        accessorKey: 'sessionNumber',
+        header: 'No.',
+        cell: ({ row }) => (
+          <span className="tabular-nums">{row.original.sessionNumber}</span>
+        ),
+      },
+      { accessorKey: 'title', header: 'Title' },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+      },
+      {
+        id: 'scheduled',
+        header: 'Scheduled',
+        cell: ({ row }) =>
+          row.original.scheduledAt
+            ? formatDateTime(row.original.scheduledAt)
+            : 'Not scheduled',
+      },
+      {
+        id: 'duration',
+        header: 'Duration',
+        cell: ({ row }) =>
+          row.original.durationMinutes != null
+            ? `${row.original.durationMinutes} min`
+            : '—',
+      },
+      {
+        id: 'description',
+        header: 'Description',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground line-clamp-2 block max-w-[240px] text-sm">
+            {row.original.description?.trim() || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        size: 48,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEditSession(row.original)}>
+                Edit session
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => {
+                  if (window.confirm('Delete this session?')) {
+                    deleteSessionMutation.mutate(row.original.id);
+                  }
+                }}
+              >
+                Delete session
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [deleteSessionMutation],
+  );
+
+  const enrollmentColumns = useMemo<ColumnDef<EnrollmentResponse>[]>(
+    () => [
+      {
+        id: 'name',
+        header: 'Name',
+        cell: ({ row }) =>
+          row.original.userDisplayName ?? row.original.userEmail ?? 'User',
+      },
+      {
+        id: 'email',
+        header: 'Email',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">
+            {row.original.userEmail ?? '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'role',
+        header: 'Role',
+        cell: ({ row }) => row.original.role ?? 'STUDENT',
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+      },
+      {
+        id: 'enrolledAt',
+        header: 'Enrolled at',
+        cell: ({ row }) => formatDateTime(row.original.enrolledAt),
+      },
+      {
+        id: 'actions',
+        header: '',
+        size: 48,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setViewEnrollmentId(row.original.id)}>
+                View details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditEnrollment(row.original);
+                  setEditStatus(row.original.status);
+                  setEditRole(row.original.role ?? 'STUDENT');
+                }}
+              >
+                Edit enrollment
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => {
+                  if (window.confirm('Delete this enrollment?')) {
+                    deleteEnrollmentMutation.mutate(row.original.id);
+                  }
+                }}
+              >
+                Delete enrollment
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [deleteEnrollmentMutation],
+  );
+
+  const messageColumns = useMemo<ColumnDef<ChatMessageResponse>[]>(
+    () => [
+      {
+        id: 'sender',
+        header: 'Sender',
+        cell: ({ row }) => row.original.senderUsername ?? row.original.senderId,
+      },
+      {
+        id: 'message',
+        header: 'Message',
+        cell: ({ row }) => (
+          <span className="line-clamp-2 block max-w-md text-sm">
+            {row.original.text ?? '(attachment)'}
+          </span>
+        ),
+      },
+      {
+        id: 'createdAt',
+        header: 'Sent at',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm whitespace-nowrap">
+            {formatDateTime(row.original.createdAt)}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        size: 48,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive"
+            onClick={() => {
+              if (window.confirm('Delete this message?')) {
+                deleteMessageMutation.mutate(row.original.id);
+              }
+            }}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        ),
+      },
+    ],
+    [deleteMessageMutation],
+  );
+
   if (!runId) {
     return null;
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <Button variant="ghost" size="sm" asChild>
+    <div className="mx-auto max-w-6xl space-y-5">
+      <Button variant="ghost" size="sm" asChild className="-ml-2">
         <Link to={run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns}>
           <ArrowLeft className="mr-2 size-4" />
-          {run?.courseId ? 'Back to course' : 'Back to course run'}
+          {run?.courseId ? 'Back to course' : 'Back to course runs'}
         </Link>
       </Button>
 
@@ -465,173 +664,113 @@ export function CourseRunDetailPage() {
 
       {run ? (
         <>
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-            <Card>
-              <CardContent className="grid gap-6 p-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{run.status}</Badge>
-                    {course ? (
-                      <Button variant="outline" size="sm" asChild>
-                        <Link to={ROUTES.courseDetail(course.id)}>
-                          Open course {course.code}
-                        </Link>
-                      </Button>
-                    ) : null}
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Linked course</p>
-                    <p className="font-medium">{course?.title ?? 'Loading...'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Timezone</p>
-                    <p className="font-medium">{run.timezone ?? 'Asia/Ho_Chi_Minh'}</p>
-                  </div>
-                </div>
+          <Card>
+            <CardContent className="space-y-4 p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary">{run.status}</Badge>
+                <Badge variant="outline">
+                  {hasCourseRunPricing(run.metadata)
+                    ? formatCourseRunPricingSummary(run.metadata)
+                    : 'Free'}
+                </Badge>
+                {course ? (
+                  <Button variant="link" size="sm" className="h-auto px-0" asChild>
+                    <Link to={ROUTES.courseDetail(course.id)}>
+                      <BookOpen className="mr-1 size-3.5" />
+                      {course.code}
+                    </Link>
+                  </Button>
+                ) : null}
+                {course && totalSyllabusItems > 0 ? (
+                  <Button variant="link" size="sm" className="h-auto px-0" asChild>
+                    <Link to={ROUTES.courseDetail(course.id, 'syllabus')}>
+                      Syllabus · {totalSyllabusItems} lessons
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <p className="text-muted-foreground text-sm">Start</p>
-                    <p className="font-medium">{formatDateTime(run.startsAt)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">End</p>
-                    <p className="font-medium">{formatDateTime(run.endsAt)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Open enrollment</p>
-                    <p className="font-medium">{formatDateTime(run.enrollmentStartDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Close enrollment</p>
-                    <p className="font-medium">{formatDateTime(run.enrollmentEndDate)}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Capacity</p>
-                    <p className="font-medium">{run.capacity ?? 'Unlimited'}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Pricing</p>
-                    <p className="font-medium">
-                      {formatCourseRunPricingSummary(run.metadata) || 'Free'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground text-sm">Updated</p>
-                    <p className="font-medium">{formatDateTime(run.updatedAt)}</p>
-                  </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-muted-foreground text-xs">Start</p>
+                  <p className="text-sm font-medium">{formatDateTime(run.startsAt)}</p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Admin workflow</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-lg border p-4">
-                  <p className="font-medium">1. Configure checkout</p>
-                  <p className="text-muted-foreground mt-2 text-sm">
-                    Set the global USD price only if this run should be paid. Leave blank to keep it free.
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-muted-foreground text-xs">End</p>
+                  <p className="text-sm font-medium">{formatDateTime(run.endsAt)}</p>
+                </div>
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-muted-foreground text-xs">Enrollment window</p>
+                  <p className="text-sm font-medium">
+                    {formatDateTime(run.enrollmentStartDate)} →{' '}
+                    {formatDateTime(run.enrollmentEndDate)}
                   </p>
                 </div>
-                <div className="rounded-lg border p-4">
-                  <p className="font-medium">2. Add live sessions</p>
-                  <p className="text-muted-foreground mt-2 text-sm">
-                    Sessions, meeting rooms, recordings, and attendance live inside this run only.
+                <div className="rounded-md border bg-muted/20 px-3 py-2">
+                  <p className="text-muted-foreground text-xs">Capacity · Timezone</p>
+                  <p className="text-sm font-medium">
+                    {run.capacity ?? 'Unlimited'} · {run.timezone ?? 'Asia/Ho_Chi_Minh'}
                   </p>
                 </div>
-                <div className="rounded-lg border p-4">
-                  <p className="font-medium">3. Operate enrollment</p>
-                  <p className="text-muted-foreground mt-2 text-sm">
-                    Use payments for failed post-payment enrollment, or use manual enrollment/import for direct access management.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <Card>
-                <CardContent className="flex items-start gap-4 p-6">
-                  <CalendarDays className="text-muted-foreground mt-1 size-5" />
-                  <div>
-                    <p className="text-muted-foreground text-sm">Sessions</p>
-                    <p className="text-2xl font-semibold">{sessions.length}</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="transition-colors hover:bg-muted/30">
-                <CardContent className="flex items-start gap-4 p-6">
-                  <BookOpen className="text-muted-foreground mt-1 size-5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-muted-foreground text-sm">Syllabus lessons</p>
-                    <p className="text-2xl font-semibold">{totalSyllabusItems}</p>
-                    {course ? (
-                      <Link
-                        to={ROUTES.courseDetail(course.id, 'syllabus')}
-                        className="text-primary mt-1 inline-block text-sm hover:underline"
-                      >
-                        Open syllabus →
-                      </Link>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="flex items-start gap-4 p-6">
-                  <Users className="text-muted-foreground mt-1 size-5" />
-                  <div>
-                    <p className="text-muted-foreground text-sm">Enrollment</p>
-                    <p className="text-2xl font-semibold">
-                      {enrollmentsQuery.data?.totalElement ?? 0}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="flex items-start gap-4 p-6">
-                  <MessageSquare className="text-muted-foreground mt-1 size-5" />
-                  <div>
-                    <p className="text-muted-foreground text-sm">Class chat</p>
-                    <p className="text-2xl font-semibold">
-                      {conversationQuery.data?.participants.length ?? 0}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="flex items-start gap-4 p-6">
-                  <Settings2 className="text-muted-foreground mt-1 size-5" />
-                  <div>
-                    <p className="text-muted-foreground text-sm">Checkout readiness</p>
-                    <p className="text-2xl font-semibold">
-                      {hasCourseRunPricing(run.metadata) ? 'Paid' : 'Free'}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <button
+              type="button"
+              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
+              onClick={() => setActiveTab('sessions')}
+            >
+              <div className="flex items-center gap-2">
+                <CalendarDays className="text-muted-foreground size-4" />
+                <p className="text-muted-foreground text-xs">Sessions</p>
+              </div>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{sessions.length}</p>
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
+              onClick={() => setActiveTab('enrollments')}
+            >
+              <div className="flex items-center gap-2">
+                <Users className="text-muted-foreground size-4" />
+                <p className="text-muted-foreground text-xs">Enrollment</p>
+              </div>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {enrollmentsQuery.data?.totalElement ?? 0}
+              </p>
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
+              onClick={() => setActiveTab('chat')}
+            >
+              <div className="flex items-center gap-2">
+                <MessageSquare className="text-muted-foreground size-4" />
+                <p className="text-muted-foreground text-xs">Class chat</p>
+              </div>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {conversationQuery.data?.participants.length ?? 0}
+              </p>
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40 sm:col-span-1"
+              onClick={openRunSettings}
+            >
+              <div className="flex items-center gap-2">
+                <Settings2 className="text-muted-foreground size-4" />
+                <p className="text-muted-foreground text-xs">Checkout</p>
+              </div>
+              <p className="mt-1 text-sm font-semibold">
+                {hasCourseRunPricing(run.metadata) ? 'Paid' : 'Free'}
+              </p>
+            </button>
           </div>
 
-          {course ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium">Course syllabus</p>
-                  <p className="text-muted-foreground text-sm">
-                    {syllabusSections.length} chapters · {totalSyllabusItems} lessons — managed at course
-                    level, shared across all runs.
-                  </p>
-                </div>
-                <Button variant="secondary" size="sm" asChild>
-                  <Link to={ROUTES.courseDetail(course.id, 'syllabus')}>Open syllabus</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Tabs defaultValue="sessions" className="space-y-4">
-            <TabsList className="h-auto flex-wrap justify-start">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="h-auto w-full flex-wrap justify-start">
               <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
               <TabsTrigger value="enrollments">
                 Enrollment ({enrollmentsQuery.data?.totalElement ?? 0})
@@ -641,75 +780,28 @@ export function CourseRunDetailPage() {
 
             <TabsContent value="sessions" className="space-y-4">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
                   <CardTitle className="text-base">Live sessions</CardTitle>
                   <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
                     <Plus className="mr-2 size-4" />
                     Add session
                   </Button>
                 </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                  {sessions.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No sessions yet.</p>
-                  ) : (
-                    sessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">
-                              #{session.sessionNumber} {session.title}
-                            </p>
-                            <Badge variant="secondary">{session.status}</Badge>
-                          </div>
-                          <p className="text-muted-foreground text-sm">
-                            {session.scheduledAt
-                              ? formatDateTime(session.scheduledAt)
-                              : 'Not scheduled'}
-                          </p>
-                          <p className="text-muted-foreground text-sm">
-                            {session.durationMinutes != null
-                              ? `${session.durationMinutes} min`
-                              : 'No duration set'}
-                          </p>
-                          {session.description ? (
-                            <p className="text-sm">{session.description}</p>
-                          ) : null}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditSession(session)}>
-                              Edit session
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                if (window.confirm('Delete this session?')) {
-                                  deleteSessionMutation.mutate(session.id);
-                                }
-                              }}
-                            >
-                              Delete session
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))
-                  )}
+                <CardContent className="pt-0">
+                  <DataTable
+                    columns={sessionColumns}
+                    data={sessions}
+                    isLoading={sessionsQuery.isLoading}
+                    emptyMessage="No sessions yet."
+                    showPagination={false}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="enrollments" className="space-y-4">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
                   <CardTitle className="text-base">Enrollment</CardTitle>
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => setEnrollOpen(true)}>
@@ -723,63 +815,16 @@ export function CourseRunDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
-                  {enrollments.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No enrollments yet.</p>
-                  ) : (
-                    enrollments.map((enrollment) => (
-                      <div
-                        key={enrollment.id}
-                        className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between"
-                      >
-                        <div className="space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">
-                              {enrollment.userDisplayName ?? enrollment.userEmail ?? 'User'}
-                            </p>
-                            <Badge>{enrollment.status}</Badge>
-                          </div>
-                          <p className="text-muted-foreground text-sm">
-                            {enrollment.userEmail ?? 'No email'} · {enrollment.role ?? 'STUDENT'}
-                          </p>
-                          <p className="text-muted-foreground text-sm">
-                            Enrolled at {formatDateTime(enrollment.enrolledAt)}
-                          </p>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setViewEnrollmentId(enrollment.id)}>
-                              View details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditEnrollment(enrollment);
-                                setEditStatus(enrollment.status);
-                                setEditRole(enrollment.role ?? 'STUDENT');
-                              }}
-                            >
-                              Edit enrollment
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                if (window.confirm('Delete this enrollment?')) {
-                                  deleteEnrollmentMutation.mutate(enrollment.id);
-                                }
-                              }}
-                            >
-                              Delete enrollment
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))
-                  )}
-                  <div className="flex justify-end gap-2 pt-2">
+                  <DataTable
+                    columns={enrollmentColumns}
+                    data={enrollments}
+                    isLoading={enrollmentsQuery.isLoading}
+                    emptyMessage="No enrollments yet."
+                    showRowIndex
+                    pageOffset={(enrollmentPage - 1) * 20}
+                    showPagination={false}
+                  />
+                  <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -788,6 +833,9 @@ export function CourseRunDetailPage() {
                     >
                       Previous
                     </Button>
+                    <span className="text-muted-foreground self-center text-sm">
+                      Page {enrollmentPage} / {enrollmentsQuery.data?.totalPages ?? 1}
+                    </span>
                     <Button
                       variant="outline"
                       size="sm"
@@ -803,12 +851,12 @@ export function CourseRunDetailPage() {
 
             <TabsContent value="chat" className="space-y-4">
               <Card>
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-base">Class chat</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-0">
+                <CardContent className="space-y-3 pt-0">
                   {!conversationQuery.data ? (
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-muted-foreground py-6 text-center text-sm">
                       This class has no group conversation yet.
                     </p>
                   ) : (
@@ -817,36 +865,15 @@ export function CourseRunDetailPage() {
                         {conversationQuery.data.participants.length} members ·{' '}
                         {conversationQuery.data.status}
                       </p>
-                      <div className="space-y-3">
-                        {(messagesQuery.data?.data ?? []).map((message) => (
-                          <div
-                            key={message.id}
-                            className="flex flex-col gap-3 rounded-xl border p-4 sm:flex-row sm:items-start sm:justify-between"
-                          >
-                            <div className="space-y-1">
-                              <p className="font-medium">
-                                {message.senderUsername ?? message.senderId}
-                              </p>
-                              <p className="text-sm">{message.text ?? '(attachment)'}</p>
-                              <p className="text-muted-foreground text-xs">
-                                {formatDateTime(message.createdAt)}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() => {
-                                if (window.confirm('Delete this message?')) {
-                                  deleteMessageMutation.mutate(message.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                      <DataTable
+                        columns={messageColumns}
+                        data={messagesQuery.data?.data ?? []}
+                        isLoading={messagesQuery.isLoading}
+                        emptyMessage="No messages yet."
+                        showRowIndex
+                        pageOffset={(messagePage - 1) * 50}
+                        showPagination={false}
+                      />
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
@@ -856,6 +883,9 @@ export function CourseRunDetailPage() {
                         >
                           Previous
                         </Button>
+                        <span className="text-muted-foreground self-center text-sm">
+                          Page {messagePage} / {messagesQuery.data?.totalPages ?? 1}
+                        </span>
                         <Button
                           variant="outline"
                           size="sm"
@@ -874,7 +904,7 @@ export function CourseRunDetailPage() {
         </>
       ) : (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
+          <CardContent className="text-muted-foreground p-6 text-sm">
             Loading course run details...
           </CardContent>
         </Card>
