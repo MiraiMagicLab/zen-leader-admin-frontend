@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BookOpen,
+  CopyPlus,
   FileText,
   MoreHorizontal,
   Pencil,
@@ -12,6 +13,7 @@ import {
 import { toast } from 'sonner';
 
 import { SyllabusItemEditorSheet } from '@/features/courses/components/syllabus-item-editor-sheet';
+import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,6 +51,10 @@ type ItemEditorState = {
   defaultType?: string;
 };
 
+type DeleteTarget =
+  | { kind: 'section'; id: string; title: string }
+  | { kind: 'item'; id: string; title: string };
+
 const TYPE_ICONS: Record<string, typeof PlayCircle> = {
   VIDEO: PlayCircle,
   ARTICLE: FileText,
@@ -69,6 +75,7 @@ export function SyllabusEditor({
   const [sectionTitle, setSectionTitle] = useState('');
   const [editSection, setEditSection] = useState<SyllabusSectionResponse | null>(null);
   const [itemEditor, setItemEditor] = useState<ItemEditorState | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   const sectionsQuery = useQuery({
     queryKey: queryKeys.syllabusSections.list(courseId),
@@ -128,6 +135,7 @@ export function SyllabusEditor({
     mutationFn: (sectionId: string) => syllabusSectionsApi.remove(sectionId),
     onSuccess: async () => {
       toast.success('Chapter deleted.');
+      setDeleteTarget(null);
       await invalidate();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -137,6 +145,25 @@ export function SyllabusEditor({
     mutationFn: (itemId: string) => syllabusItemsApi.remove(itemId),
     onSuccess: async () => {
       toast.success('Lesson deleted.');
+      setDeleteTarget(null);
+      await invalidate();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const duplicateSectionMutation = useMutation({
+    mutationFn: (sectionId: string) => syllabusSectionsApi.duplicate(sectionId),
+    onSuccess: async (created) => {
+      toast.success(`Chapter duplicated as "${created.title}".`);
+      await invalidate();
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const duplicateItemMutation = useMutation({
+    mutationFn: (itemId: string) => syllabusItemsApi.duplicate(itemId),
+    onSuccess: async (created) => {
+      toast.success(`Lesson duplicated as "${created.title}".`);
       await invalidate();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -243,17 +270,26 @@ export function SyllabusEditor({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        disabled={duplicateSectionMutation.isPending}
+                        onClick={() => duplicateSectionMutation.mutate(section.id)}
+                      >
+                        <CopyPlus className="mr-2 size-4" />
+                        Duplicate chapter
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setEditSection(section)}>
                         <Pencil className="mr-2 size-4" />
                         Rename chapter
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-destructive"
-                        onClick={() => {
-                          if (window.confirm(`Delete chapter "${section.title}" and all lessons?`)) {
-                            deleteSectionMutation.mutate(section.id);
-                          }
-                        }}
+                        onClick={() =>
+                          setDeleteTarget({
+                            kind: 'section',
+                            id: section.id,
+                            title: section.title,
+                          })
+                        }
                       >
                         <Trash2 className="mr-2 size-4" />
                         Delete chapter
@@ -314,13 +350,24 @@ export function SyllabusEditor({
                           </Button>
                           <Button
                             variant="ghost"
+                            size="sm"
+                            disabled={duplicateItemMutation.isPending}
+                            onClick={() => duplicateItemMutation.mutate(item.id)}
+                          >
+                            <CopyPlus className="mr-1 size-3.5" />
+                            Duplicate
+                          </Button>
+                          <Button
+                            variant="ghost"
                             size="icon"
                             className="text-destructive"
-                            onClick={() => {
-                              if (window.confirm(`Delete lesson "${item.title}"?`)) {
-                                deleteItemMutation.mutate(item.id);
-                              }
-                            }}
+                            onClick={() =>
+                              setDeleteTarget({
+                                kind: 'item',
+                                id: item.id,
+                                title: item.title,
+                              })
+                            }
                           >
                             <Trash2 className="size-4" />
                           </Button>
@@ -412,6 +459,37 @@ export function SyllabusEditor({
           defaultType={itemEditor.defaultType}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+          }
+        }}
+        title={deleteTarget?.kind === 'section' ? 'Delete chapter?' : 'Delete lesson?'}
+        description={
+          deleteTarget?.kind === 'section' ? (
+            <>
+              Delete &quot;{deleteTarget.title}&quot; and all lessons inside this chapter. This
+              cannot be undone.
+            </>
+          ) : (
+            <>Delete &quot;{deleteTarget?.title}&quot;. This cannot be undone.</>
+          )
+        }
+        onConfirm={() => {
+          if (!deleteTarget) {
+            return;
+          }
+          if (deleteTarget.kind === 'section') {
+            deleteSectionMutation.mutate(deleteTarget.id);
+          } else {
+            deleteItemMutation.mutate(deleteTarget.id);
+          }
+        }}
+        pending={deleteSectionMutation.isPending || deleteItemMutation.isPending}
+      />
     </div>
   );
 }

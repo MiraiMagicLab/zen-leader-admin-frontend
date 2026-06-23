@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,6 +63,7 @@ export function SyllabusItemDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
   const itemQuery = useQuery({
     queryKey: queryKeys.syllabusItems.detail(itemId ?? ''),
@@ -159,6 +161,7 @@ export function SyllabusItemDetailPage() {
     mutationFn: (key: string) => assetsApi.remove(key),
     onSuccess: () => {
       toast.success('File deleted from storage.');
+      setPendingConfirm(null);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -482,11 +485,14 @@ export function SyllabusItemDetailPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => {
-                        if (window.confirm('Delete file from storage?')) {
-                          deleteAssetMutation.mutate(fileAttachment.publicId!);
-                        }
-                      }}
+                      onClick={() =>
+                        setPendingConfirm({
+                          title: 'Delete file from storage?',
+                          description:
+                            'Remove this file from storage. The lesson record will remain.',
+                          action: () => deleteAssetMutation.mutate(fileAttachment.publicId!),
+                        })
+                      }
                     >
                       Remove file
                     </Button>
@@ -504,6 +510,19 @@ export function SyllabusItemDetailPage() {
           ) : null}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={Boolean(pendingConfirm)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingConfirm(null);
+          }
+        }}
+        title={pendingConfirm?.title ?? ''}
+        description={pendingConfirm?.description}
+        onConfirm={() => pendingConfirm?.action()}
+        pending={deleteAssetMutation.isPending}
+      />
     </div>
   );
 }
