@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -20,6 +21,7 @@ import { toast } from 'sonner';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { UserPicker } from '@/components/admin/user-picker';
+import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -66,6 +68,7 @@ import {
 } from '@/services/lms/lms-api';
 import { messagingApi } from '@/services/messaging/messaging-api';
 import type {
+  ChatMessageResponse,
   CourseRunResponse,
   EnrollmentImportResponse,
   EnrollmentResponse,
@@ -420,6 +423,201 @@ export function CourseRunDetailPage() {
     });
   };
 
+  const sessionColumns = useMemo<ColumnDef<SessionResponse>[]>(
+    () => [
+      {
+        accessorKey: 'sessionNumber',
+        header: 'No.',
+        cell: ({ row }) => (
+          <span className="tabular-nums">{row.original.sessionNumber}</span>
+        ),
+      },
+      { accessorKey: 'title', header: 'Title' },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+      },
+      {
+        id: 'scheduled',
+        header: 'Scheduled',
+        cell: ({ row }) =>
+          row.original.scheduledAt
+            ? formatDateTime(row.original.scheduledAt)
+            : 'Not scheduled',
+      },
+      {
+        id: 'duration',
+        header: 'Duration',
+        cell: ({ row }) =>
+          row.original.durationMinutes != null
+            ? `${row.original.durationMinutes} min`
+            : '—',
+      },
+      {
+        id: 'description',
+        header: 'Description',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground line-clamp-2 block max-w-[240px] text-sm">
+            {row.original.description?.trim() || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        size: 48,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEditSession(row.original)}>
+                Edit session
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => {
+                  if (window.confirm('Delete this session?')) {
+                    deleteSessionMutation.mutate(row.original.id);
+                  }
+                }}
+              >
+                Delete session
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [deleteSessionMutation],
+  );
+
+  const enrollmentColumns = useMemo<ColumnDef<EnrollmentResponse>[]>(
+    () => [
+      {
+        id: 'name',
+        header: 'Name',
+        cell: ({ row }) =>
+          row.original.userDisplayName ?? row.original.userEmail ?? 'User',
+      },
+      {
+        id: 'email',
+        header: 'Email',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm">
+            {row.original.userEmail ?? '—'}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'role',
+        header: 'Role',
+        cell: ({ row }) => row.original.role ?? 'STUDENT',
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+      },
+      {
+        id: 'enrolledAt',
+        header: 'Enrolled at',
+        cell: ({ row }) => formatDateTime(row.original.enrolledAt),
+      },
+      {
+        id: 'actions',
+        header: '',
+        size: 48,
+        cell: ({ row }) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setViewEnrollmentId(row.original.id)}>
+                View details
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditEnrollment(row.original);
+                  setEditStatus(row.original.status);
+                  setEditRole(row.original.role ?? 'STUDENT');
+                }}
+              >
+                Edit enrollment
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => {
+                  if (window.confirm('Delete this enrollment?')) {
+                    deleteEnrollmentMutation.mutate(row.original.id);
+                  }
+                }}
+              >
+                Delete enrollment
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    [deleteEnrollmentMutation],
+  );
+
+  const messageColumns = useMemo<ColumnDef<ChatMessageResponse>[]>(
+    () => [
+      {
+        id: 'sender',
+        header: 'Sender',
+        cell: ({ row }) => row.original.senderUsername ?? row.original.senderId,
+      },
+      {
+        id: 'message',
+        header: 'Message',
+        cell: ({ row }) => (
+          <span className="line-clamp-2 block max-w-md text-sm">
+            {row.original.text ?? '(attachment)'}
+          </span>
+        ),
+      },
+      {
+        id: 'createdAt',
+        header: 'Sent at',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground text-sm whitespace-nowrap">
+            {formatDateTime(row.original.createdAt)}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        size: 48,
+        cell: ({ row }) => (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive"
+            onClick={() => {
+              if (window.confirm('Delete this message?')) {
+                deleteMessageMutation.mutate(row.original.id);
+              }
+            }}
+          >
+            <Trash2 className="size-4" />
+          </Button>
+        ),
+      },
+    ],
+    [deleteMessageMutation],
+  );
+
   if (!runId) {
     return null;
   }
@@ -589,63 +787,14 @@ export function CourseRunDetailPage() {
                     Add session
                   </Button>
                 </CardHeader>
-                <CardContent className="space-y-2 pt-0">
-                  {sessions.length === 0 ? (
-                    <p className="text-muted-foreground py-6 text-center text-sm">
-                      No sessions yet.
-                    </p>
-                  ) : (
-                    sessions.map((session) => (
-                      <div
-                        key={session.id}
-                        className="flex flex-col gap-2 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">
-                              #{session.sessionNumber} {session.title}
-                            </p>
-                            <Badge variant="secondary">{session.status}</Badge>
-                          </div>
-                          <p className="text-muted-foreground text-sm">
-                            {session.scheduledAt
-                              ? formatDateTime(session.scheduledAt)
-                              : 'Not scheduled'}
-                            {session.durationMinutes != null
-                              ? ` · ${session.durationMinutes} min`
-                              : ''}
-                          </p>
-                          {session.description ? (
-                            <p className="text-muted-foreground line-clamp-2 text-sm">
-                              {session.description}
-                            </p>
-                          ) : null}
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="shrink-0">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditSession(session)}>
-                              Edit session
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                if (window.confirm('Delete this session?')) {
-                                  deleteSessionMutation.mutate(session.id);
-                                }
-                              }}
-                            >
-                              Delete session
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))
-                  )}
+                <CardContent className="pt-0">
+                  <DataTable
+                    columns={sessionColumns}
+                    data={sessions}
+                    isLoading={sessionsQuery.isLoading}
+                    emptyMessage="No sessions yet."
+                    showPagination={false}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -665,66 +814,17 @@ export function CourseRunDetailPage() {
                     </Button>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-2 pt-0">
-                  {enrollments.length === 0 ? (
-                    <p className="text-muted-foreground py-6 text-center text-sm">
-                      No enrollments yet.
-                    </p>
-                  ) : (
-                    enrollments.map((enrollment) => (
-                      <div
-                        key={enrollment.id}
-                        className="flex flex-col gap-2 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium">
-                              {enrollment.userDisplayName ?? enrollment.userEmail ?? 'User'}
-                            </p>
-                            <Badge variant="secondary">{enrollment.status}</Badge>
-                          </div>
-                          <p className="text-muted-foreground text-sm">
-                            {enrollment.userEmail ?? 'No email'} · {enrollment.role ?? 'STUDENT'}
-                          </p>
-                          <p className="text-muted-foreground text-sm">
-                            Enrolled at {formatDateTime(enrollment.enrolledAt)}
-                          </p>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="shrink-0">
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setViewEnrollmentId(enrollment.id)}>
-                              View details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setEditEnrollment(enrollment);
-                                setEditStatus(enrollment.status);
-                                setEditRole(enrollment.role ?? 'STUDENT');
-                              }}
-                            >
-                              Edit enrollment
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => {
-                                if (window.confirm('Delete this enrollment?')) {
-                                  deleteEnrollmentMutation.mutate(enrollment.id);
-                                }
-                              }}
-                            >
-                              Delete enrollment
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    ))
-                  )}
-                  <div className="flex justify-end gap-2 pt-2">
+                <CardContent className="space-y-3 pt-0">
+                  <DataTable
+                    columns={enrollmentColumns}
+                    data={enrollments}
+                    isLoading={enrollmentsQuery.isLoading}
+                    emptyMessage="No enrollments yet."
+                    showRowIndex
+                    pageOffset={(enrollmentPage - 1) * 20}
+                    showPagination={false}
+                  />
+                  <div className="flex justify-end gap-2">
                     <Button
                       variant="outline"
                       size="sm"
@@ -765,36 +865,15 @@ export function CourseRunDetailPage() {
                         {conversationQuery.data.participants.length} members ·{' '}
                         {conversationQuery.data.status}
                       </p>
-                      <div className="space-y-2">
-                        {(messagesQuery.data?.data ?? []).map((message) => (
-                          <div
-                            key={message.id}
-                            className="flex flex-col gap-2 rounded-lg border px-4 py-3 sm:flex-row sm:items-start sm:justify-between"
-                          >
-                            <div className="min-w-0 space-y-0.5">
-                              <p className="font-medium">
-                                {message.senderUsername ?? message.senderId}
-                              </p>
-                              <p className="text-sm">{message.text ?? '(attachment)'}</p>
-                              <p className="text-muted-foreground text-xs">
-                                {formatDateTime(message.createdAt)}
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive shrink-0"
-                              onClick={() => {
-                                if (window.confirm('Delete this message?')) {
-                                  deleteMessageMutation.mutate(message.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                      <DataTable
+                        columns={messageColumns}
+                        data={messagesQuery.data?.data ?? []}
+                        isLoading={messagesQuery.isLoading}
+                        emptyMessage="No messages yet."
+                        showRowIndex
+                        pageOffset={(messagePage - 1) * 50}
+                        showPagination={false}
+                      />
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="outline"
