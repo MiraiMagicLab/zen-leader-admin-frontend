@@ -19,7 +19,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { paymentsApi } from '@/services/payments/payments-api';
@@ -34,9 +36,11 @@ const STATUS_OPTIONS = [
   { value: 'CANCELLED', label: 'CANCELLED' },
   { value: 'REFUND_PENDING', label: 'REFUND_PENDING' },
   { value: 'REFUNDED', label: 'REFUNDED' },
-];
+] as const;
 
 export function PaymentsPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.payments);
+
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -65,7 +69,7 @@ export function PaymentsPage() {
   const retryMutation = useMutation({
     mutationFn: (orderId: string) => paymentsApi.retryEnrollment(orderId),
     onSuccess: () => {
-      toast.success('Re-enrollment attempted.');
+      toast.success('Enrollment retry started.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -104,8 +108,7 @@ export function PaymentsPage() {
       {
         accessorKey: 'amount',
         header: 'Amount',
-        cell: ({ row }) =>
-          `${row.original.amount.toLocaleString()} ${row.original.currency}`,
+        cell: ({ row }) => `${row.original.amount.toLocaleString()} ${row.original.currency}`,
       },
       {
         accessorKey: 'status',
@@ -123,7 +126,7 @@ export function PaymentsPage() {
             return row.original.enrollmentFailureMessage || 'Retry enrollment needed';
           }
           if (row.original.status === 'PAID') {
-            return 'Payment succeeded but enrollment is still missing';
+            return 'Enrollment is still missing';
           }
           if (row.original.status === 'PENDING') {
             return 'Waiting for payment confirmation';
@@ -176,7 +179,7 @@ export function PaymentsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Payments"
-        description="Track orders and handle enrollment errors after payment."
+        description="Review payment orders and resolve enrollment follow-up."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -184,9 +187,9 @@ export function PaymentsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -197,7 +200,7 @@ export function PaymentsPage() {
               onClick={() => void ordersQuery.refetch()}
             >
               <RefreshCw className="mr-2 size-4" />
-               Refresh
+              Refresh
             </Button>
           </div>
         }
@@ -208,14 +211,14 @@ export function PaymentsPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search by name, email, or order code…"
+            placeholder="Search by name, email, or order code"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Orders on page</p>
@@ -239,14 +242,6 @@ export function PaymentsPage() {
                   order.status === 'ENROLL_FAILED' ||
                   (order.status === 'PAID' && !order.enrollmentActive),
               ).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Admin note</p>
-            <p className="mt-2 text-sm">
-              Use this screen mainly to recover enrollment after a successful payment. Pricing is configured on each course run.
             </p>
           </CardContent>
         </Card>

@@ -8,15 +8,19 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { BRAND } from '@/lib/brand/constants';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
+import { useAdminPageMeta } from '@/lib/page-meta';
 
 export function SettingsPage() {
-  const apiUrl = import.meta.env.VITE_API_URL ?? 'Not configured';
+  useAdminPageMeta(ADMIN_PAGE_META.settings);
+
+  const apiUrl = import.meta.env.VITE_API_URL ?? 'Unavailable';
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Settings"
-        description="Version info and admin panel configuration."
+        description="Review environment details and service configuration."
       />
       <Card className="shadow-sm">
         <CardHeader>
@@ -40,7 +44,7 @@ export function SettingsPage() {
           </div>
           <Separator />
           <div>
-            <p className="text-muted-foreground text-sm font-medium">API Backend</p>
+            <p className="text-muted-foreground text-sm font-medium">API endpoint</p>
             <p className="mt-1 font-mono text-sm">{apiUrl}</p>
           </div>
         </CardContent>

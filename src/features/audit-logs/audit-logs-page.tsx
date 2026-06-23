@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import {
   AUDIT_ACTION_OPTIONS,
   AUDIT_ENTITY_TYPE_OPTIONS,
@@ -22,12 +23,15 @@ import {
   auditEntityTypeLabel,
 } from '@/lib/audit-labels';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { auditLogsApi } from '@/services/audit-logs/audit-logs-api';
 import type { AuditLogResponse } from '@/services/types/domain';
 
 const ALL = 'all';
 
 export function AuditLogsPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.auditLogs);
+
   const [page, setPage] = useState(1);
   const [action, setAction] = useState(ALL);
   const [entityType, setEntityType] = useState(ALL);
@@ -79,7 +83,7 @@ export function AuditLogsPage() {
         header: 'Entity type',
         cell: ({ row }) => auditEntityTypeLabel(row.original.entityType),
       },
-      { accessorKey: 'entityId', header: 'Entity ID', },
+      { accessorKey: 'entityId', header: 'Entity ID' },
       {
         accessorKey: 'actorDisplay',
         header: 'Actor',
@@ -92,8 +96,8 @@ export function AuditLogsPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Audit Log"
-        description="Track admin actions and data changes on the system."
+        title="Audit log"
+        description="Review administrative actions and data changes across the platform."
       />
 
       <div className="flex flex-col gap-3">
@@ -146,7 +150,7 @@ export function AuditLogsPage() {
             <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
             <Input
               className="pl-9"
-              placeholder="Actor user ID…"
+              placeholder="Filter by actor user ID"
               value={actorUserIdInput}
               onChange={(event) => setActorUserIdInput(event.target.value)}
               onKeyDown={(event) => {
@@ -159,12 +163,12 @@ export function AuditLogsPage() {
 
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={applyActorFilter}>
-              Filter by user
+              Apply filter
             </Button>
             {hasActiveFilters ? (
               <Button variant="outline" onClick={resetFilters}>
                 <RotateCcw className="mr-2 size-4" />
-                Clear filter
+                Clear filters
               </Button>
             ) : null}
           </div>
@@ -172,7 +176,7 @@ export function AuditLogsPage() {
 
         {hasActiveFilters ? (
           <p className="text-muted-foreground text-sm">
-            Filtering:
+            Filters:
             {action !== ALL ? ` ${auditActionLabel(action)}` : ''}
             {entityType !== ALL ? ` · ${auditEntityTypeLabel(entityType)}` : ''}
             {actorUserId ? ` · User ${actorUserId}` : ''}

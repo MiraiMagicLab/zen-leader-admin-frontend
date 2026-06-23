@@ -1,9 +1,9 @@
 export const BRAND = {
   name: 'Zen Leader',
   adminTitle: 'Zen Leader Admin',
-  adminSubtitle: 'Admin Dashboard',
+  adminSubtitle: 'Administration Console',
   tagline:
-    'Learning and community platform — manage courses, classes, and users in a unified space.',
+    'Operations workspace for the Institute for Zen Leadership platform, covering programs, learners, events, and community activity.',
   copyright: 'Zen Leader',
   version: 'v0.0.1',
   storageKey: 'zen-leader-admin-auth',

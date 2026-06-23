@@ -46,9 +46,11 @@ import {
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
 import { eventStatusLabel, eventTypeLabel, normalizeEventStatus } from '@/lib/event-labels';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
@@ -89,6 +91,8 @@ const emptyForm: EventForm = {
 };
 
 export function EventsListPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.events);
+
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -215,7 +219,7 @@ export function EventsListPage() {
           <div className="space-y-1">
             <p className="font-medium">{row.original.title}</p>
             <p className="text-muted-foreground line-clamp-2 text-xs">
-              {row.original.description || 'No description yet'}
+              {row.original.description || 'No summary provided'}
             </p>
           </div>
         ),
@@ -297,7 +301,7 @@ export function EventsListPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Events"
-        description="Manage system events and community-created sessions via internal meet flow."
+        description="Manage public events, schedules, and publishing status."
         actions={
           <Button
             onClick={() => {
@@ -316,7 +320,7 @@ export function EventsListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search by title or description…"
+            placeholder="Search by title or description"
             value={keyword}
             onChange={(event) => {
               setKeyword(event.target.value);
@@ -367,7 +371,7 @@ export function EventsListPage() {
         </Select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Events on page</p>
@@ -389,14 +393,6 @@ export function EventsListPage() {
             <p className="text-muted-foreground text-sm">System events</p>
             <p className="mt-2 text-2xl font-semibold">
               {eventsQuery.data?.data?.filter((event) => event.isOfficial).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Admin note</p>
-            <p className="mt-2 text-sm">
-              Creating an event here uses the internal meet flow. Publish only when schedule, content, and thumbnail are ready.
             </p>
           </CardContent>
         </Card>
@@ -440,7 +436,7 @@ export function EventsListPage() {
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Add event</SheetTitle>
             <SheetDescription>
-              The system will create a meet room and join link via the internal meet service.
+              Create the event details, schedule, and thumbnail before publishing.
             </SheetDescription>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">

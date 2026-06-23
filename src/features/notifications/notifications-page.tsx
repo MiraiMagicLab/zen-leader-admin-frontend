@@ -16,12 +16,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { notificationsApi } from '@/services/notifications/notifications-api';
 
-const NOTIFICATION_TYPES = ['SYSTEM', 'ANNOUNCEMENT', 'REMINDER', 'PAYMENT', 'LMS'];
+const NOTIFICATION_TYPES = ['SYSTEM', 'ANNOUNCEMENT', 'REMINDER', 'PAYMENT', 'LMS'] as const;
 
 export function NotificationsPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.notifications);
+
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [type, setType] = useState('SYSTEM');
@@ -34,7 +38,10 @@ export function NotificationsPage() {
         message,
         type,
         userIds: userIds.trim()
-          ? userIds.split(',').map((id) => id.trim()).filter(Boolean)
+          ? userIds
+              .split(',')
+              .map((id) => id.trim())
+              .filter(Boolean)
           : undefined,
       }),
     onSuccess: (result) => {
@@ -50,15 +57,15 @@ export function NotificationsPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader
         title="Notifications"
-        description="Send system notifications to specific users or all users."
+        description="Send notifications to selected users or to all users when needed."
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Target mode</p>
+            <p className="text-muted-foreground text-sm">Target</p>
             <p className="mt-2 text-2xl font-semibold">
-              {userIds.trim() ? 'Selected users' : 'Broadcast'}
+              {userIds.trim() ? 'Selected users' : 'All users'}
             </p>
           </CardContent>
         </Card>
@@ -68,19 +75,11 @@ export function NotificationsPage() {
             <p className="mt-2 text-2xl font-semibold">{type}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Admin note</p>
-            <p className="mt-2 text-sm">
-              Leave user IDs empty only for a real global broadcast. Use targeted sends for payment or LMS support cases whenever possible.
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Broadcast notification</CardTitle>
+          <CardTitle className="text-base">Send notification</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -115,7 +114,7 @@ export function NotificationsPage() {
             <Input
               value={userIds}
               onChange={(e) => setUserIds(e.target.value)}
-              placeholder="Leave empty = send to all users"
+              placeholder="Leave blank to send to all users"
             />
           </div>
           <Button

@@ -10,8 +10,16 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useState } from 'react';
+import { Inbox } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty';
 import {
   Table,
   TableBody,
@@ -108,8 +116,11 @@ export function DataTable<TData, TValue>({
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={allColumns.length} className="h-24 text-center">
-                  <Spinner className="mx-auto" />
+                <TableCell colSpan={allColumns.length} className="h-32">
+                  <div className="flex flex-col items-center justify-center gap-3 text-center">
+                    <Spinner className="mx-auto" />
+                    <p className="text-muted-foreground text-sm">Loading results…</p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length ? (
@@ -133,8 +144,16 @@ export function DataTable<TData, TValue>({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={allColumns.length} className="h-24 text-center">
-                  {emptyMessage}
+                <TableCell colSpan={allColumns.length} className="p-6">
+                  <Empty className="border-0 p-6">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <Inbox className="size-5" />
+                      </EmptyMedia>
+                      <EmptyTitle>No results</EmptyTitle>
+                      <EmptyDescription>{emptyMessage}</EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </TableCell>
               </TableRow>
             )}

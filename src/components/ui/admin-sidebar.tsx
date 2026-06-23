@@ -15,15 +15,18 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import {
-  LayoutDashboard,
-  Users,
-  GraduationCap,
+  Bell,
   BookOpen,
   CalendarDays,
   CreditCard,
-  ScrollText,
+  GraduationCap,
   Layers,
+  LayoutDashboard,
+  ScrollText,
+  Settings,
   ShieldAlert,
+  Users,
+  Video,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { BRAND } from '@/lib/brand/constants';
@@ -60,6 +63,7 @@ const menuGroups: MenuGroup[] = [
     label: 'Community',
     items: [
       { title: 'Events', icon: CalendarDays, to: ROUTES.events },
+      { title: 'Live Sessions', icon: Video, to: ROUTES.liveSessions },
     ],
   },
   {
@@ -67,8 +71,10 @@ const menuGroups: MenuGroup[] = [
     items: [
       { title: 'Users', icon: Users, to: ROUTES.users },
       { title: 'Payments', icon: CreditCard, to: ROUTES.payments },
+      { title: 'Notifications', icon: Bell, to: ROUTES.notifications },
       { title: 'Moderation', icon: ShieldAlert, to: ROUTES.moderation },
       { title: 'Audit log', icon: ScrollText, to: ROUTES.auditLogs },
+      { title: 'Settings', icon: Settings, to: ROUTES.settings },
     ],
   },
 ];

@@ -47,6 +47,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { stripHtml } from '@/lib/html';
 import { SyllabusEditor } from '@/features/courses/components/syllabus-editor';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
@@ -59,6 +60,7 @@ import {
 } from '@/lib/course-run-pricing';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
@@ -109,6 +111,8 @@ const emptyCourseForm: CourseForm = {
 };
 
 export function CourseDetailPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.courseDetail);
+
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -202,7 +206,7 @@ export function CourseDetailPage() {
         androidProductId: androidProductId || null,
       }),
     onSuccess: async () => {
-      toast.success('IAP mapping updated.');
+      toast.success('Mobile purchase IDs updated.');
       setEditIapOpen(false);
       await invalidateCourseQueries();
     },
@@ -529,7 +533,7 @@ export function CourseDetailPage() {
                       ) : (
                         <div className="text-muted-foreground flex flex-col items-center gap-2 text-sm">
                           <ImageIcon className="size-8" />
-                          <span>No thumbnail yet</span>
+                          <span>No thumbnail uploaded</span>
                         </div>
                       )}
                     </div>
@@ -594,13 +598,13 @@ export function CourseDetailPage() {
                     <div className="rounded-lg border bg-muted/20 p-4">
                       <p className="text-sm font-medium">Apple Product ID</p>
                       <p className="text-muted-foreground mt-1 break-all text-sm">
-                        {appleProductId || 'Not configured'}
+                        {appleProductId || 'Not set'}
                       </p>
                     </div>
                     <div className="rounded-lg border bg-muted/20 p-4">
                       <p className="text-sm font-medium">Android Product ID</p>
                       <p className="text-muted-foreground mt-1 break-all text-sm">
-                        {androidProductId || 'Not configured'}
+                        {androidProductId || 'Not set'}
                       </p>
                     </div>
                     <Button
@@ -608,7 +612,7 @@ export function CourseDetailPage() {
                       disabled={iapMutation.isPending}
                       onClick={() => setEditIapOpen(true)}
                     >
-                      Set up IAP mapping
+                      Edit mobile purchase IDs
                     </Button>
                   </CardContent>
                 </Card>
@@ -662,7 +666,7 @@ export function CourseDetailPage() {
       ) : (
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            Loading course details...
+            Loading course details…
           </CardContent>
         </Card>
       )}
@@ -720,7 +724,7 @@ export function CourseDetailPage() {
                 }
               />
               <p className="text-xs text-muted-foreground">
-                If a new file is selected, it will be uploaded via presigned URL and overwrite the current thumbnail.
+                If you select a new image, it will replace the current cover image after saving.
               </p>
             </div>
             <div className="space-y-2">
@@ -793,7 +797,7 @@ export function CourseDetailPage() {
               onClick={() => iapMutation.mutate()}
               disabled={iapMutation.isPending}
             >
-              Save IAP mapping
+              Save mobile purchase IDs
             </Button>
           </SheetFooter>
         </SheetContent>

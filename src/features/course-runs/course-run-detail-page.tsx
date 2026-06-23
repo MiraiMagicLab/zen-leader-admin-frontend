@@ -50,6 +50,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import {
   formatCourseRunPricingSummary,
   getPayPalPriceUsd,
@@ -58,6 +59,7 @@ import {
 } from '@/lib/course-run-pricing';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import { coursesApi } from '@/services/courses/courses-api';
@@ -138,6 +140,8 @@ function toSessionForm(session: SessionResponse): SessionForm {
 }
 
 export function CourseRunDetailPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.courseRunDetail);
+
   const { runId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -806,7 +810,7 @@ export function CourseRunDetailPage() {
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => setEnrollOpen(true)}>
                       <Plus className="mr-2 size-4" />
-                      Manual enrollment
+                      Add learner
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                       <FileSpreadsheet className="mr-2 size-4" />
@@ -1257,7 +1261,7 @@ export function CourseRunDetailPage() {
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Manual enrollment</SheetTitle>
+            <SheetTitle>Add learner</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             <UserPicker open={enrollOpen} selectedUser={enrollUser} onSelect={setEnrollUser} />

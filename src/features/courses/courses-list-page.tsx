@@ -43,9 +43,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { stripHtml } from '@/lib/html';
 import { queryKeys } from '@/hooks/query-keys';
 import { hasCourseRunPricing } from '@/lib/course-run-pricing';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { coursesApi } from '@/services/courses/courses-api';
@@ -78,6 +80,8 @@ const emptyForm: FormState = {
 };
 
 export function CoursesListPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.courses);
+
   const { programId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -200,7 +204,7 @@ export function CoursesListPage() {
         header: 'Description',
         cell: ({ row }) => (
           <span className="text-muted-foreground line-clamp-2 max-w-md text-sm">
-            {stripHtml(row.original.description) || 'No description yet'}
+            {stripHtml(row.original.description) || 'No summary provided'}
           </span>
         ),
       },
@@ -312,7 +316,7 @@ export function CoursesListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search by code or title…"
+            placeholder="Search by code or title"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -488,7 +492,7 @@ export function CoursesListPage() {
               <RichTextEditor
                 value={form.description}
                 minHeight="10rem"
-                placeholder="Short course description (can be added later)…"
+                placeholder="Enter a short course description"
                 onChange={(description) =>
                   setForm((f) => ({ ...f, description }))
                 }

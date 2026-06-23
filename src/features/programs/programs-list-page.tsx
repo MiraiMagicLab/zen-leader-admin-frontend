@@ -47,8 +47,10 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDate } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { programsApi } from '@/services/programs/programs-api';
@@ -88,6 +90,8 @@ const emptyForm: FormState = {
 };
 
 export function ProgramsListPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.programs);
+
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -244,7 +248,7 @@ export function ProgramsListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search by code or title…"
+            placeholder="Search by code or title"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -261,7 +265,7 @@ export function ProgramsListPage() {
         </Select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Programs on page</p>
@@ -281,14 +285,6 @@ export function ProgramsListPage() {
             <p className="text-muted-foreground text-sm">Courses on page</p>
             <p className="mt-2 text-2xl font-semibold">
               {programsQuery.data?.data?.reduce((count, program) => count + (program.courses?.length ?? 0), 0) ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Admin note</p>
-            <p className="mt-2 text-sm">
-              Programs are the top-level catalog grouping. Open a program to manage courses, then configure runs and pricing inside each course.
             </p>
           </CardContent>
         </Card>
@@ -391,7 +387,7 @@ export function ProgramsListPage() {
               <RichTextEditor
                 value={form.description}
                 minHeight="14rem"
-                placeholder="Enter program description with rich formatting…"
+                placeholder="Enter the program description"
                 onChange={(description) =>
                   setForm((f) => ({ ...f, description }))
                 }
@@ -443,7 +439,7 @@ export function ProgramsListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete program?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete &quot;{deleteTarget?.title}&quot; — this action cannot be undone.
+              Delete &quot;{deleteTarget?.title}&quot;. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

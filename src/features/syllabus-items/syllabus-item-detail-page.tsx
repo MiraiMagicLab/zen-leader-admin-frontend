@@ -20,6 +20,8 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { assetsApi } from '@/services/assets/assets-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { syllabusItemsApi } from '@/services/lms/lms-api';
@@ -54,6 +56,8 @@ function patchContentData(
 }
 
 export function SyllabusItemDetailPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.syllabusItem);
+
   const { itemId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -133,8 +137,8 @@ export function SyllabusItemDetailPage() {
       });
       return presigned;
     },
-    onSuccess: (presigned) => {
-      toast.success(`Presigned upload OK: ${presigned.publicId}`);
+    onSuccess: () => {
+      toast.success('File uploaded and ready to use.');
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -292,8 +296,7 @@ export function SyllabusItemDetailPage() {
         <CardHeader>
           <CardTitle className="text-base">Content</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Saved to <code className="text-xs">contentData</code> — mobile app reads these
-            fields (API already supports via PUT syllabus-item).
+            Manage the lesson content shown to learners in the app.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -377,7 +380,7 @@ export function SyllabusItemDetailPage() {
                   </p>
                 ) : videoUrl ? (
                   <p className="text-muted-foreground text-xs">
-                    Legacy URL: {videoUrl}
+                    Current video link: {videoUrl}
                   </p>
                 ) : (
                   <p className="text-muted-foreground text-xs">
@@ -442,14 +445,14 @@ export function SyllabusItemDetailPage() {
               onClick={() => uploadFile && uploadMutation.mutate()}
             >
               <Upload className="mr-2 size-4" />
-              Direct upload
+              Upload file
             </Button>
             <Button
               variant="outline"
               disabled={!uploadFile || presignedMutation.isPending}
               onClick={() => uploadFile && presignedMutation.mutate(uploadFile)}
             >
-              Presigned upload
+              Upload with secure link
             </Button>
           </div>
           {fileAttachment?.url || fileAttachment?.publicId ? (
@@ -474,7 +477,7 @@ export function SyllabusItemDetailPage() {
                         downloadAssetMutation.mutate(fileAttachment.publicId!)
                       }
                     >
-                      Get presigned URL
+                      Open secure download link
                     </Button>
                     <Button
                       variant="destructive"
@@ -485,7 +488,7 @@ export function SyllabusItemDetailPage() {
                         }
                       }}
                     >
-                      Delete asset
+                      Remove file
                     </Button>
                   </>
                 ) : null}

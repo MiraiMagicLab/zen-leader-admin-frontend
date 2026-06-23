@@ -23,8 +23,10 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { BRAND } from '@/lib/brand/constants';
 import { formatNumber } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import { coursesApi } from '@/services/courses/courses-api';
@@ -47,20 +49,22 @@ const quickLinks = [
     icon: BookOpen,
   },
   {
-    title: 'Events & live',
-    description: 'Schedule events and manage live sessions.',
+    title: 'Manage events',
+    description: 'Update schedules, publishing status, and event details.',
     href: ROUTES.events,
     icon: CalendarDays,
   },
   {
-    title: 'Content moderation',
-    description: 'Handle UGC reports and class messages.',
+    title: 'Review moderation',
+    description: 'Handle reports and community safety actions.',
     href: ROUTES.moderation,
     icon: ShieldAlert,
   },
 ];
 
 export function AdminDashboardPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.dashboard);
+
   const user = useAuthStore((state) => state.user);
   const displayName = user?.name?.trim() || 'Admin';
 
@@ -102,15 +106,14 @@ export function AdminDashboardPage() {
           <div className="space-y-3">
             <div className="bg-primary/10 text-primary inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium">
               <Sparkles className="size-3.5" />
-              Admin Dashboard
+              Overview
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">
                 Hello, {displayName}
               </h1>
               <p className="text-muted-foreground mt-2 max-w-xl text-sm leading-relaxed md:text-base">
-                {BRAND.name} platform overview — track users,
-                learning content, and system operations.
+                Monitor learners, content, events, and daily operations across {BRAND.name}.
               </p>
             </div>
           </div>
@@ -143,7 +146,7 @@ export function AdminDashboardPage() {
         <div>
           <h2 className="text-lg font-semibold">Quick stats</h2>
           <p className="text-muted-foreground text-sm">
-            Real-time aggregated metrics from the backend.
+            Current totals across the main admin areas.
           </p>
         </div>
         <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -187,7 +190,7 @@ export function AdminDashboardPage() {
           <CardHeader>
             <CardTitle>Quick actions</CardTitle>
             <CardDescription>
-              Quick access to frequently used admin areas.
+              Open the areas your team uses most often.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -197,13 +200,13 @@ export function AdminDashboardPage() {
 
         <Card className="shadow-sm">
           <CardHeader>
-            <CardTitle>Operations modules</CardTitle>
-            <CardDescription>Items supporting daily operations.</CardDescription>
+            <CardTitle>Operations</CardTitle>
+            <CardDescription>Shortcuts for common follow-up work.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
             {[
-              { label: 'Payments & orders', icon: CreditCard, href: ROUTES.payments },
-              { label: 'Active course runs', icon: Layers, href: ROUTES.courseRuns },
+              { label: 'Payments', icon: CreditCard, href: ROUTES.payments },
+              { label: 'Course runs', icon: Layers, href: ROUTES.courseRuns },
             ].map((item) => {
               const Icon = item.icon;
               return (

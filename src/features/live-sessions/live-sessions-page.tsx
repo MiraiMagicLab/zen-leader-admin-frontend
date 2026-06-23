@@ -17,7 +17,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { liveSessionsApi } from '@/services/live-sessions/live-sessions-api';
 import { meetingsApi } from '@/services/meetings/meetings-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
@@ -27,9 +29,11 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
   { value: 'ACTIVE', label: 'ACTIVE' },
   { value: 'ENDED', label: 'ENDED' },
-];
+] as const;
 
 export function LiveSessionsPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.liveSessions);
+
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -64,9 +68,9 @@ export function LiveSessionsPage() {
 
   const joinMutation = useMutation({
     mutationFn: (roomCode: string) => meetingsApi.getJoinToken(roomCode),
-    onSuccess: (data) => {
-      toast.success(`Token: ${data.token.slice(0, 24)}…`);
-      void navigator.clipboard.writeText(data.token);
+    onSuccess: async (data) => {
+      await navigator.clipboard.writeText(data.token);
+      toast.success('Join token copied to clipboard.');
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -108,9 +112,9 @@ export function LiveSessionsPage() {
               onClick={() => joinMutation.mutate(row.original.roomCode)}
             >
               <Video className="mr-1 size-4" />
-              Token
+              Copy token
             </Button>
-            {row.original.status !== 'ENDED' && (
+            {row.original.status !== 'ENDED' ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -118,7 +122,7 @@ export function LiveSessionsPage() {
               >
                 End
               </Button>
-            )}
+            ) : null}
             <Button
               variant="ghost"
               size="sm"
@@ -138,7 +142,7 @@ export function LiveSessionsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Live sessions"
-        description="Manage meeting rooms and live sessions on the system."
+        description="Review meeting rooms and session status for live delivery."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -146,22 +150,22 @@ export function LiveSessionsPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" onClick={() => void sessionsQuery.refetch()}>
               <RefreshCw className="mr-2 size-4" />
-               Refresh
+              Refresh
             </Button>
           </div>
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Sessions on page</p>
@@ -184,14 +188,6 @@ export function LiveSessionsPage() {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Admin note</p>
-            <p className="mt-2 text-sm">
-              Use token copy only for operator support. Live teaching for LMS should still be managed from each course run and its sessions.
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       <DataTable
@@ -203,7 +199,12 @@ export function LiveSessionsPage() {
       />
 
       <div className="flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" disabled={page <= 0} onClick={() => setPage((p) => p - 1)}>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page <= 0}
+          onClick={() => setPage((p) => p - 1)}
+        >
           Previous page
         </Button>
         <span className="text-muted-foreground text-sm">

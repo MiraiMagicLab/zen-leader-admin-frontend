@@ -2,16 +2,15 @@ import { useState, type FormEvent } from 'react';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
+  BookOpenCheck,
   Lock,
   ShieldCheck,
-  Sparkles,
   User,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BrandLogo } from '@/components/brand/brand-logo';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -26,27 +25,33 @@ import {
   getAuthMutationErrorMessage,
   useLoginMutation,
 } from '@/hooks/use-auth-mutations';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { BRAND } from '@/lib/brand/constants';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { cn } from '@/lib/utils';
 
 const highlights = [
   {
     icon: ShieldCheck,
-    title: 'Multi-layer security',
-    description: 'Admin roles, audit logs, and real-time access control.',
+    title: 'Protected operations access',
+    description:
+      'Use role-based access, audit trails, and verified admin sessions to protect platform changes.',
   },
   {
-    icon: Sparkles,
-    title: 'LMS Administration',
-    description: 'Track students, courses, course runs, and platform activity.',
+    icon: BookOpenCheck,
+    title: 'Programs, events, and learner flow',
+    description:
+      'Manage training programs, course runs, live sessions, payments, and community-facing activity in one place.',
   },
-];
+] as const;
 
 export function LoginPage() {
   const navigate = useNavigate();
   const loginMutation = useLoginMutation();
   const [error, setError] = useState<string | null>(null);
+
+  useAdminPageMeta(ADMIN_PAGE_META.login);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -164,17 +169,12 @@ export function LoginPage() {
 
             <Card className="border-border/70 bg-card/80 shadow-xl shadow-black/5 backdrop-blur-xl dark:shadow-black/20">
               <CardHeader className="space-y-1 pb-2">
-                <Badge
-                  variant="secondary"
-                  className="mb-2 w-fit border-primary/20 bg-primary/10 text-primary"
-                >
-                  Secure Access
-                </Badge>
                 <CardTitle className="text-2xl font-bold tracking-tight">
-                  Welcome back
+                  Sign in to the admin console
                 </CardTitle>
                 <CardDescription className="text-base">
-                  Sign in to access the {BRAND.name} admin panel.
+                  Use your authorized Zen Leader account to manage programs, learning
+                  operations, and community workflows.
                 </CardDescription>
               </CardHeader>
 
@@ -187,14 +187,14 @@ export function LoginPage() {
                   ) : null}
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email / account</Label>
+                    <Label htmlFor="email">Work email</Label>
                     <div className="relative">
                       <User className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
                       <Input
                         id="email"
                         name="email"
                         type="text"
-                        placeholder="admin@example.com"
+                        placeholder="name@zenleader.global"
                         autoComplete="username"
                         required
                         disabled={isSubmitting}
@@ -206,12 +206,12 @@ export function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <Label htmlFor="password">Password</Label>
-                      <button
-                        type="button"
+                      <a
+                        href="mailto:support@zenleader.global?subject=Zen%20Leader%20Admin%20Access%20Support"
                         className="text-muted-foreground hover:text-foreground text-xs transition-colors"
                       >
-                        Forgot password?
-                      </button>
+                        Contact support
+                      </a>
                     </div>
                     <div className="relative">
                       <Lock className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2" />
@@ -219,7 +219,7 @@ export function LoginPage() {
                         id="password"
                         name="password"
                         type="password"
-                        placeholder="••••••"
+                        placeholder="Enter your password"
                         autoComplete="current-password"
                         required
                         disabled={isSubmitting}
@@ -242,6 +242,7 @@ export function LoginPage() {
                       <ArrowRight className="size-4" />
                     ) : null}
                   </Button>
+
                 </form>
               </CardContent>
             </Card>

@@ -30,9 +30,11 @@ import {
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
 import { eventStatusLabel, eventTypeLabel, normalizeEventStatus } from '@/lib/event-labels';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
@@ -94,6 +96,8 @@ function CommentItem({
 }
 
 export function EventDetailPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.eventDetail);
+
   const { eventId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -205,7 +209,7 @@ export function EventDetailPage() {
   });
 
   const event = eventQuery.data;
-  const eventOwnerLabel = event?.isOfficial ? 'ZenLeader System' : event?.author.name;
+  const eventOwnerLabel = event?.isOfficial ? 'Zen Leader' : event?.author.name;
   const metadataEntries = Object.entries(event?.metadata ?? {});
   const isConfirmingEventAction =
     publishMutation.isPending || unpublishMutation.isPending || deleteEventMutation.isPending;
@@ -332,15 +336,15 @@ export function EventDetailPage() {
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Meeting target</p>
-              <p>{event.roomCode ? `Internal meet room: ${event.roomCode}` : 'Internal meet room will be assigned.'}</p>
+              <p>{event.roomCode ? `Room code: ${event.roomCode}` : 'Room details will appear after scheduling is completed.'}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Join target</p>
-              <p className="break-all">{event.liveLink ?? 'Internal meet link will be generated automatically.'}</p>
+              <p className="break-all">{event.liveLink ?? 'The access link will appear automatically when the event is ready.'}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Session type</p>
-              <p>{event.sessionType ?? 'TORII_MEET'}</p>
+              <p>{event.sessionType ?? 'Live meeting'}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Created</p>
@@ -361,7 +365,7 @@ export function EventDetailPage() {
             ) : null}
             {metadataEntries.length > 0 ? (
               <div className="sm:col-span-2">
-                <p className="text-muted-foreground mb-2 text-sm">Metadata</p>
+                <p className="text-muted-foreground mb-2 text-sm">Additional details</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {metadataEntries.map(([key, value]) => (
                     <div key={key} className="rounded-md border p-3">

@@ -1,15 +1,18 @@
 import { ROUTES } from '@/routes/paths';
 
 const exactLabels: Record<string, string> = {
-  [ROUTES.home]: 'Tổng quan',
+  [ROUTES.home]: 'Overview',
   [ROUTES.users]: 'Users',
   [ROUTES.programs]: 'Programs',
   [ROUTES.courses]: 'Courses',
   [ROUTES.courseRuns]: 'Course Runs',
   [ROUTES.events]: 'Events',
+  [ROUTES.liveSessions]: 'Live Sessions',
   [ROUTES.payments]: 'Payments',
+  [ROUTES.notifications]: 'Notifications',
   [ROUTES.moderation]: 'Moderation',
   [ROUTES.auditLogs]: 'Audit log',
+  [ROUTES.settings]: 'Settings',
 };
 
 const prefixLabels: { prefix: string; label: string }[] = [
@@ -17,7 +20,7 @@ const prefixLabels: { prefix: string; label: string }[] = [
   { prefix: '/programs/', label: 'Program Courses' },
   { prefix: '/courses/', label: 'Course Details' },
   { prefix: '/course-runs/', label: 'Course Run Details' },
-  { prefix: '/syllabus-items/', label: 'Syllabus Item Details' },
+  { prefix: '/syllabus-items/', label: 'Lesson Details' },
   { prefix: '/events/', label: 'Event Details' },
 ];
 

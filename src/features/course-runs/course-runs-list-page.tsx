@@ -25,8 +25,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatCourseRunPricingSummary, hasCourseRunPricing } from '@/lib/course-run-pricing';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import { coursesApi } from '@/services/courses/courses-api';
@@ -35,6 +37,8 @@ import type { CourseRunResponse } from '@/services/types/domain';
 const STATUS_OPTIONS = ['all', 'DRAFT', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
 
 export function CourseRunsListPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.courseRuns);
+
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
@@ -62,7 +66,9 @@ export function CourseRunsListPage() {
   const filteredData = useMemo(() => {
     const data = runsQuery.data?.data ?? [];
     return data.filter((run) => {
-      if (statusFilter !== 'all' && run.status !== statusFilter) return false;
+      if (statusFilter !== 'all' && run.status !== statusFilter) {
+        return false;
+      }
       if (search.trim()) {
         const q = search.toLowerCase();
         const courseLabel = courseTitleById.get(run.courseId) ?? run.courseId;
@@ -74,7 +80,7 @@ export function CourseRunsListPage() {
       }
       return true;
     });
-  }, [runsQuery.data, statusFilter, search, courseTitleById]);
+  }, [courseTitleById, runsQuery.data, search, statusFilter]);
 
   const columns = useMemo<ColumnDef<CourseRunResponse>[]>(
     () => [
@@ -170,8 +176,8 @@ export function CourseRunsListPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
-        title="Course Runs"
-        description="All course runs. Create new or open details to manage sessions and enrollment."
+        title="Course runs"
+        description="Manage class runs, pricing, schedules, and enrollment windows."
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 size-4" />
@@ -185,7 +191,7 @@ export function CourseRunsListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search by class code or course…"
+            placeholder="Search by class code or course"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -195,9 +201,9 @@ export function CourseRunsListPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s === 'all' ? 'All statuses' : s}
+            {STATUS_OPTIONS.map((status) => (
+              <SelectItem key={status} value={status}>
+                {status === 'all' ? 'All statuses' : status}
               </SelectItem>
             ))}
           </SelectContent>
@@ -214,10 +220,10 @@ export function CourseRunsListPage() {
         showPagination={false}
       />
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Total runs on this page</p>
+            <p className="text-muted-foreground text-sm">Runs on page</p>
             <p className="mt-2 text-2xl font-semibold">{filteredData.length}</p>
           </CardContent>
         </Card>
@@ -226,14 +232,6 @@ export function CourseRunsListPage() {
             <p className="text-muted-foreground text-sm">Paid runs</p>
             <p className="mt-2 text-2xl font-semibold">
               {filteredData.filter((run) => hasCourseRunPricing(run.metadata)).length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Admin note</p>
-            <p className="mt-2 text-sm">
-              Create the run, set the global USD price if it is paid, then open the run details to add live sessions and enrollments.
             </p>
           </CardContent>
         </Card>

@@ -42,7 +42,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { UserResponse } from '@/services/types/domain';
 import {
@@ -80,6 +82,8 @@ function renderStatus(user: UserResponse) {
 }
 
 export function UsersListPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.users);
+
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [keyword, setKeyword] = useState('');
@@ -340,7 +344,7 @@ export function UsersListPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Users"
-        description="Shows both active and self-deleted accounts for full user lifecycle tracking."
+        description="Manage account access, roles, verification status, and moderation-related actions."
         actions={
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
@@ -360,7 +364,7 @@ export function UsersListPage() {
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search by email or name..."
+            placeholder="Search by name or email"
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
           />
@@ -389,7 +393,7 @@ export function UsersListPage() {
         </Select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="p-5">
             <p className="text-muted-foreground text-sm">Users on page</p>
@@ -409,14 +413,6 @@ export function UsersListPage() {
             <p className="text-muted-foreground text-sm">Banned or locked</p>
             <p className="mt-2 text-2xl font-semibold">
               {usersQuery.data?.data?.filter((user) => !user.isActive || Boolean(user.bannedUntil)).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Admin note</p>
-            <p className="mt-2 text-sm">
-              Use this screen for account access, role control, and moderation. Course enrollment is managed on each course run.
             </p>
           </CardContent>
         </Card>
@@ -541,9 +537,6 @@ export function UsersListPage() {
                 </SelectContent>
               </Select>
             </div>
-            <p className="text-muted-foreground text-xs">
-              Account is created with verified email and can log in immediately.
-            </p>
             <DialogFooter>
               <Button
                 type="submit"

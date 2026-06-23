@@ -13,10 +13,13 @@ import { CoursesListPage } from '@/features/courses/courses-list-page';
 import { AdminDashboardPage } from '@/features/dashboard';
 import { EventDetailPage } from '@/features/events/event-detail-page';
 import { EventsListPage } from '@/features/events/events-list-page';
-import { SyllabusItemDetailPage } from '@/features/syllabus-items/syllabus-item-detail-page';
+import { LiveSessionsPage } from '@/features/live-sessions/live-sessions-page';
 import { ModerationPage } from '@/features/moderation/moderation-page';
+import { NotificationsPage } from '@/features/notifications/notifications-page';
 import { PaymentsPage } from '@/features/payments/payments-page';
 import { ProgramsListPage } from '@/features/programs/programs-list-page';
+import { SettingsPage } from '@/features/settings/settings-page';
+import { SyllabusItemDetailPage } from '@/features/syllabus-items/syllabus-item-detail-page';
 import { UsersListPage } from '@/features/users/users-list-page';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { ROUTES } from '@/routes/paths';
@@ -82,9 +85,12 @@ export const appRouter = createBrowserRouter([
           { path: '/syllabus-items/:itemId', element: <SyllabusItemDetailPage /> },
           { path: ROUTES.events, element: <EventsListPage /> },
           { path: '/events/:eventId', element: <EventDetailPage /> },
+          { path: ROUTES.liveSessions, element: <LiveSessionsPage /> },
           { path: ROUTES.payments, element: <PaymentsPage /> },
+          { path: ROUTES.notifications, element: <NotificationsPage /> },
           { path: ROUTES.moderation, element: <ModerationPage /> },
           { path: ROUTES.auditLogs, element: <AuditLogsPage /> },
+          { path: ROUTES.settings, element: <SettingsPage /> },
         ],
       },
     ],

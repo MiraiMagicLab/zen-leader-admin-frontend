@@ -17,7 +17,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
+import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { safetyApi } from '@/services/safety/safety-api';
 import type { UgcReportResponse } from '@/services/types/domain';
@@ -27,9 +29,11 @@ const STATUS_OPTIONS = [
   { value: 'PENDING', label: 'Pending' },
   { value: 'RESOLVED', label: 'Resolved' },
   { value: 'DISMISSED', label: 'Dismissed' },
-];
+] as const;
 
 export function ModerationPage() {
+  useAdminPageMeta(ADMIN_PAGE_META.moderation);
+
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState('PENDING');
@@ -120,7 +124,7 @@ export function ModerationPage() {
                   })
                 }
               >
-Resolve
+                Resolve
               </Button>
               <Button
                 variant="ghost"
@@ -145,7 +149,7 @@ Resolve
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Moderation"
-        description="Handle user-generated content (UGC) reports."
+        description="Review user reports and update moderation outcomes."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -153,9 +157,9 @@ Resolve
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
+                {STATUS_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -177,7 +181,7 @@ Resolve
           <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
           <Input
             className="pl-9"
-            placeholder="Search by reason, reporter…"
+            placeholder="Search by reason or reporter"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
