@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { UserPicker } from '@/components/admin/user-picker';
@@ -167,6 +168,7 @@ export function CourseRunDetailPage() {
   const [importPreview, setImportPreview] = useState<EnrollmentImportResponse | null>(null);
   const [runSettings, setRunSettings] = useState<RunSettingsForm | null>(null);
   const [activeTab, setActiveTab] = useState('sessions');
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
   const runQuery = useQuery({
     queryKey: queryKeys.courseRuns.detail(runId ?? ''),
@@ -251,6 +253,7 @@ export function CourseRunDetailPage() {
     mutationFn: (messageId: string) => messagingApi.deleteMessage(messageId),
     onSuccess: async () => {
       toast.success('Message deleted.');
+      setPendingConfirm(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.messaging.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -309,6 +312,7 @@ export function CourseRunDetailPage() {
     mutationFn: (sessionId: string) => sessionsApi.remove(sessionId),
     onSuccess: async () => {
       toast.success('Session deleted.');
+      setPendingConfirm(null);
       await invalidateSessions();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -356,6 +360,7 @@ export function CourseRunDetailPage() {
     mutationFn: (enrollmentId: string) => enrollmentsApi.remove(enrollmentId),
     onSuccess: async () => {
       toast.success('Enrollment deleted.');
+      setPendingConfirm(null);
       await invalidateEnrollments();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -484,11 +489,17 @@ export function CourseRunDetailPage() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={() => {
-                  if (window.confirm('Delete this session?')) {
-                    deleteSessionMutation.mutate(row.original.id);
-                  }
-                }}
+                onClick={() =>
+                  setPendingConfirm({
+                    title: 'Delete session?',
+                    description: (
+                      <>
+                        Delete session &quot;{row.original.title}&quot;. This cannot be undone.
+                      </>
+                    ),
+                    action: () => deleteSessionMutation.mutate(row.original.id),
+                  })
+                }
               >
                 Delete session
               </DropdownMenuItem>
@@ -558,11 +569,21 @@ export function CourseRunDetailPage() {
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="text-destructive"
-                onClick={() => {
-                  if (window.confirm('Delete this enrollment?')) {
-                    deleteEnrollmentMutation.mutate(row.original.id);
-                  }
-                }}
+                onClick={() =>
+                  setPendingConfirm({
+                    title: 'Delete enrollment?',
+                    description: (
+                      <>
+                        Remove{' '}
+                        {row.original.userDisplayName ??
+                          row.original.userEmail ??
+                          'this student'}{' '}
+                        from this course run. This cannot be undone.
+                      </>
+                    ),
+                    action: () => deleteEnrollmentMutation.mutate(row.original.id),
+                  })
+                }
               >
                 Delete enrollment
               </DropdownMenuItem>
@@ -608,11 +629,13 @@ export function CourseRunDetailPage() {
             variant="ghost"
             size="icon"
             className="text-destructive"
-            onClick={() => {
-              if (window.confirm('Delete this message?')) {
-                deleteMessageMutation.mutate(row.original.id);
-              }
-            }}
+            onClick={() =>
+              setPendingConfirm({
+                title: 'Delete message?',
+                description: 'Delete this chat message. This cannot be undone.',
+                action: () => deleteMessageMutation.mutate(row.original.id),
+              })
+            }
           >
             <Trash2 className="size-4" />
           </Button>
@@ -652,11 +675,18 @@ export function CourseRunDetailPage() {
               <Button
                 variant="destructive"
                 disabled={deleteRunMutation.isPending}
-                onClick={() => {
-                  if (window.confirm('Delete this course run?')) {
-                    deleteRunMutation.mutate();
-                  }
-                }}
+                onClick={() =>
+                  setPendingConfirm({
+                    title: 'Delete course run?',
+                    description: (
+                      <>
+                        Delete run &quot;{run.code}&quot; and related sessions. This cannot be
+                        undone.
+                      </>
+                    ),
+                    action: () => deleteRunMutation.mutate(),
+                  })
+                }
               >
                 <Trash2 className="mr-2 size-4" />
                 Delete
@@ -1437,6 +1467,25 @@ export function CourseRunDetailPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <ConfirmDialog
+        open={Boolean(pendingConfirm)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingConfirm(null);
+          }
+        }}
+        title={pendingConfirm?.title ?? ''}
+        description={pendingConfirm?.description}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        onConfirm={() => pendingConfirm?.action()}
+        pending={
+          deleteSessionMutation.isPending ||
+          deleteEnrollmentMutation.isPending ||
+          deleteMessageMutation.isPending ||
+          deleteRunMutation.isPending
+        }
+      />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
 import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
+import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { PageHeader } from '@/components/admin/page-header';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { RichTextPreview } from '@/components/rich-text-preview';
@@ -139,6 +140,7 @@ export function CourseDetailPage() {
   const [courseForm, setCourseForm] = useState<CourseForm>(emptyCourseForm);
   const [appleProductId, setAppleProductId] = useState('');
   const [androidProductId, setAndroidProductId] = useState('');
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
   const openCreateRun = () => {
     setActiveTab('runs');
@@ -247,6 +249,7 @@ export function CourseDetailPage() {
     mutationFn: (runId: string) => courseRunsApi.remove(runId),
     onSuccess: async () => {
       toast.success('Course run deleted.');
+      setPendingConfirm(null);
       await invalidateCourseQueries();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -377,11 +380,17 @@ export function CourseDetailPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
-                  onClick={() => {
-                    if (window.confirm('Delete this course run?')) {
-                      deleteRunMutation.mutate(row.original.id);
-                    }
-                  }}
+                  onClick={() =>
+                    setPendingConfirm({
+                      title: 'Delete course run?',
+                      description: (
+                        <>
+                          Delete run &quot;{row.original.code}&quot;. This cannot be undone.
+                        </>
+                      ),
+                      action: () => deleteRunMutation.mutate(row.original.id),
+                    })
+                  }
                 >
                    Delete course run
                 </DropdownMenuItem>
@@ -419,11 +428,18 @@ export function CourseDetailPage() {
             <Button
               variant="destructive"
               disabled={deleteCourseMutation.isPending || !course}
-              onClick={() => {
-                if (window.confirm('Delete this course?')) {
-                  deleteCourseMutation.mutate();
-                }
-              }}
+              onClick={() =>
+                setPendingConfirm({
+                  title: 'Delete course?',
+                  description: (
+                    <>
+                      Delete &quot;{course?.title}&quot; and all syllabus content. This cannot be
+                      undone.
+                    </>
+                  ),
+                  action: () => deleteCourseMutation.mutate(),
+                })
+              }
             >
               <Trash2 className="mr-2 size-4" />
               Delete
@@ -912,6 +928,20 @@ export function CourseDetailPage() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      <ConfirmDialog
+        open={Boolean(pendingConfirm)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingConfirm(null);
+          }
+        }}
+        title={pendingConfirm?.title ?? ''}
+        description={pendingConfirm?.description}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        onConfirm={() => pendingConfirm?.action()}
+        pending={deleteCourseMutation.isPending || deleteRunMutation.isPending}
+      />
     </div>
   );
 }

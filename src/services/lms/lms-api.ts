@@ -40,6 +40,8 @@ export const syllabusSectionsApi = {
     apiPost<SyllabusSectionResponse>('/api/v1/syllabus-sections', payload),
   update: (id: string, payload: SyllabusSectionUpsertRequest) =>
     apiPut<SyllabusSectionResponse>(`/api/v1/syllabus-sections/${id}`, payload),
+  duplicate: (id: string) =>
+    apiPost<SyllabusSectionResponse>(`/api/v1/syllabus-sections/${id}/duplicate`),
   remove: (id: string) =>
     apiDelete<string>(`/api/v1/syllabus-sections/${id}`),
 };
@@ -63,6 +65,8 @@ export const syllabusItemsApi = {
     apiPost<SyllabusItemResponse>('/api/v1/syllabus-items', payload),
   update: (id: string, payload: SyllabusItemUpsertRequest) =>
     apiPut<SyllabusItemResponse>(`/api/v1/syllabus-items/${id}`, payload),
+  duplicate: (id: string) =>
+    apiPost<SyllabusItemResponse>(`/api/v1/syllabus-items/${id}/duplicate`),
   remove: (id: string) =>
     apiDelete<string>(`/api/v1/syllabus-items/${id}`),
   uploadFile: (syllabusItemId: string, file: File) => {
