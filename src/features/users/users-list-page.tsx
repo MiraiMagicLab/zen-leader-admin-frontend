@@ -13,6 +13,7 @@ import {
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -432,27 +433,12 @@ export function UsersListPage() {
         <p className="text-muted-foreground text-sm">
           Total: {usersQuery.data?.totalElement ?? 0} users
         </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => current - 1)}
-          >
-            Previous page
-          </Button>
-          <span className="text-muted-foreground text-sm">
-            Page {page} / {usersQuery.data?.totalPages ?? 1}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page >= (usersQuery.data?.totalPages ?? 1)}
-            onClick={() => setPage((current) => current + 1)}
-          >
-            Next page
-          </Button>
-        </div>
+        <ServerPagination
+          page={page}
+          totalPages={usersQuery.data?.totalPages ?? 1}
+          onPageChange={setPage}
+          pageBase={1}
+        />
       </div>
 
       <Dialog

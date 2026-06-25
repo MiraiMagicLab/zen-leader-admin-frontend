@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -408,28 +409,11 @@ export function EventsListPage() {
         emptyMessage="No events yet."
       />
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={(eventsQuery.data?.currentPage ?? page) <= 0}
-          onClick={() => setPage((currentPage) => currentPage - 1)}
-        >
-          Previous page
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Page {(eventsQuery.data?.currentPage ?? page) + 1} /{' '}
-          {eventsQuery.data?.totalPages ?? 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={(eventsQuery.data?.currentPage ?? page) + 1 >= (eventsQuery.data?.totalPages ?? 1)}
-          onClick={() => setPage((currentPage) => currentPage + 1)}
-        >
-          Next page
-        </Button>
-      </div>
+      <ServerPagination
+        page={eventsQuery.data?.currentPage ?? page}
+        totalPages={eventsQuery.data?.totalPages ?? 1}
+        onPageChange={setPage}
+      />
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">

@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { RotateCcw, Search } from 'lucide-react';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -194,27 +195,12 @@ export function AuditLogsPage() {
         emptyMessage="No matching audit records."
       />
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Previous page
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Page {page} / {auditQuery.data?.totalPages ?? 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page >= (auditQuery.data?.totalPages ?? 1)}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next page
-        </Button>
-      </div>
+      <ServerPagination
+        page={page}
+        totalPages={auditQuery.data?.totalPages ?? 1}
+        onPageChange={setPage}
+        pageBase={1}
+      />
     </div>
   );
 }

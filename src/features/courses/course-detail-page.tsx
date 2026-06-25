@@ -4,10 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
-  BookOpen,
-  CalendarDays,
   Image as ImageIcon,
-  Layers,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -164,10 +161,6 @@ export function CourseDetailPage() {
   const syllabusSections = course?.syllabusSections ?? [];
   const totalSyllabusItems = syllabusSections.reduce(
     (count, section) => count + (section.items?.length ?? 0),
-    0,
-  );
-  const totalSessions = courseRuns.reduce(
-    (count, run) => count + (run.courseSessions?.length ?? 0),
     0,
   );
   const programDisplayName = course?.programCode?.trim() || 'Linked program';
@@ -460,82 +453,6 @@ export function CourseDetailPage() {
             </TabsList>
 
             <TabsContent value="overview" className="mt-6 space-y-6">
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="grid gap-4 p-5 sm:grid-cols-3">
-                  <div className="flex gap-3">
-                    <div className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full border">
-                      <BookOpen className="size-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">1. Syllabus</p>
-                      <p className="text-muted-foreground text-xs">
-                        Add chapters & lessons — shared across all runs
-                      </p>
-                      <Button
-                        variant="link"
-                        className="h-auto px-0 text-xs"
-                        onClick={() => setActiveTab('syllabus')}
-                      >
-                        {totalSyllabusItems > 0 ? 'Edit syllabus' : 'Create syllabus'}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full border">
-                      <CalendarDays className="size-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">2. Course runs</p>
-                      <p className="text-muted-foreground text-xs">Open classes, live schedule, enrollment</p>
-                      <Button
-                        variant="link"
-                        className="h-auto px-0 text-xs"
-                        onClick={openCreateRun}
-                      >
-                        {courseRuns.length > 0 ? 'Add course run' : 'Create course run'}
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="bg-background flex size-10 shrink-0 items-center justify-center rounded-full border">
-                      <Layers className="size-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">3. Publish</p>
-                      <p className="text-muted-foreground text-xs">
-                        {totalSyllabusItems} lessons · {courseRuns.length} classes · {totalSessions} sessions
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Admin workflow</CardTitle>
-                </CardHeader>
-                <CardContent className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-lg border p-4">
-                    <p className="font-medium">Shared course content</p>
-                    <p className="text-muted-foreground mt-2 text-sm">
-                      Syllabus belongs to the course and is reused across every course run.
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-4">
-                    <p className="font-medium">Run-specific operations</p>
-                    <p className="text-muted-foreground mt-2 text-sm">
-                      Pricing, enrollment windows, live sessions, messaging, and enrollment are all managed per course run.
-                    </p>
-                  </div>
-                  <div className="rounded-lg border p-4">
-                    <p className="font-medium">Mobile store mapping</p>
-                    <p className="text-muted-foreground mt-2 text-sm">
-                      Apple and Android product IDs are only for native store purchases, not for PayPal checkout pricing.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
               <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                 <Card>
                   <CardContent className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">

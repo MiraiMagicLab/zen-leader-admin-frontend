@@ -1,12 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { RichTextPreview } from '@/components/rich-text-preview';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
@@ -23,7 +24,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -93,6 +93,7 @@ export function ProgramsListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.programs);
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ProgramResponse | null>(null);
@@ -179,44 +180,41 @@ export function ProgramsListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link to={ROUTES.programCourses(row.original.id)}>
-                  Courses
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditing(row.original);
-                  setForm({
-                    code: row.original.code,
-                    title: row.original.title,
-                    description: row.original.description ?? '',
-                    thumbnailUrl: row.original.thumbnailUrl ?? '',
-                    isPublished: row.original.isPublished,
-                    thumbnailFile: null,
-                  });
-                  setFieldErrors({});
-                  setDialogOpen(true);
-                }}
-              >
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => setDeleteTarget(row.original)}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div onClick={(event) => event.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditing(row.original);
+                    setForm({
+                      code: row.original.code,
+                      title: row.original.title,
+                      description: row.original.description ?? '',
+                      thumbnailUrl: row.original.thumbnailUrl ?? '',
+                      isPublished: row.original.isPublished,
+                      thumbnailFile: null,
+                    });
+                    setFieldErrors({});
+                    setDialogOpen(true);
+                  }}
+                >
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => setDeleteTarget(row.original)}
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         ),
       },
     ],
@@ -265,31 +263,6 @@ export function ProgramsListPage() {
         </Select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Programs on page</p>
-            <p className="mt-2 text-2xl font-semibold">{programsQuery.data?.data?.length ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Published</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {programsQuery.data?.data?.filter((program) => program.isPublished).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Courses on page</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {programsQuery.data?.data?.reduce((count, program) => count + (program.courses?.length ?? 0), 0) ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
       <DataTable
         columns={columns}
         data={programsQuery.data?.data?.filter((p) => {
@@ -308,29 +281,14 @@ export function ProgramsListPage() {
         showRowIndex
         pageOffset={page * 20}
         showPagination={false}
+        onRowClick={(program) => navigate(ROUTES.programCourses(program.id))}
       />
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 0}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Previous page
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Page {page + 1} / {programsQuery.data?.totalPages ?? 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page + 1 >= (programsQuery.data?.totalPages ?? 1)}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next page
-        </Button>
-      </div>
+      <ServerPagination
+        page={page}
+        totalPages={programsQuery.data?.totalPages ?? 1}
+        onPageChange={setPage}
+      />
 
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -408,27 +409,11 @@ export function EventDetailPage() {
               />
             ))
           )}
-          <div className="flex items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={commentPage <= 0}
-              onClick={() => setCommentPage((currentPage) => currentPage - 1)}
-            >
-              Previous page
-            </Button>
-            <span className="text-muted-foreground text-sm">
-              Page {commentPage + 1} / {commentsQuery.data?.totalPages ?? 1}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={commentPage + 1 >= (commentsQuery.data?.totalPages ?? 1)}
-              onClick={() => setCommentPage((currentPage) => currentPage + 1)}
-            >
-              Next page
-            </Button>
-          </div>
+          <ServerPagination
+            page={commentPage}
+            totalPages={commentsQuery.data?.totalPages ?? 1}
+            onPageChange={setCommentPage}
+          />
         </CardContent>
       </Card>
 
