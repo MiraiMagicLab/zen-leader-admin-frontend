@@ -139,11 +139,6 @@ export function CourseDetailPage() {
   const [androidProductId, setAndroidProductId] = useState('');
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
-  const openCreateRun = () => {
-    setActiveTab('runs');
-    setCreateRunOpen(true);
-  };
-
   const courseQuery = useQuery({
     queryKey: queryKeys.courses.detail(courseId ?? ''),
     queryFn: () => coursesApi.getById(courseId!),
