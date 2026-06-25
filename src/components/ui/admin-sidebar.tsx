@@ -26,7 +26,6 @@ import {
   Settings,
   ShieldAlert,
   Users,
-  Video,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/brand-logo';
 import { BRAND } from '@/lib/brand/constants';
@@ -61,10 +60,7 @@ const menuGroups: MenuGroup[] = [
   },
   {
     label: 'Community',
-    items: [
-      { title: 'Events', icon: CalendarDays, to: ROUTES.events },
-      { title: 'Live Sessions', icon: Video, to: ROUTES.liveSessions },
-    ],
+    items: [{ title: 'Events', icon: CalendarDays, to: ROUTES.events }],
   },
   {
     label: 'Operations',

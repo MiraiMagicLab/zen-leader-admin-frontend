@@ -2,20 +2,14 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -98,7 +92,12 @@ export function CourseRunsListPage() {
             );
           }
           return (
-            <Button variant="link" className="h-auto p-0" asChild>
+            <Button
+              variant="link"
+              className="h-auto p-0"
+              asChild
+              onClick={(event) => event.stopPropagation()}
+            >
               <Link to={ROUTES.courseDetail(row.original.courseId, 'runs')}>{label}</Link>
             </Button>
           );
@@ -151,24 +150,6 @@ export function CourseRunsListPage() {
         header: 'Capacity',
         cell: ({ row }) => row.original.capacity ?? '—',
       },
-      {
-        id: 'actions',
-        header: '',
-        cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link to={ROUTES.courseRunDetail(row.original.id)}>Details</Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ),
-      },
     ],
     [courseTitleById],
   );
@@ -218,46 +199,14 @@ export function CourseRunsListPage() {
         pageOffset={page * 20}
         emptyMessage='No course runs yet. Click "Add course run" to create one.'
         showPagination={false}
+        onRowClick={(run) => navigate(ROUTES.courseRunDetail(run.id))}
       />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Runs on page</p>
-            <p className="mt-2 text-2xl font-semibold">{filteredData.length}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Paid runs</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {filteredData.filter((run) => hasCourseRunPricing(run.metadata)).length}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 0}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Previous page
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Page {page + 1} / {runsQuery.data?.totalPages ?? 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page + 1 >= (runsQuery.data?.totalPages ?? 1)}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next page
-        </Button>
-      </div>
+      <ServerPagination
+        page={page}
+        totalPages={runsQuery.data?.totalPages ?? 1}
+        onPageChange={setPage}
+      />
 
       <CreateCourseRunSheet
         open={createOpen}

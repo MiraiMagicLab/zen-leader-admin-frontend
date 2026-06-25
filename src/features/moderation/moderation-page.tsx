@@ -5,6 +5,7 @@ import { RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -198,27 +199,11 @@ export function ModerationPage() {
         showPagination={false}
       />
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 0}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Previous page
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Page {page + 1} / {reportsQuery.data?.totalPages ?? 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page + 1 >= (reportsQuery.data?.totalPages ?? 1)}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next page
-        </Button>
-      </div>
+      <ServerPagination
+        page={page}
+        totalPages={reportsQuery.data?.totalPages ?? 1}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

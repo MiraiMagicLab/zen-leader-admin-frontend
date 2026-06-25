@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { PageHeader } from '@/components/admin/page-header';
+import { ServerPagination } from '@/components/admin/server-pagination';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
@@ -240,7 +241,12 @@ export function CoursesListPage() {
         id: 'program',
         header: 'Program',
         cell: ({ row }) => (
-          <Button variant="link" className="h-auto p-0" asChild>
+          <Button
+            variant="link"
+            className="h-auto p-0"
+            asChild
+            onClick={(event) => event.stopPropagation()}
+          >
             <Link to={ROUTES.programCourses(row.original.programId)}>
               {row.original.programCode ?? row.original.programId.slice(0, 8)}
             </Link>
@@ -253,28 +259,27 @@ export function CoursesListPage() {
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <Link to={ROUTES.courseDetail(row.original.id)}>Details</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openEditDialog(row.original)}>
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => setDeleteTarget(row.original)}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div onClick={(event) => event.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openEditDialog(row.original)}>
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => setDeleteTarget(row.original)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       ),
     });
 
@@ -345,29 +350,14 @@ export function CoursesListPage() {
             : 'No courses yet. Click "Add course" to create one.'
         }
         showPagination={false}
+        onRowClick={(course) => navigate(ROUTES.courseDetail(course.id))}
       />
 
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page <= 0}
-          onClick={() => setPage((p) => p - 1)}
-        >
-          Previous page
-        </Button>
-        <span className="text-muted-foreground text-sm">
-          Page {page + 1} / {coursesQuery.data?.totalPages ?? 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={page + 1 >= (coursesQuery.data?.totalPages ?? 1)}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          Next page
-        </Button>
-      </div>
+      <ServerPagination
+        page={page}
+        totalPages={coursesQuery.data?.totalPages ?? 1}
+        onPageChange={setPage}
+      />
 
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
@@ -375,11 +365,23 @@ export function CoursesListPage() {
             <SheetTitle>{editing ? 'Edit course' : 'Add course'}</SheetTitle>
             {!editing ? (
               <p className="text-muted-foreground text-sm">
-                After creation, you will be taken to the Syllabus tab to add lessons.
+                {isProgramScope && programQuery.data
+                  ? `Adding a course to program ${programQuery.data.code} — ${programQuery.data.title}. After creation, you will be taken to the Syllabus tab to add lessons.`
+                  : 'After creation, you will be taken to the Syllabus tab to add lessons.'}
               </p>
             ) : null}
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            {isProgramScope && (programQuery.data || editing) ? (
+              <div className="space-y-2">
+                <Label>Program</Label>
+                <p className="text-sm">
+                  {programQuery.data
+                    ? `${programQuery.data.code} — ${programQuery.data.title}`
+                    : `${editing?.programCode ?? editing?.programId ?? ''}`}
+                </p>
+              </div>
+            ) : null}
             {!isProgramScope && !editing ? (
               <div className="space-y-2">
                 <Label>Program</Label>

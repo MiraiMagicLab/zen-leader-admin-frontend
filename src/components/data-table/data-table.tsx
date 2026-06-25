@@ -40,6 +40,7 @@ type DataTableProps<TData, TValue> = {
   pageOffset?: number;
   /** Client pagination inside the table. Set false when the page handles server paging. */
   showPagination?: boolean;
+  onRowClick?: (row: TData) => void;
 };
 
 function rowIndexColumn<TData>(): ColumnDef<TData, unknown> {
@@ -68,6 +69,7 @@ export function DataTable<TData, TValue>({
   showRowIndex = false,
   pageOffset = 0,
   showPagination = true,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -125,7 +127,13 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ) : table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} className="hover:bg-muted/40">
+                <TableRow
+                  key={row.id}
+                  className={
+                    onRowClick ? 'hover:bg-muted/40 cursor-pointer' : 'hover:bg-muted/40'
+                  }
+                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
