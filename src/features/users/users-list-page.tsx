@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
@@ -123,7 +124,7 @@ export function UsersListPage() {
     queryFn: () =>
       getUsersApi({
         page,
-        size: 10,
+        size: ADMIN_LIST_PAGE_SIZE,
         direction: 'DESC',
         field: 'createdAt',
         keyword: search || undefined,
@@ -425,7 +426,7 @@ export function UsersListPage() {
         isLoading={usersQuery.isLoading}
         emptyMessage="No users found."
         showRowIndex
-        pageOffset={(page - 1) * 10}
+        pageOffset={(page - 1) * ADMIN_LIST_PAGE_SIZE}
         showPagination={false}
       />
 

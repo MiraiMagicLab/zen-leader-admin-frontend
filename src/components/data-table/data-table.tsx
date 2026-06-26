@@ -29,6 +29,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Spinner } from '@/components/ui/spinner';
+import {
+  TABLE_ACTIONS_COLUMN_ID,
+  TABLE_ACTIONS_COLUMN_WIDTH,
+} from '@/components/admin/table-row-actions';
+import { cn } from '@/lib/utils';
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
@@ -98,10 +103,18 @@ export function DataTable<TData, TValue>({
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
+                    className={cn(
+                      header.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
+                    )}
                     style={
                       header.column.id === '__stt'
                         ? { width: 48, minWidth: 48, textAlign: 'center' }
-                        : undefined
+                        : header.column.id === TABLE_ACTIONS_COLUMN_ID
+                          ? {
+                              width: TABLE_ACTIONS_COLUMN_WIDTH,
+                              minWidth: TABLE_ACTIONS_COLUMN_WIDTH,
+                            }
+                          : undefined
                     }
                   >
                     {header.isPlaceholder
@@ -137,10 +150,19 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
+                      className={cn(
+                        cell.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
+                      )}
                       style={
                         cell.column.id === '__stt'
                           ? { textAlign: 'center' }
-                          : undefined
+                          : cell.column.id === TABLE_ACTIONS_COLUMN_ID
+                            ? {
+                                width: TABLE_ACTIONS_COLUMN_WIDTH,
+                                minWidth: TABLE_ACTIONS_COLUMN_WIDTH,
+                                whiteSpace: 'nowrap',
+                              }
+                            : undefined
                       }
                     >
                       {cell.column.id === '__stt'

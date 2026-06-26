@@ -6,6 +6,7 @@ import { MoreHorizontal, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
+import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
@@ -47,6 +48,7 @@ import {
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
@@ -57,8 +59,6 @@ import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { EventAdminFeedParams, EventResponse } from '@/services/types/domain';
-
-const PAGE_SIZE = 10;
 
 type EventForm = {
   title: string;
@@ -107,7 +107,7 @@ export function EventsListPage() {
   const listParams = useMemo<EventAdminFeedParams>(
     () => ({
       page,
-      pageSize: PAGE_SIZE,
+      pageSize: ADMIN_LIST_PAGE_SIZE,
       keyword: keyword.trim() || undefined,
       status: status === 'all' ? undefined : status,
       isOfficial:
@@ -404,7 +404,7 @@ export function EventsListPage() {
         data={eventsQuery.data?.data ?? []}
         isLoading={eventsQuery.isLoading}
         showRowIndex
-        pageOffset={(eventsQuery.data?.currentPage ?? page) * PAGE_SIZE}
+        pageOffset={(eventsQuery.data?.currentPage ?? page) * ADMIN_LIST_PAGE_SIZE}
         showPagination={false}
         emptyMessage="No events yet."
       />
@@ -471,15 +471,12 @@ export function EventsListPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="event-thumbnail">Thumbnail image</Label>
-              <Input
+              <ImageFilePicker
                 id="event-thumbnail"
-                type="file"
-                accept="image/*"
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    thumbnailFile: event.target.files?.[0] ?? null,
-                  }))
+                file={form.thumbnailFile}
+                previewAlt={form.title || 'Event thumbnail'}
+                onFileChange={(thumbnailFile) =>
+                  setForm((current) => ({ ...current, thumbnailFile }))
                 }
               />
             </div>

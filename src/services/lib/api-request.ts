@@ -28,13 +28,38 @@ export async function apiDelete<T>(url: string): Promise<T> {
 }
 
 export async function apiPostForm<T>(url: string, formData: FormData): Promise<T> {
-  const { data } = await httpClient.post<ApiResponse<T>>(url, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const { data } = await httpClient.post<ApiResponse<T>>(url, formData);
   return unwrapApiResponse(data);
 }
 
+async function readBlobApiError(blob: Blob, fallbackMessage: string): Promise<string> {
+  try {
+    const text = await blob.text();
+    const payload = JSON.parse(text) as ApiResponse<unknown>;
+    return payload.errorMessage?.message ?? payload.message ?? fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+}
+
 export async function apiGetBlob(url: string): Promise<Blob> {
-  const response = await httpClient.get(url, { responseType: 'blob' });
-  return response.data as Blob;
+  const response = await httpClient.get<Blob>(url, { responseType: 'blob' });
+  const blob = response.data;
+  const rawContentType = response.headers['content-type'];
+  const contentType =
+    typeof rawContentType === 'string'
+      ? rawContentType
+      : Array.isArray(rawContentType)
+        ? rawContentType.join(';')
+        : '';
+
+  if (contentType.includes('application/json') || blob.type.includes('json')) {
+    throw new Error(await readBlobApiError(blob, 'Download failed.'));
+  }
+
+  if (blob.size === 0) {
+    throw new Error('Download failed: empty file.');
+  }
+
+  return blob;
 }

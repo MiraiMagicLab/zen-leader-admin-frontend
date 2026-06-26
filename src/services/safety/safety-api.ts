@@ -3,7 +3,7 @@ import type { UgcReportResponse } from '@/services/types/domain';
 import type { PagingResponse } from '@/services/types/pagination';
 
 export const safetyApi = {
-  listReports: (page = 0, pageSize = 20, status?: string, keyword?: string) => {
+  listReports: (page = 0, pageSize = 10, status?: string, keyword?: string) => {
     const params = new URLSearchParams({
       page: String(page),
       pageSize: String(pageSize),

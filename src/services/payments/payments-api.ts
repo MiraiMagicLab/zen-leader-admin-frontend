@@ -6,7 +6,7 @@ import type {
 import type { PagingResponse } from '@/services/types/pagination';
 
 export const paymentsApi = {
-  listOrders: (page = 0, pageSize = 20, status?: string, keyword?: string) => {
+  listOrders: (page = 0, pageSize = 10, status?: string, keyword?: string) => {
     const params = new URLSearchParams({
       page: String(page),
       pageSize: String(pageSize),

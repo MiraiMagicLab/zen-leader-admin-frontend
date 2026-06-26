@@ -5,6 +5,7 @@ import { ArrowLeft, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
+import { ImagePreview } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -342,6 +343,7 @@ export function SyllabusItemDetailPage() {
                     onChange={(e) => setContentField('imageUrl', e.target.value)}
                     placeholder="https://…"
                   />
+                  <ImagePreview src={imageUrl} alt="Illustration preview" />
                 </div>
                 <div className="space-y-2">
                   <Label>Cover image (coverUrl / thumbnailUrl)</Label>
@@ -359,6 +361,7 @@ export function SyllabusItemDetailPage() {
                     }}
                     placeholder="https://…"
                   />
+                  <ImagePreview src={thumbnailUrl} alt="Cover image preview" />
                 </div>
               </div>
             </>
@@ -417,6 +420,7 @@ export function SyllabusItemDetailPage() {
                     }
                     placeholder="https://…"
                   />
+                  <ImagePreview src={thumbnailUrl} alt="Video thumbnail preview" />
                 </div>
               </div>
             </>

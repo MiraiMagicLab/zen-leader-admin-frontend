@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -15,17 +16,17 @@ const SEARCH_DEBOUNCE_MS = 300;
 const PAGE_SIZE = 12;
 
 type UserPickerProps = {
-  selectedUser: UserResponse | null;
-  onSelect: (user: UserResponse | null) => void;
+  selectedUsers: UserResponse[];
+  onSelectedUsersChange: (users: UserResponse[]) => void;
   label?: string;
   /** Reset search and reload list when dialog opens */
   open?: boolean;
 };
 
 export function UserPicker({
-  selectedUser,
-  onSelect,
-  label = 'Select user',
+  selectedUsers,
+  onSelectedUsersChange,
+  label = 'Select users',
   open = true,
 }: UserPickerProps) {
   const [keyword, setKeyword] = useState('');
@@ -51,70 +52,120 @@ export function UserPicker({
         size: PAGE_SIZE,
         keyword: search || undefined,
       }),
-    enabled: open && !selectedUser,
+    enabled: open,
   });
 
   const users = usersQuery.data?.data ?? [];
+  const selectedIds = new Set(selectedUsers.map((user) => user.id));
+
+  const toggleUser = (user: UserResponse) => {
+    if (selectedIds.has(user.id)) {
+      onSelectedUsersChange(selectedUsers.filter((item) => item.id !== user.id));
+      return;
+    }
+    onSelectedUsersChange([...selectedUsers, user]);
+  };
+
+  const removeUser = (userId: string) => {
+    onSelectedUsersChange(selectedUsers.filter((item) => item.id !== userId));
+  };
 
   return (
-    <div className="space-y-3">
-      <Label>{label}</Label>
-      {selectedUser ? (
-        <div className="flex items-center justify-between rounded-md border bg-muted/30 px-3 py-2">
-          <div>
-            <p className="font-medium">{selectedUser.displayName}</p>
-            <p className="text-muted-foreground text-xs">{selectedUser.email}</p>
-          </div>
-          <Button type="button" variant="ghost" size="sm" onClick={() => onSelect(null)}>
-            Change
-          </Button>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>{label}</Label>
+        <div className="relative">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+          <Input
+            className="pl-9"
+            placeholder="Filter by email or name…"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {selectedUsers.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-xs">
+            Selected {selectedUsers.length} learner{selectedUsers.length === 1 ? '' : 's'}
+          </p>
+          <ul className="flex flex-wrap gap-2">
+            {selectedUsers.map((user) => (
+              <li
+                key={user.id}
+                className="bg-muted/40 flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm"
+              >
+                <span className="font-medium">{user.displayName}</span>
+                <span className="text-muted-foreground text-xs">{user.email}</span>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground rounded-full p-0.5"
+                  aria-label={`Remove ${user.displayName}`}
+                  onClick={() => removeUser(user.id)}
+                >
+                  <X className="size-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {usersQuery.isLoading ? (
+        <div className="flex justify-center py-4">
+          <Spinner />
         </div>
       ) : (
-        <>
-          <div className="relative">
-            <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-            <Input
-              className="pl-9"
-              placeholder="Filter by email or name…"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-            />
-          </div>
-          {usersQuery.isLoading ? (
-            <div className="flex justify-center py-4">
-              <Spinner />
-            </div>
+        <ul className="max-h-64 space-y-1 overflow-y-auto rounded-md border p-1">
+          {users.length === 0 ? (
+            <li className="text-muted-foreground px-2 py-3 text-center text-sm">
+              {search ? 'No users found.' : 'No users yet.'}
+            </li>
           ) : (
-            <ul className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-1">
-              {users.length === 0 ? (
-                <li className="text-muted-foreground px-2 py-3 text-center text-sm">
-                  {search ? 'No users found.' : 'No users yet.'}
-                </li>
-              ) : (
-                users.map((user) => (
-                  <li key={user.id}>
-                    <button
-                      type="button"
-                      className={cn(
-                        'hover:bg-muted w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-                      )}
-                      onClick={() => onSelect(user)}
-                    >
+            users.map((user) => {
+              const checked = selectedIds.has(user.id);
+              return (
+                <li key={user.id}>
+                  <label
+                    className={cn(
+                      'hover:bg-muted flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                      checked && 'bg-muted/60',
+                    )}
+                  >
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => toggleUser(user)}
+                    />
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium">{user.displayName}</p>
-                      <p className="text-muted-foreground text-xs">{user.email}</p>
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
+                      <p className="text-muted-foreground truncate text-xs">{user.email}</p>
+                    </div>
+                  </label>
+                </li>
+              );
+            })
           )}
-          {!usersQuery.isLoading && users.length > 0 && !search ? (
-            <p className="text-muted-foreground text-xs">
-              Showing {users.length} most recent users. Type to filter more.
-            </p>
-          ) : null}
-        </>
+        </ul>
       )}
+
+      {!usersQuery.isLoading && users.length > 0 && !search ? (
+        <p className="text-muted-foreground text-xs">
+          Showing {users.length} most recent users. Type to filter more.
+        </p>
+      ) : null}
+
+      {selectedUsers.length > 0 ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="px-0"
+          onClick={() => onSelectedUsersChange([])}
+        >
+          Clear selection
+        </Button>
+      ) : null}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
@@ -61,7 +62,7 @@ export function PaymentsPage() {
     queryFn: () =>
       paymentsApi.listOrders(
         page,
-        20,
+        ADMIN_LIST_PAGE_SIZE,
         statusFilter === 'all' ? undefined : statusFilter,
         searchKeyword || undefined,
       ),
@@ -254,7 +255,7 @@ export function PaymentsPage() {
         isLoading={ordersQuery.isLoading}
         emptyMessage="No payment orders yet."
         showRowIndex
-        pageOffset={page * 20}
+        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
         showPagination={false}
       />
 

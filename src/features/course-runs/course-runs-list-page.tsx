@@ -1,13 +1,25 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Search } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
+import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
 import { DataTable } from '@/components/data-table/data-table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatCourseRunPricingSummary, hasCourseRunPricing } from '@/lib/course-run-pricing';
 import { formatDateTime } from '@/lib/format';
@@ -26,6 +39,7 @@ import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import { coursesApi } from '@/services/courses/courses-api';
+import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { CourseRunResponse } from '@/services/types/domain';
 
 const STATUS_OPTIONS = ['all', 'DRAFT', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
@@ -34,14 +48,16 @@ export function CourseRunsListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.courseRuns);
 
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<CourseRunResponse | null>(null);
 
   const runsQuery = useQuery({
     queryKey: [...queryKeys.courseRuns.list(), page],
-    queryFn: () => courseRunsApi.getPage(page, 20),
+    queryFn: () => courseRunsApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
   });
 
   const coursesQuery = useQuery({
@@ -75,6 +91,16 @@ export function CourseRunsListPage() {
       return true;
     });
   }, [courseTitleById, runsQuery.data, search, statusFilter]);
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => courseRunsApi.remove(id),
+    onSuccess: () => {
+      toast.success('Course run deleted.');
+      setDeleteTarget(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
 
   const columns = useMemo<ColumnDef<CourseRunResponse>[]>(
     () => [
@@ -150,8 +176,38 @@ export function CourseRunsListPage() {
         header: 'Capacity',
         cell: ({ row }) => row.original.capacity ?? '—',
       },
+      {
+        ...tableActionsColumn<CourseRunResponse>(),
+        cell: ({ row }) => (
+          <TableRowActions>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(ROUTES.courseRunDetail(row.original.id))}
+            >
+              Detail
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                navigate(`${ROUTES.courseRunDetail(row.original.id)}?settings=1`)
+              }
+            >
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteTarget(row.original)}
+            >
+              Delete
+            </Button>
+          </TableRowActions>
+        ),
+      },
     ],
-    [courseTitleById],
+    [courseTitleById, navigate],
   );
 
   return (
@@ -196,10 +252,9 @@ export function CourseRunsListPage() {
         data={filteredData}
         isLoading={runsQuery.isLoading}
         showRowIndex
-        pageOffset={page * 20}
+        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
         emptyMessage='No course runs yet. Click "Add course run" to create one.'
         showPagination={false}
-        onRowClick={(run) => navigate(ROUTES.courseRunDetail(run.id))}
       />
 
       <ServerPagination
@@ -213,6 +268,26 @@ export function CourseRunsListPage() {
         onOpenChange={setCreateOpen}
         onCreated={(created) => void navigate(ROUTES.courseRunDetail(created.id))}
       />
+
+      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete course run?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Delete &quot;{deleteTarget?.code}&quot;. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

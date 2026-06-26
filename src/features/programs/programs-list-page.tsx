@@ -2,14 +2,14 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { RichTextEditor } from '@/components/rich-text-editor';
-import { RichTextPreview } from '@/components/rich-text-preview';
+import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -24,12 +24,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -47,6 +41,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDate } from '@/lib/format';
@@ -105,7 +101,7 @@ export function ProgramsListPage() {
 
   const programsQuery = useQuery({
     queryKey: [...queryKeys.programs.list(), page],
-    queryFn: () => programsApi.getPage(page, 20),
+    queryFn: () => programsApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
   });
 
   const saveMutation = useMutation({
@@ -153,6 +149,20 @@ export function ProgramsListPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
+  const openEditDialog = (program: ProgramResponse) => {
+    setEditing(program);
+    setForm({
+      code: program.code,
+      title: program.title,
+      description: program.description ?? '',
+      thumbnailUrl: program.thumbnailUrl ?? '',
+      isPublished: program.isPublished,
+      thumbnailFile: null,
+    });
+    setFieldErrors({});
+    setDialogOpen(true);
+  };
+
   const columns = useMemo<ColumnDef<ProgramResponse>[]>(
     () => [
       { accessorKey: 'code', header: 'Code' },
@@ -177,48 +187,31 @@ export function ProgramsListPage() {
         cell: ({ row }) => formatDate(row.original.createdAt),
       },
       {
-        id: 'actions',
-        header: '',
+        ...tableActionsColumn<ProgramResponse>(),
         cell: ({ row }) => (
-          <div onClick={(event) => event.stopPropagation()}>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    setEditing(row.original);
-                    setForm({
-                      code: row.original.code,
-                      title: row.original.title,
-                      description: row.original.description ?? '',
-                      thumbnailUrl: row.original.thumbnailUrl ?? '',
-                      isPublished: row.original.isPublished,
-                      thumbnailFile: null,
-                    });
-                    setFieldErrors({});
-                    setDialogOpen(true);
-                  }}
-                >
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setDeleteTarget(row.original)}
-                >
-                  <Trash2 className="mr-2 size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <TableRowActions>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(ROUTES.programCourses(row.original.id))}
+            >
+              Course
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeleteTarget(row.original)}
+            >
+              Delete
+            </Button>
+          </TableRowActions>
         ),
       },
     ],
-    [],
+    [navigate],
   );
 
   return (
@@ -279,9 +272,8 @@ export function ProgramsListPage() {
         }) ?? []}
         isLoading={programsQuery.isLoading}
         showRowIndex
-        pageOffset={page * 20}
+        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
         showPagination={false}
-        onRowClick={(program) => navigate(ROUTES.programCourses(program.id))}
       />
 
       <ServerPagination
@@ -342,35 +334,27 @@ export function ProgramsListPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
-              <RichTextEditor
+              <Textarea
+                id="description"
                 value={form.description}
-                minHeight="14rem"
-                placeholder="Enter the program description"
-                onChange={(description) =>
-                  setForm((f) => ({ ...f, description }))
-                }
+                rows={5}
+                maxLength={5000}
+                placeholder="Short program summary (optional)"
+                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
               />
               <p className="text-muted-foreground text-xs">
                 {form.description.length}/5000 characters
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Preview description</Label>
-              <div className="rounded-md border bg-muted/20 p-4">
-                <RichTextPreview value={form.description} />
-              </div>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="thumbnail">Thumbnail image</Label>
-              <Input
+              <ImageFilePicker
                 id="thumbnail"
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    thumbnailFile: e.target.files?.[0] ?? null,
-                  }))
+                file={form.thumbnailFile}
+                existingUrl={form.thumbnailUrl}
+                previewAlt={form.title || 'Program thumbnail'}
+                onFileChange={(thumbnailFile) =>
+                  setForm((f) => ({ ...f, thumbnailFile }))
                 }
               />
             </div>

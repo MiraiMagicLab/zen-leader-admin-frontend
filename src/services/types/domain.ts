@@ -273,6 +273,28 @@ export type SessionUpsertRequest = {
 export type ManualEnrollmentRequest = {
   userId: string;
   courseRunId: string;
+  role?: 'STUDENT' | 'INSTRUCTOR';
+  status?: 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED';
+};
+
+export type BulkManualEnrollmentRequest = {
+  userIds: string[];
+  courseRunId: string;
+  role?: 'STUDENT' | 'INSTRUCTOR';
+  status?: 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED';
+};
+
+export type ManualEnrollmentBulkResponse = {
+  totalCount: number;
+  successCount: number;
+  skippedCount: number;
+  failedCount: number;
+  failures: Array<{
+    userId: string | null;
+    email: string | null;
+    displayName: string | null;
+    reason: string;
+  }>;
 };
 
 export type EnrollmentUpdateRequest = {

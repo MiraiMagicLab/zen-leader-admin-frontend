@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
@@ -54,7 +55,7 @@ export function ModerationPage() {
     queryFn: () =>
       safetyApi.listReports(
         page,
-        20,
+        ADMIN_LIST_PAGE_SIZE,
         statusFilter === 'all' ? undefined : statusFilter,
         searchKeyword || undefined,
       ),
@@ -195,7 +196,7 @@ export function ModerationPage() {
         isLoading={reportsQuery.isLoading}
         emptyMessage="No reports found."
         showRowIndex
-        pageOffset={page * 20}
+        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
         showPagination={false}
       />
 
