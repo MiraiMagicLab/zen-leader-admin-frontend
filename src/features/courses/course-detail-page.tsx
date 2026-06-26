@@ -5,7 +5,6 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Image as ImageIcon,
-  MoreHorizontal,
   Pencil,
   Plus,
   ShoppingBag,
@@ -15,19 +14,15 @@ import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
+import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { RichTextPreview } from '@/components/rich-text-preview';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -349,42 +344,33 @@ export function CourseDetailPage() {
         cell: ({ row }) => row.original.courseSessions?.length ?? 0,
       },
       {
-        id: 'actions',
-        header: '',
+        ...tableActionsColumn<CourseRunResponse>(),
         cell: ({ row }) => (
-          <div className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link to={ROUTES.courseRunDetail(row.original.id)}>Manage classes</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => openEditRun(row.original)}>
-                  Edit course run
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() =>
-                    setPendingConfirm({
-                      title: 'Delete course run?',
-                      description: (
-                        <>
-                          Delete run &quot;{row.original.code}&quot;. This cannot be undone.
-                        </>
-                      ),
-                      action: () => deleteRunMutation.mutate(row.original.id),
-                    })
-                  }
-                >
-                   Delete course run
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <TableRowActions>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={ROUTES.courseRunDetail(row.original.id)}>Detail</Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openEditRun(row.original)}>
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() =>
+                setPendingConfirm({
+                  title: 'Delete course run?',
+                  description: (
+                    <>
+                      Delete run &quot;{row.original.code}&quot;. This cannot be undone.
+                    </>
+                  ),
+                  action: () => deleteRunMutation.mutate(row.original.id),
+                })
+              }
+            >
+              Delete
+            </Button>
+          </TableRowActions>
         ),
       },
     ],
@@ -439,119 +425,128 @@ export function CourseDetailPage() {
       {course ? (
         <>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full max-w-lg grid-cols-3">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="syllabus">
+            <TabsList className="grid h-10 w-full max-w-2xl grid-cols-3">
+              <TabsTrigger value="overview" className="h-full">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="syllabus" className="h-full">
                 Syllabus ({totalSyllabusItems})
               </TabsTrigger>
-              <TabsTrigger value="runs">Course runs ({courseRuns.length})</TabsTrigger>
+              <TabsTrigger value="runs" className="h-full">
+                Course runs ({courseRuns.length})
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="overview" className="mt-6 space-y-6">
-              <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <Card>
-                  <CardContent className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
-                    <div className="bg-muted/30 flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border">
-                      {course.thumbnailUrl ? (
-                        <img
-                          src={course.thumbnailUrl}
-                          alt={course.title}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="text-muted-foreground flex flex-col items-center gap-2 text-sm">
-                          <ImageIcon className="size-8" />
-                          <span>No thumbnail uploaded</span>
-                        </div>
-                      )}
+              <Card>
+                <CardContent className="p-0">
+                  <div className="grid w-full lg:grid-cols-[160px_minmax(240px,1fr)_minmax(0,1.2fr)]">
+                    <div className="flex items-center justify-center border-b bg-muted/20 p-4 lg:border-b-0 lg:border-r">
+                      <div className="bg-muted/30 aspect-square w-full max-w-[128px] overflow-hidden rounded-md border">
+                        {course.thumbnailUrl ? (
+                          <img
+                            src={course.thumbnailUrl}
+                            alt={course.title}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1.5 px-2 text-center text-xs">
+                            <ImageIcon className="size-7" />
+                            <span>No thumbnail</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary">{course.code}</Badge>
+                    <dl className="divide-y border-b text-sm lg:border-b-0 lg:border-r">
+                      <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                        <dt className="text-muted-foreground">Title</dt>
+                        <dd className="font-semibold">{course.title}</dd>
                       </div>
-
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="sm:col-span-2">
-                          <p className="text-muted-foreground text-sm">Belongs to program</p>
+                      <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                        <dt className="text-muted-foreground">Course code</dt>
+                        <dd className="font-mono font-medium">{course.code}</dd>
+                      </div>
+                      <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                        <dt className="text-muted-foreground">Program</dt>
+                        <dd className="font-medium">
                           {course.programId ? (
-                            <div className="mt-2 flex flex-wrap items-center gap-2">
-                              <p className="font-medium">{programDisplayName}</p>
-                              <Button variant="outline" size="sm" asChild>
-                                <Link to={ROUTES.programCourses(course.programId)}>
-                                  Open course list
-                                </Link>
-                              </Button>
-                            </div>
+                            <Link
+                              to={ROUTES.programCourses(course.programId)}
+                              className="text-primary hover:underline"
+                            >
+                              {programDisplayName}
+                            </Link>
                           ) : (
-                            <p className="font-medium">Not linked to any program</p>
+                            <span className="text-muted-foreground font-normal">Not linked</span>
                           )}
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground text-sm">Order</p>
-                          <p className="font-medium">{course.orderIndex ?? 0}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground text-sm">Last updated</p>
-                          <p className="font-medium">{formatDateTime(course.updatedAt)}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground text-sm">Chapters</p>
-                          <p className="font-medium">{syllabusSections.length}</p>
-                        </div>
-                        <div>
-                          <p className="text-muted-foreground text-sm">Lessons</p>
-                          <p className="font-medium">{totalSyllabusItems}</p>
-                        </div>
+                        </dd>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                        <dt className="text-muted-foreground">Last updated</dt>
+                        <dd>{formatDateTime(course.updatedAt)}</dd>
+                      </div>
+                    </dl>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <ShoppingBag className="size-4" />
-                      Course sales config
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="rounded-lg border bg-muted/20 p-4">
-                      <p className="text-sm font-medium">Paid course runs</p>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        {courseRuns.filter((run) => hasCourseRunPricing(run.metadata)).length} /{' '}
-                        {courseRuns.length} runs are ready for global checkout
-                      </p>
+                    <div className="p-4">
+                      <p className="text-muted-foreground mb-3 text-sm font-medium">Description</p>
+                      <RichTextPreview value={course.description} />
                     </div>
-                    <div className="rounded-lg border bg-muted/20 p-4">
-                      <p className="text-sm font-medium">Apple Product ID</p>
-                      <p className="text-muted-foreground mt-1 break-all text-sm">
-                        {appleProductId || 'Not set'}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/20 p-4">
-                      <p className="text-sm font-medium">Android Product ID</p>
-                      <p className="text-muted-foreground mt-1 break-all text-sm">
-                        {androidProductId || 'Not set'}
-                      </p>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      disabled={iapMutation.isPending}
-                      onClick={() => setEditIapOpen(true)}
-                    >
-                      Edit mobile purchase IDs
-                    </Button>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Course description</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <ShoppingBag className="size-4" />
+                    Mobile purchase settings
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <RichTextPreview value={course.description} />
+                <CardContent className="space-y-4 p-6 pt-0">
+                  <div className="overflow-hidden rounded-md border">
+                    <table className="w-full table-fixed text-sm">
+                      <tbody className="divide-y">
+                        <tr>
+                          <td className="text-muted-foreground w-[40%] px-4 py-3 align-top sm:w-[220px]">
+                            Paid course runs
+                          </td>
+                          <td className="px-4 py-3 font-medium tabular-nums">
+                            {courseRuns.filter((run) => hasCourseRunPricing(run.metadata)).length} /{' '}
+                            {courseRuns.length}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="text-muted-foreground px-4 py-3 align-top">
+                            Apple Product ID
+                          </td>
+                          <td className="px-4 py-3 break-all font-medium">
+                            {appleProductId || (
+                              <span className="text-muted-foreground font-normal">Not set</span>
+                            )}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td className="text-muted-foreground px-4 py-3 align-top">
+                            Android Product ID
+                          </td>
+                          <td className="px-4 py-3 break-all font-medium">
+                            {androidProductId || (
+                              <span className="text-muted-foreground font-normal">Not set</span>
+                            )}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={iapMutation.isPending}
+                    onClick={() => setEditIapOpen(true)}
+                  >
+                    Edit mobile purchase IDs
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -641,19 +636,15 @@ export function CourseDetailPage() {
             </div>
             <div className="space-y-2">
               <Label>Upload new thumbnail</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setCourseForm((prev) => ({
-                    ...prev,
-                    thumbnailFile: e.target.files?.[0] ?? null,
-                  }))
+              <ImageFilePicker
+                file={courseForm.thumbnailFile}
+                existingUrl={courseForm.thumbnailUrl}
+                previewAlt={courseForm.title || 'Course thumbnail'}
+                helperText="If you select a new image, it will replace the current cover image after saving."
+                onFileChange={(thumbnailFile) =>
+                  setCourseForm((prev) => ({ ...prev, thumbnailFile }))
                 }
               />
-              <p className="text-xs text-muted-foreground">
-                If you select a new image, it will replace the current cover image after saving.
-              </p>
             </div>
             <div className="space-y-2">
               <Label>Description</Label>

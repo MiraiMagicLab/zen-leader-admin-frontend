@@ -1,26 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft,
-  BookOpen,
-  CalendarDays,
   Eye,
   FileSpreadsheet,
-  MessageSquare,
   MoreHorizontal,
   Plus,
   Settings2,
   Trash2,
   Upload,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -44,6 +41,7 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -51,7 +49,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
+import { validateExcelFile, validateExcelBuffer, snapshotUploadFile, FILE_READ_ERROR_MESSAGE } from '@/lib/validate-excel-file';
 import {
   formatCourseRunPricingSummary,
   getPayPalPriceUsd,
@@ -69,9 +69,7 @@ import {
   enrollmentsApi,
   sessionsApi,
 } from '@/services/lms/lms-api';
-import { messagingApi } from '@/services/messaging/messaging-api';
 import type {
-  ChatMessageResponse,
   CourseRunResponse,
   EnrollmentImportResponse,
   EnrollmentResponse,
@@ -140,11 +138,58 @@ function toSessionForm(session: SessionResponse): SessionForm {
   };
 }
 
+function EnrollmentMetaTable({ enrollment }: { enrollment: EnrollmentResponse }) {
+  const rows: Array<{ label: string; value: ReactNode }> = [
+    { label: 'Name', value: enrollment.userDisplayName ?? '—' },
+    { label: 'Email', value: enrollment.userEmail ?? '—' },
+    {
+      label: 'Role',
+      value: <Badge variant="secondary">{enrollment.role ?? 'STUDENT'}</Badge>,
+    },
+    {
+      label: 'Status',
+      value: <Badge variant="secondary">{enrollment.status}</Badge>,
+    },
+    { label: 'Method', value: enrollment.enrolmentMethod ?? '—' },
+    {
+      label: 'Enrolled at',
+      value: enrollment.enrolledAt ? formatDateTime(enrollment.enrolledAt) : '—',
+    },
+    {
+      label: 'Last accessed',
+      value: enrollment.lastAccessedAt ? formatDateTime(enrollment.lastAccessedAt) : '—',
+    },
+    {
+      label: 'Completed at',
+      value: enrollment.completedAt ? formatDateTime(enrollment.completedAt) : '—',
+    },
+    {
+      label: 'Progress',
+      value: `${enrollment.progressPercent ?? 0}%`,
+    },
+  ];
+
+  return (
+    <dl className="divide-y rounded-lg border text-sm">
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4"
+        >
+          <dt className="text-muted-foreground">{row.label}</dt>
+          <dd className="font-medium">{row.value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function CourseRunDetailPage() {
   useAdminPageMeta(ADMIN_PAGE_META.courseRunDetail);
 
   const { runId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   const [createSessionOpen, setCreateSessionOpen] = useState(false);
@@ -157,14 +202,16 @@ export function CourseRunDetailPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [runSettingsOpen, setRunSettingsOpen] = useState(false);
   const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm);
-  const [enrollUser, setEnrollUser] = useState<UserResponse | null>(null);
+  const [enrollUsers, setEnrollUsers] = useState<UserResponse[]>([]);
+  const [enrollStatus, setEnrollStatus] = useState('ACTIVE');
+  const [enrollRole, setEnrollRole] = useState('STUDENT');
   const [importFile, setImportFile] = useState<File | null>(null);
+  const importFileBufferRef = useRef<ArrayBuffer | null>(null);
   const [editEnrollment, setEditEnrollment] = useState<EnrollmentResponse | null>(null);
   const [editStatus, setEditStatus] = useState('ACTIVE');
   const [editRole, setEditRole] = useState('STUDENT');
-  const [messagePage, setMessagePage] = useState(1);
   const [enrollmentPage, setEnrollmentPage] = useState(1);
-  const [viewEnrollmentId, setViewEnrollmentId] = useState<string | null>(null);
+  const [viewEnrollment, setViewEnrollment] = useState<EnrollmentResponse | null>(null);
   const [importPreview, setImportPreview] = useState<EnrollmentImportResponse | null>(null);
   const [runSettings, setRunSettings] = useState<RunSettingsForm | null>(null);
   const [activeTab, setActiveTab] = useState('sessions');
@@ -194,39 +241,49 @@ export function CourseRunDetailPage() {
       enrollmentsApi.filter({
         courseRunId: runId!,
         page: enrollmentPage,
-        pageSize: 20,
+        pageSize: ADMIN_LIST_PAGE_SIZE,
       }),
     enabled: Boolean(runId),
-  });
-
-  const enrollmentDetailQuery = useQuery({
-    queryKey: queryKeys.enrollments.detail(viewEnrollmentId ?? ''),
-    queryFn: () => enrollmentsApi.getById(viewEnrollmentId!),
-    enabled: Boolean(viewEnrollmentId),
-  });
-
-  const conversationQuery = useQuery({
-    queryKey: queryKeys.messaging.conversation(runId ?? ''),
-    queryFn: () => messagingApi.getCourseRunConversation(runId!),
-    enabled: Boolean(runId),
-    retry: false,
-  });
-
-  const messagesQuery = useQuery({
-    queryKey: queryKeys.messaging.messages(conversationQuery.data?.id ?? '', messagePage),
-    queryFn: () => messagingApi.getMessages(conversationQuery.data!.id, messagePage, 50),
-    enabled: Boolean(conversationQuery.data?.id),
   });
 
   const run = runQuery.data;
   const course = courseQuery.data;
   const sessions = sessionsQuery.data?.data ?? run?.courseSessions ?? [];
   const enrollments = enrollmentsQuery.data?.data ?? [];
-  const syllabusSections = course?.syllabusSections ?? [];
-  const totalSyllabusItems = syllabusSections.reduce(
-    (count, section) => count + (section.items?.length ?? 0),
-    0,
-  );
+
+  const openEditEnrollment = (enrollment: EnrollmentResponse) => {
+    setEditEnrollment(enrollment);
+    setEditStatus(enrollment.status);
+    setEditRole(enrollment.role ?? 'STUDENT');
+  };
+
+  const buildImportUploadFile = (): File | null => {
+    if (!importFile || !importFileBufferRef.current) {
+      return null;
+    }
+    if (importFileBufferRef.current.byteLength === 0) {
+      return null;
+    }
+    const validationError = validateExcelBuffer(importFileBufferRef.current);
+    if (validationError) {
+      return null;
+    }
+    return new File([importFileBufferRef.current], importFile.name, {
+      type:
+        importFile.type ||
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+  };
+
+  const resolveImportUploadFile = (): File => {
+    const uploadFile = buildImportUploadFile();
+    if (!uploadFile) {
+      throw new Error(
+        'Could not read the selected file. Save and close it in Excel, then choose the file again.',
+      );
+    }
+    return uploadFile;
+  };
 
   const invalidateRunQueries = async () => {
     await Promise.all([
@@ -248,16 +305,6 @@ export function CourseRunDetailPage() {
   const invalidateEnrollments = async () => {
     await queryClient.invalidateQueries({ queryKey: queryKeys.enrollments.all });
   };
-
-  const deleteMessageMutation = useMutation({
-    mutationFn: (messageId: string) => messagingApi.deleteMessage(messageId),
-    onSuccess: async () => {
-      toast.success('Message deleted.');
-      setPendingConfirm(null);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.messaging.all });
-    },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
-  });
 
   const createSessionMutation = useMutation({
     mutationFn: () =>
@@ -320,21 +367,54 @@ export function CourseRunDetailPage() {
 
   const enrollMutation = useMutation({
     mutationFn: () =>
-      enrollmentsApi.manualEnroll({ userId: enrollUser!.id, courseRunId: runId! }),
-    onSuccess: async () => {
-      toast.success('Student enrolled.');
+      enrollmentsApi.manualEnrollMany({
+        userIds: enrollUsers.map((user) => user.id),
+        courseRunId: runId!,
+        status: enrollStatus as 'ACTIVE' | 'SUSPENDED' | 'COMPLETED' | 'CANCELLED',
+        role: enrollRole as 'STUDENT' | 'INSTRUCTOR',
+      }),
+    onSuccess: async (result) => {
+      if (result.successCount === 0) {
+        toast.error(
+          result.failures[0]?.reason ??
+            'Could not enroll selected learners. They may already be enrolled.',
+        );
+        return;
+      }
+
+      toast.success(
+        `Enrolled ${result.successCount} learner${result.successCount === 1 ? '' : 's'}${
+          result.failedCount > 0 ? ` (${result.failedCount} failed)` : ''
+        }.`,
+      );
       setEnrollOpen(false);
-      setEnrollUser(null);
+      setEnrollUsers([]);
+      setEnrollStatus('ACTIVE');
+      setEnrollRole('STUDENT');
       await invalidateEnrollments();
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const importMutation = useMutation({
-    mutationFn: () => enrollmentsApi.importByExcel(runId!, importFile!, false),
+    mutationFn: async () => {
+      return enrollmentsApi.importByExcel(runId!, resolveImportUploadFile(), false);
+    },
     onSuccess: async (result) => {
-      toast.success(`Import done: ${result.successCount} succeeded, ${result.failedCount} failed.`);
+      if (result.successCount === 0) {
+        toast.error(result.failures[0]?.reason ?? 'No learners were imported.');
+        return;
+      }
+
+      toast.success(
+        `Import done: ${result.successCount} succeeded${
+          result.failedCount + result.skippedCount > 0
+            ? `, ${result.failedCount + result.skippedCount} not imported`
+            : ''
+        }.`,
+      );
       setImportFile(null);
+      importFileBufferRef.current = null;
       setImportPreview(null);
       setImportOpen(false);
       await invalidateEnrollments();
@@ -367,7 +447,9 @@ export function CourseRunDetailPage() {
   });
 
   const previewImportMutation = useMutation({
-    mutationFn: () => enrollmentsApi.importByExcel(runId!, importFile!, true),
+    mutationFn: async () => {
+      return enrollmentsApi.importByExcel(runId!, resolveImportUploadFile(), true);
+    },
     onSuccess: (result) => {
       setImportPreview(result);
       toast.success('Import previewed.');
@@ -423,6 +505,16 @@ export function CourseRunDetailPage() {
     setRunSettings(toRunSettingsForm(run));
     setRunSettingsOpen(true);
   };
+
+  useEffect(() => {
+    if (searchParams.get('settings') !== '1' || !run) {
+      return;
+    }
+
+    setRunSettings(toRunSettingsForm(run));
+    setRunSettingsOpen(true);
+    setSearchParams({}, { replace: true });
+  }, [run, searchParams, setSearchParams]);
 
   const openEditSession = (session: SessionResponse) => {
     setEditSession({
@@ -544,105 +636,49 @@ export function CourseRunDetailPage() {
         cell: ({ row }) => formatDateTime(row.original.enrolledAt),
       },
       {
-        id: 'actions',
-        header: '',
-        size: 48,
+        ...tableActionsColumn<EnrollmentResponse>(),
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setViewEnrollmentId(row.original.id)}>
-                View details
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setEditEnrollment(row.original);
-                  setEditStatus(row.original.status);
-                  setEditRole(row.original.role ?? 'STUDENT');
-                }}
-              >
-                Edit enrollment
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() =>
-                  setPendingConfirm({
-                    title: 'Delete enrollment?',
-                    description: (
-                      <>
-                        Remove{' '}
-                        {row.original.userDisplayName ??
-                          row.original.userEmail ??
-                          'this student'}{' '}
-                        from this course run. This cannot be undone.
-                      </>
-                    ),
-                    action: () => deleteEnrollmentMutation.mutate(row.original.id),
-                  })
-                }
-              >
-                Delete enrollment
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <TableRowActions>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setViewEnrollment(row.original)}
+            >
+              Detail
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openEditEnrollment(row.original)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() =>
+                setPendingConfirm({
+                  title: 'Delete enrollment?',
+                  description: (
+                    <>
+                      Remove{' '}
+                      {row.original.userDisplayName ??
+                        row.original.userEmail ??
+                        'this learner'}{' '}
+                      from this course run. This cannot be undone.
+                    </>
+                  ),
+                  action: () => deleteEnrollmentMutation.mutate(row.original.id),
+                })
+              }
+            >
+              Delete
+            </Button>
+          </TableRowActions>
         ),
       },
     ],
     [deleteEnrollmentMutation],
-  );
-
-  const messageColumns = useMemo<ColumnDef<ChatMessageResponse>[]>(
-    () => [
-      {
-        id: 'sender',
-        header: 'Sender',
-        cell: ({ row }) => row.original.senderUsername ?? row.original.senderId,
-      },
-      {
-        id: 'message',
-        header: 'Message',
-        cell: ({ row }) => (
-          <span className="line-clamp-2 block max-w-md text-sm">
-            {row.original.text ?? '(attachment)'}
-          </span>
-        ),
-      },
-      {
-        id: 'createdAt',
-        header: 'Sent at',
-        cell: ({ row }) => (
-          <span className="text-muted-foreground text-sm whitespace-nowrap">
-            {formatDateTime(row.original.createdAt)}
-          </span>
-        ),
-      },
-      {
-        id: 'actions',
-        header: '',
-        size: 48,
-        cell: ({ row }) => (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive"
-            onClick={() =>
-              setPendingConfirm({
-                title: 'Delete message?',
-                description: 'Delete this chat message. This cannot be undone.',
-                action: () => deleteMessageMutation.mutate(row.original.id),
-              })
-            }
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        ),
-      },
-    ],
-    [deleteMessageMutation],
   );
 
   if (!runId) {
@@ -661,9 +697,9 @@ export function CourseRunDetailPage() {
       <PageHeader
         title={run?.code ?? 'Course run'}
         description={
-          run
-            ? `${course?.title ?? 'Course'} · ${formatDateTime(run.startsAt)} → ${formatDateTime(run.endsAt)}`
-            : 'Manage live sessions, enrollment, and class chat.'
+          run && course
+            ? `Course: ${course.title}`
+            : 'Manage live sessions and enrollment.'
         }
         actions={
           run ? (
@@ -699,117 +735,92 @@ export function CourseRunDetailPage() {
       {run ? (
         <>
           <Card>
-            <CardContent className="space-y-4 p-4 sm:p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{run.status}</Badge>
-                <Badge variant="outline">
-                  {hasCourseRunPricing(run.metadata)
-                    ? formatCourseRunPricingSummary(run.metadata)
-                    : 'Free'}
-                </Badge>
-                {course ? (
-                  <Button variant="link" size="sm" className="h-auto px-0" asChild>
-                    <Link to={ROUTES.courseDetail(course.id)}>
-                      <BookOpen className="mr-1 size-3.5" />
-                      {course.code}
-                    </Link>
-                  </Button>
-                ) : null}
-                {course && totalSyllabusItems > 0 ? (
-                  <Button variant="link" size="sm" className="h-auto px-0" asChild>
-                    <Link to={ROUTES.courseDetail(course.id, 'syllabus')}>
-                      Syllabus · {totalSyllabusItems} lessons
-                    </Link>
-                  </Button>
-                ) : null}
-              </div>
+            <CardContent className="p-0">
+              <div className="grid lg:grid-cols-2 lg:divide-x">
+                <dl className="divide-y text-sm">
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Class code</dt>
+                    <dd className="font-mono font-semibold">{run.code}</dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Status</dt>
+                    <dd>
+                      <Badge variant="secondary">{run.status}</Badge>
+                    </dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Course</dt>
+                    <dd>
+                      {course ? (
+                        <Link
+                          to={ROUTES.courseDetail(course.id)}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {course.code} — {course.title}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Pricing</dt>
+                    <dd className="font-medium">
+                      {hasCourseRunPricing(run.metadata)
+                        ? formatCourseRunPricingSummary(run.metadata)
+                        : 'Free'}
+                    </dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Start date</dt>
+                    <dd>{formatDateTime(run.startsAt)}</dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">End date</dt>
+                    <dd>{formatDateTime(run.endsAt)}</dd>
+                  </div>
+                </dl>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <div className="rounded-md border bg-muted/20 px-3 py-2">
-                  <p className="text-muted-foreground text-xs">Start</p>
-                  <p className="text-sm font-medium">{formatDateTime(run.startsAt)}</p>
-                </div>
-                <div className="rounded-md border bg-muted/20 px-3 py-2">
-                  <p className="text-muted-foreground text-xs">End</p>
-                  <p className="text-sm font-medium">{formatDateTime(run.endsAt)}</p>
-                </div>
-                <div className="rounded-md border bg-muted/20 px-3 py-2">
-                  <p className="text-muted-foreground text-xs">Enrollment window</p>
-                  <p className="text-sm font-medium">
-                    {formatDateTime(run.enrollmentStartDate)} →{' '}
-                    {formatDateTime(run.enrollmentEndDate)}
-                  </p>
-                </div>
-                <div className="rounded-md border bg-muted/20 px-3 py-2">
-                  <p className="text-muted-foreground text-xs">Capacity · Timezone</p>
-                  <p className="text-sm font-medium">
-                    {run.capacity ?? 'Unlimited'} · {run.timezone ?? 'Asia/Ho_Chi_Minh'}
-                  </p>
-                </div>
+                <dl className="divide-y text-sm">
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Enrollment opens</dt>
+                    <dd>{formatDateTime(run.enrollmentStartDate)}</dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Enrollment closes</dt>
+                    <dd>{formatDateTime(run.enrollmentEndDate)}</dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Capacity</dt>
+                    <dd>{run.capacity ?? 'Unlimited'}</dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Timezone</dt>
+                    <dd>{run.timezone ?? 'Asia/Ho_Chi_Minh'}</dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Sessions</dt>
+                    <dd className="font-medium tabular-nums">{sessions.length}</dd>
+                  </div>
+                  <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                    <dt className="text-muted-foreground">Enrolled learners</dt>
+                    <dd className="font-medium tabular-nums">
+                      {enrollmentsQuery.data?.totalElement ?? 0}
+                    </dd>
+                  </div>
+                </dl>
               </div>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <button
-              type="button"
-              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
-              onClick={() => setActiveTab('sessions')}
-            >
-              <div className="flex items-center gap-2">
-                <CalendarDays className="text-muted-foreground size-4" />
-                <p className="text-muted-foreground text-xs">Sessions</p>
-              </div>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{sessions.length}</p>
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
-              onClick={() => setActiveTab('enrollments')}
-            >
-              <div className="flex items-center gap-2">
-                <Users className="text-muted-foreground size-4" />
-                <p className="text-muted-foreground text-xs">Enrollment</p>
-              </div>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">
-                {enrollmentsQuery.data?.totalElement ?? 0}
-              </p>
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40"
-              onClick={() => setActiveTab('chat')}
-            >
-              <div className="flex items-center gap-2">
-                <MessageSquare className="text-muted-foreground size-4" />
-                <p className="text-muted-foreground text-xs">Class chat</p>
-              </div>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">
-                {conversationQuery.data?.participants.length ?? 0}
-              </p>
-            </button>
-            <button
-              type="button"
-              className="rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40 sm:col-span-1"
-              onClick={openRunSettings}
-            >
-              <div className="flex items-center gap-2">
-                <Settings2 className="text-muted-foreground size-4" />
-                <p className="text-muted-foreground text-xs">Checkout</p>
-              </div>
-              <p className="mt-1 text-sm font-semibold">
-                {hasCourseRunPricing(run.metadata) ? 'Paid' : 'Free'}
-              </p>
-            </button>
-          </div>
-
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-            <TabsList className="h-auto w-full flex-wrap justify-start">
-              <TabsTrigger value="sessions">Sessions ({sessions.length})</TabsTrigger>
-              <TabsTrigger value="enrollments">
+            <TabsList className="grid h-10 w-full max-w-lg grid-cols-2">
+              <TabsTrigger value="sessions" className="h-full">
+                Sessions ({sessions.length})
+              </TabsTrigger>
+              <TabsTrigger value="enrollments" className="h-full">
                 Enrollment ({enrollmentsQuery.data?.totalElement ?? 0})
               </TabsTrigger>
-              <TabsTrigger value="chat">Class chat</TabsTrigger>
             </TabsList>
 
             <TabsContent value="sessions" className="space-y-4">
@@ -840,7 +851,7 @@ export function CourseRunDetailPage() {
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => setEnrollOpen(true)}>
                       <Plus className="mr-2 size-4" />
-                      Add learner
+                      Add learners
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                       <FileSpreadsheet className="mr-2 size-4" />
@@ -855,7 +866,7 @@ export function CourseRunDetailPage() {
                     isLoading={enrollmentsQuery.isLoading}
                     emptyMessage="No enrollments yet."
                     showRowIndex
-                    pageOffset={(enrollmentPage - 1) * 20}
+                    pageOffset={(enrollmentPage - 1) * ADMIN_LIST_PAGE_SIZE}
                     showPagination={false}
                   />
                   <div className="flex justify-end gap-2">
@@ -879,58 +890,6 @@ export function CourseRunDetailPage() {
                       Next
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="chat" className="space-y-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Class chat</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                  {!conversationQuery.data ? (
-                    <p className="text-muted-foreground py-6 text-center text-sm">
-                      This class has no group conversation yet.
-                    </p>
-                  ) : (
-                    <>
-                      <p className="text-muted-foreground text-sm">
-                        {conversationQuery.data.participants.length} members ·{' '}
-                        {conversationQuery.data.status}
-                      </p>
-                      <DataTable
-                        columns={messageColumns}
-                        data={messagesQuery.data?.data ?? []}
-                        isLoading={messagesQuery.isLoading}
-                        emptyMessage="No messages yet."
-                        showRowIndex
-                        pageOffset={(messagePage - 1) * 50}
-                        showPagination={false}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={messagePage <= 1}
-                          onClick={() => setMessagePage((page) => page - 1)}
-                        >
-                          Previous
-                        </Button>
-                        <span className="text-muted-foreground self-center text-sm">
-                          Page {messagePage} / {messagesQuery.data?.totalPages ?? 1}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={messagePage >= (messagesQuery.data?.totalPages ?? 1)}
-                          onClick={() => setMessagePage((page) => page + 1)}
-                        >
-                          Next
-                        </Button>
-                      </div>
-                    </>
-                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -1285,20 +1244,58 @@ export function CourseRunDetailPage() {
         onOpenChange={(open) => {
           setEnrollOpen(open);
           if (!open) {
-            setEnrollUser(null);
+            setEnrollUsers([]);
+            setEnrollStatus('ACTIVE');
+            setEnrollRole('STUDENT');
           }
         }}
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Add learner</SheetTitle>
+            <SheetTitle>Add learners</SheetTitle>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            <UserPicker open={enrollOpen} selectedUser={enrollUser} onSelect={setEnrollUser} />
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={enrollStatus} onValueChange={setEnrollStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                    <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
+                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={enrollRole} onValueChange={setEnrollRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STUDENT">STUDENT</SelectItem>
+                    <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <UserPicker
+              open={enrollOpen}
+              selectedUsers={enrollUsers}
+              onSelectedUsersChange={setEnrollUsers}
+              label="Select learners"
+            />
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => enrollMutation.mutate()} disabled={!enrollUser || enrollMutation.isPending}>
-              Enroll
+            <Button
+              onClick={() => enrollMutation.mutate()}
+              disabled={enrollUsers.length === 0 || enrollMutation.isPending}
+            >
+              Enroll {enrollUsers.length > 0 ? `(${enrollUsers.length})` : ''}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -1311,6 +1308,7 @@ export function CourseRunDetailPage() {
           if (!open) {
             setImportPreview(null);
             setImportFile(null);
+            importFileBufferRef.current = null;
           }
         }}
       >
@@ -1319,20 +1317,27 @@ export function CourseRunDetailPage() {
             <SheetTitle>Import enrollments via Excel</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground">
-              Download template, fill in student data, preview results, then import.
+            <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground space-y-2">
+              <p>1. Download the template (.xlsx).</p>
+              <p>2. Paste learner emails starting from row 2. Keep the header row: email, order_no, amount.</p>
+              <p>3. Save as <strong>.xlsx</strong> in Excel, then <strong>close the file</strong> before Preview/Import.</p>
+              <p>4. Preview, then import. Rows with unknown emails are skipped.</p>
+              <p>5. Import is enabled only after Preview shows at least one OK row.</p>
             </div>
             <Button
               variant="outline"
               onClick={() => {
-                void enrollmentsApi.downloadImportTemplate().then((blob) => {
-                  const url = URL.createObjectURL(blob);
-                  const anchor = document.createElement('a');
-                  anchor.href = url;
-                  anchor.download = 'enrollment-template.xlsx';
-                  anchor.click();
-                  URL.revokeObjectURL(url);
-                });
+                void enrollmentsApi
+                  .downloadImportTemplate()
+                  .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.download = 'enrollment-template.xlsx';
+                    anchor.click();
+                    URL.revokeObjectURL(url);
+                  })
+                  .catch((error) => toast.error(getApiErrorMessage(error)));
               }}
             >
               <FileSpreadsheet className="mr-2 size-4" />
@@ -1343,8 +1348,40 @@ export function CourseRunDetailPage() {
               <Input
                 type="file"
                 accept=".xlsx,.xls"
-                onChange={(event) => setImportFile(event.target.files?.[0] ?? null)}
+                onChange={(event) => {
+                  const picked = event.target.files?.[0] ?? null;
+                  setImportPreview(null);
+                  if (!picked) {
+                    setImportFile(null);
+                    importFileBufferRef.current = null;
+                    return;
+                  }
+
+                  void (async () => {
+                    try {
+                      const snapshot = await snapshotUploadFile(picked);
+                      const validationError = await validateExcelFile(snapshot);
+                      if (validationError) {
+                        toast.error(validationError);
+                        setImportFile(null);
+                        importFileBufferRef.current = null;
+                        event.target.value = '';
+                        return;
+                      }
+                      importFileBufferRef.current = await snapshot.arrayBuffer();
+                      setImportFile(snapshot);
+                    } catch {
+                      toast.error(FILE_READ_ERROR_MESSAGE);
+                      setImportFile(null);
+                      importFileBufferRef.current = null;
+                      event.target.value = '';
+                    }
+                  })();
+                }}
               />
+              {importFile ? (
+                <p className="text-muted-foreground text-xs">Selected: {importFile.name}</p>
+              ) : null}
             </div>
             {importPreview ? (
               <Card>
@@ -1370,15 +1407,25 @@ export function CourseRunDetailPage() {
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
-              disabled={!importFile || previewImportMutation.isPending}
-              onClick={() => importFile && previewImportMutation.mutate()}
+              disabled={
+                !importFile ||
+                previewImportMutation.isPending ||
+                importMutation.isPending
+              }
+              onClick={() => previewImportMutation.mutate()}
             >
               <Eye className="mr-2 size-4" />
               Preview
             </Button>
             <Button
-              disabled={!importFile || importMutation.isPending}
-              onClick={() => importFile && importMutation.mutate()}
+              disabled={
+                !importFile ||
+                !importPreview ||
+                importPreview.successCount === 0 ||
+                previewImportMutation.isPending ||
+                importMutation.isPending
+              }
+              onClick={() => importMutation.mutate()}
             >
               <Upload className="mr-2 size-4" />
               Import Excel
@@ -1387,80 +1434,86 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={Boolean(viewEnrollmentId)} onOpenChange={() => setViewEnrollmentId(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+      <Sheet open={Boolean(viewEnrollment)} onOpenChange={() => setViewEnrollment(null)}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[520px] sm:max-w-[520px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Enrollment details</SheetTitle>
+            <SheetTitle>
+              {viewEnrollment?.userDisplayName ??
+                viewEnrollment?.userEmail ??
+                'Enrollment details'}
+            </SheetTitle>
+            {viewEnrollment?.userEmail ? (
+              <SheetDescription>{viewEnrollment.userEmail}</SheetDescription>
+            ) : null}
           </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4 text-sm">
-            {enrollmentDetailQuery.data ? (
-              <>
-                <div>
-                  <p className="text-muted-foreground">User</p>
-                  <p className="font-medium">{enrollmentDetailQuery.data.userEmail}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Status</p>
-                  <p className="font-medium">{enrollmentDetailQuery.data.status}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Role</p>
-                  <p className="font-medium">{enrollmentDetailQuery.data.role ?? 'STUDENT'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Method</p>
-                  <p className="font-medium">
-                    {enrollmentDetailQuery.data.enrolmentMethod ?? 'Unknown'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Progress</p>
-                  <p className="font-medium">
-                    {enrollmentDetailQuery.data.progressPercent ?? '0'}%
-                  </p>
-                </div>
-              </>
-            ) : (
-              <p className="text-muted-foreground">Loading...</p>
-            )}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            {viewEnrollment ? <EnrollmentMetaTable enrollment={viewEnrollment} /> : null}
           </div>
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end sm:gap-2">
+            <Button variant="outline" onClick={() => setViewEnrollment(null)}>
+              Close
+            </Button>
+            {viewEnrollment ? (
+              <Button
+                onClick={() => {
+                  openEditEnrollment(viewEnrollment);
+                  setViewEnrollment(null);
+                }}
+              >
+                Edit
+              </Button>
+            ) : null}
+          </SheetFooter>
         </SheetContent>
       </Sheet>
 
       <Sheet open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[520px] sm:max-w-[520px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Edit enrollment</SheetTitle>
+            {editEnrollment ? (
+              <SheetDescription>
+                {editEnrollment.userDisplayName ?? editEnrollment.userEmail ?? 'Learner'}
+                {editEnrollment.userEmail && editEnrollment.userDisplayName
+                  ? ` · ${editEnrollment.userEmail}`
+                  : ''}
+              </SheetDescription>
+            ) : null}
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select value={editStatus} onValueChange={setEditStatus}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                  <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
-                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={editRole} onValueChange={setEditRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="STUDENT">STUDENT</SelectItem>
-                  <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={editStatus} onValueChange={setEditStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                    <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
+                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STUDENT">STUDENT</SelectItem>
+                    <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end sm:gap-2">
+            <Button variant="outline" onClick={() => setEditEnrollment(null)}>
+              Cancel
+            </Button>
             <Button onClick={() => updateEnrollmentMutation.mutate()} disabled={updateEnrollmentMutation.isPending}>
               Save
             </Button>
@@ -1482,7 +1535,6 @@ export function CourseRunDetailPage() {
         pending={
           deleteSessionMutation.isPending ||
           deleteEnrollmentMutation.isPending ||
-          deleteMessageMutation.isPending ||
           deleteRunMutation.isPending
         }
       />

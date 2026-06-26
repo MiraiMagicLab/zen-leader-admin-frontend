@@ -17,7 +17,7 @@ export const courseRunsApi = {
         ? `/api/v1/course-runs?courseId=${encodeURIComponent(courseId)}`
         : '/api/v1/course-runs',
     ),
-  getPage: (page = 0, pageSize = 20, courseId?: string) =>
+  getPage: (page = 0, pageSize = 10, courseId?: string) =>
     apiGet<PagingResponse<CourseRunResponse>>(
       courseId
         ? `/api/v1/course-runs/paged?page=${page}&pageSize=${pageSize}&courseId=${encodeURIComponent(courseId)}`

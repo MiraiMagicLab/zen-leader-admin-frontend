@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, MoreHorizontal, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
+import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
@@ -22,12 +24,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -44,6 +40,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { stripHtml } from '@/lib/html';
 import { queryKeys } from '@/hooks/query-keys';
@@ -105,7 +102,9 @@ export function CoursesListPage() {
   const coursesQuery = useQuery({
     queryKey: [...queryKeys.courses.list(programId), page],
     queryFn: () =>
-      isProgramScope ? coursesApi.getPage(page, 20, programId) : coursesApi.getPage(page, 20),
+      isProgramScope
+        ? coursesApi.getPage(page, ADMIN_LIST_PAGE_SIZE, programId)
+        : coursesApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
   });
 
   const programsQuery = useQuery({
@@ -256,35 +255,32 @@ export function CoursesListPage() {
     }
 
     base.push({
-      id: 'actions',
-      header: '',
+      ...tableActionsColumn<CourseResponse>(),
       cell: ({ row }) => (
-        <div onClick={(event) => event.stopPropagation()}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEditDialog(row.original)}>
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => setDeleteTarget(row.original)}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <TableRowActions>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(ROUTES.courseDetail(row.original.id))}
+          >
+            Detail
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
+            Edit
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteTarget(row.original)}
+          >
+            Delete
+          </Button>
+        </TableRowActions>
       ),
     });
 
     return base;
-  }, [isProgramScope]);
+  }, [isProgramScope, navigate]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -343,14 +339,13 @@ export function CoursesListPage() {
         }) ?? []}
         isLoading={coursesQuery.isLoading}
         showRowIndex
-        pageOffset={page * 20}
+        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
         emptyMessage={
           isProgramScope
             ? 'No courses yet. Click "Add course" to create one.'
             : 'No courses yet. Click "Add course" to create one.'
         }
         showPagination={false}
-        onRowClick={(course) => navigate(ROUTES.courseDetail(course.id))}
       />
 
       <ServerPagination
@@ -502,14 +497,12 @@ export function CoursesListPage() {
             </div>
             <div className="space-y-2">
               <Label>Thumbnail</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    thumbnailFile: e.target.files?.[0] ?? null,
-                  }))
+              <ImageFilePicker
+                file={form.thumbnailFile}
+                existingUrl={editing?.thumbnailUrl}
+                previewAlt={form.title || 'Course thumbnail'}
+                onFileChange={(thumbnailFile) =>
+                  setForm((f) => ({ ...f, thumbnailFile }))
                 }
               />
             </div>

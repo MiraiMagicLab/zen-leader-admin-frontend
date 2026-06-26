@@ -2,6 +2,7 @@ import axios, {
   type AxiosError,
   type AxiosInstance,
   type InternalAxiosRequestConfig,
+  AxiosHeaders,
 } from 'axios';
 
 import { AUTH_API } from '@/lib/auth/constants';
@@ -15,6 +16,10 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
 };
 
+function isFormDataBody(data: unknown): data is FormData {
+  return typeof FormData !== 'undefined' && data instanceof FormData;
+}
+
 let refreshPromise: Promise<TokenResponseDto> | null = null;
 
 export const httpClient: AxiosInstance = axios.create({
@@ -25,12 +30,20 @@ export const httpClient: AxiosInstance = axios.create({
 });
 
 httpClient.interceptors.request.use((config) => {
+  const headers = AxiosHeaders.from(config.headers);
+
+  if (config.data instanceof FormData) {
+    headers.delete('Content-Type');
+  }
+
   if (!config.url?.includes(AUTH_API.refresh)) {
     const token = useAuthStore.getState().accessToken;
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      headers.set('Authorization', `Bearer ${token}`);
     }
   }
+
+  config.headers = headers;
   return config;
 });
 
@@ -43,6 +56,7 @@ httpClient.interceptors.response.use(
       error.response?.status !== 401 ||
       !originalRequest ||
       originalRequest._retry ||
+      isFormDataBody(originalRequest.data) ||
       originalRequest.url?.includes(AUTH_API.token) ||
       originalRequest.url?.includes(AUTH_API.refresh)
     ) {

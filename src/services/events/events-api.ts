@@ -47,7 +47,7 @@ export const eventsApi = {
     apiPatch<EventResponse>(`/api/v1/events/${id}/publish`),
   unpublish: (id: string) =>
     apiPatch<EventResponse>(`/api/v1/events/${id}/unpublish`),
-  getComments: (eventId: string, page = 0, pageSize = 20) =>
+  getComments: (eventId: string, page = 0, pageSize = 10) =>
     apiGet<import('@/services/types/pagination').PagingResponse<CommentResponse>>(
       `/api/v1/events/${eventId}/comments?page=${page}&pageSize=${pageSize}`,
     ),

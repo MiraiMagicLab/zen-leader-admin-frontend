@@ -12,7 +12,7 @@ import type { PagingResponse } from '@/services/types/pagination';
 
 export const programsApi = {
   getAll: () => apiGet<ProgramResponse[]>('/api/v1/programs'),
-  getPage: (page = 0, pageSize = 20) =>
+  getPage: (page = 0, pageSize = 10) =>
     apiGet<PagingResponse<ProgramResponse>>(
       `/api/v1/programs/paged?page=${page}&pageSize=${pageSize}`,
     ),

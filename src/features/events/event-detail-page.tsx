@@ -5,6 +5,7 @@ import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
+import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import {
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
@@ -128,7 +130,7 @@ export function EventDetailPage() {
 
   const commentsQuery = useQuery({
     queryKey: queryKeys.events.comments(eventId ?? '', commentPage),
-    queryFn: () => eventsApi.getComments(eventId!, commentPage, 20),
+    queryFn: () => eventsApi.getComments(eventId!, commentPage, ADMIN_LIST_PAGE_SIZE),
     enabled: Boolean(eventId),
   });
 
@@ -459,11 +461,12 @@ export function EventDetailPage() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-event-thumbnail-file">Replace thumbnail</Label>
-              <Input
+              <ImageFilePicker
                 id="edit-event-thumbnail-file"
-                type="file"
-                accept="image/*"
-                onChange={(currentEvent) => setEditThumbnailFile(currentEvent.target.files?.[0] ?? null)}
+                file={editThumbnailFile}
+                existingUrl={editThumbnailUrl}
+                previewAlt={editTitle || 'Event thumbnail'}
+                onFileChange={setEditThumbnailFile}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
