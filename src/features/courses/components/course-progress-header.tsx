@@ -13,7 +13,7 @@ type CourseProgressHeaderProps = {
   completion: CourseCompletion;
   onEdit: () => void;
   onDelete: () => void;
-  onScrollTo: (anchor: CompletionAnchor) => void;
+  onSelect: (anchor: CompletionAnchor) => void;
 };
 
 export function CourseProgressHeader({
@@ -21,7 +21,7 @@ export function CourseProgressHeader({
   completion,
   onEdit,
   onDelete,
-  onScrollTo,
+  onSelect,
 }: CourseProgressHeaderProps) {
   const isReady = completion.status === 'ready';
   const programName = course.programCode?.trim() || 'Chương trình';
@@ -74,7 +74,7 @@ export function CourseProgressHeader({
             Xóa
           </Button>
           {!isReady && completion.firstIncomplete ? (
-            <Button size="sm" onClick={() => onScrollTo(completion.firstIncomplete!.anchor)}>
+            <Button size="sm" onClick={() => onSelect(completion.firstIncomplete!.anchor)}>
               Tiếp tục: {completion.firstIncomplete.label}
               <ArrowRight className="ml-2 size-4" />
             </Button>

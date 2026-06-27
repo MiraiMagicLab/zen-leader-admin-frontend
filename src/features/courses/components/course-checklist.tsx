@@ -5,10 +5,10 @@ import type { CompletionAnchor, CourseCompletion } from '@/features/courses/lib/
 
 type CourseChecklistProps = {
   completion: CourseCompletion;
-  onScrollTo: (anchor: CompletionAnchor) => void;
+  onSelect: (anchor: CompletionAnchor) => void;
 };
 
-export function CourseChecklist({ completion, onScrollTo }: CourseChecklistProps) {
+export function CourseChecklist({ completion, onSelect }: CourseChecklistProps) {
   const remaining = completion.totalCount - completion.doneCount;
   const nextId = completion.firstIncomplete?.id;
 
@@ -28,7 +28,7 @@ export function CourseChecklist({ completion, onScrollTo }: CourseChecklistProps
             <li key={step.id}>
               <button
                 type="button"
-                onClick={() => onScrollTo(step.anchor)}
+                onClick={() => onSelect(step.anchor)}
                 className={cn(
                   'flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors',
                   isNext ? 'bg-primary/10' : 'hover:bg-muted/60',

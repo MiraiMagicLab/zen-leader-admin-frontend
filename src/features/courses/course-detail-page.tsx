@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { SyllabusEditor } from '@/features/courses/components/syllabus-editor';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
@@ -108,10 +109,18 @@ const LEGACY_TAB_ANCHOR: Record<string, CompletionAnchor> = {
   runs: 'runs',
 };
 
-function scrollToSection(anchor: CompletionAnchor) {
-  document
-    .getElementById(`section-${anchor}`)
-    ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function resolveInitialTab(
+  section: string | null,
+  tab: string | null,
+  hasItem: boolean,
+): CompletionAnchor {
+  if (section === 'info' || section === 'syllabus' || section === 'runs') {
+    return section;
+  }
+  if (tab && LEGACY_TAB_ANCHOR[tab]) {
+    return LEGACY_TAB_ANCHOR[tab];
+  }
+  return hasItem ? 'syllabus' : 'info';
 }
 
 export function CourseDetailPage() {
@@ -128,6 +137,21 @@ export function CourseDetailPage() {
     }
     const next = new URLSearchParams(searchParams);
     next.delete('itemId');
+    setSearchParams(next, { replace: true });
+  };
+
+  const [activeTab, setActiveTabState] = useState<CompletionAnchor>(() =>
+    resolveInitialTab(searchParams.get('section'), searchParams.get('tab'), Boolean(deepLinkItemId)),
+  );
+  const selectTab = (tab: CompletionAnchor) => {
+    setActiveTabState(tab);
+    const next = new URLSearchParams(searchParams);
+    next.delete('tab');
+    if (tab === 'info') {
+      next.delete('section');
+    } else {
+      next.set('section', tab);
+    }
     setSearchParams(next, { replace: true });
   };
 
@@ -169,20 +193,10 @@ export function CourseDetailPage() {
     });
   }, [course]);
 
-  const didScrollRef = useRef(false);
-  useEffect(() => {
-    if (!course || didScrollRef.current) {
-      return;
-    }
-    const target =
-      (searchParams.get('section') as CompletionAnchor | null) ??
-      LEGACY_TAB_ANCHOR[searchParams.get('tab') ?? ''] ??
-      (deepLinkItemId ? 'syllabus' : null);
-    if (target) {
-      didScrollRef.current = true;
-      window.setTimeout(() => scrollToSection(target), 0);
-    }
-  }, [course, searchParams, deepLinkItemId]);
+  const totalSyllabusItems = (course?.syllabusSections ?? []).reduce(
+    (count, section) => count + (section.items?.length ?? 0),
+    0,
+  );
 
   const invalidateCourseQueries = async () => {
     await Promise.all([
@@ -334,21 +348,38 @@ export function CourseDetailPage() {
             completion={completion}
             onEdit={() => setEditCourseOpen(true)}
             onDelete={confirmDeleteCourse}
-            onScrollTo={scrollToSection}
+            onSelect={selectTab}
           />
 
-          <CourseChecklist completion={completion} onScrollTo={scrollToSection} />
+          <CourseChecklist completion={completion} onSelect={selectTab} />
 
-          <WorkspaceSection
-            id="info"
-            icon={<Info className="size-4" />}
-            title="Thông tin khóa học"
-            action={
-              <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
-                Sửa thông tin
-              </Button>
-            }
+          <Tabs
+            value={activeTab}
+            onValueChange={(value) => selectTab(value as CompletionAnchor)}
           >
+            <TabsList className="grid h-10 w-full max-w-xl grid-cols-3">
+              <TabsTrigger value="info" className="h-full">
+                Thông tin
+              </TabsTrigger>
+              <TabsTrigger value="syllabus" className="h-full">
+                Giáo trình ({totalSyllabusItems})
+              </TabsTrigger>
+              <TabsTrigger value="runs" className="h-full">
+                Các lớp ({courseRuns.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="info" className="mt-4">
+              <WorkspaceSection
+                id="info"
+                icon={<Info className="size-4" />}
+                title="Thông tin khóa học"
+                action={
+                  <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
+                    Sửa thông tin
+                  </Button>
+                }
+              >
             <div className="grid gap-5 sm:grid-cols-[140px_minmax(0,1fr)]">
               <div className="bg-muted/30 mx-auto aspect-square w-full max-w-[140px] overflow-hidden rounded-md border sm:mx-0">
                 {course.thumbnailUrl ? (
@@ -418,23 +449,27 @@ export function CourseDetailPage() {
                 <span className="text-foreground break-all">{androidProductId || 'Chưa đặt'}</span>
               </div>
             </div>
-          </WorkspaceSection>
+              </WorkspaceSection>
+            </TabsContent>
 
-          <WorkspaceSection
-            id="syllabus"
-            icon={<BookOpen className="size-4" />}
-            title="Giáo trình"
-          >
-            <SyllabusEditor
-              courseId={courseId}
-              courseTitle={course.title}
-              initialItemId={deepLinkItemId}
-              onInitialItemHandled={clearDeepLinkItem}
-            />
-          </WorkspaceSection>
+            <TabsContent value="syllabus" className="mt-4">
+              <WorkspaceSection
+                id="syllabus"
+                icon={<BookOpen className="size-4" />}
+                title="Giáo trình"
+              >
+                <SyllabusEditor
+                  courseId={courseId}
+                  courseTitle={course.title}
+                  initialItemId={deepLinkItemId}
+                  onInitialItemHandled={clearDeepLinkItem}
+                />
+              </WorkspaceSection>
+            </TabsContent>
 
-          <WorkspaceSection
-            id="runs"
+            <TabsContent value="runs" className="mt-4">
+              <WorkspaceSection
+                id="runs"
             icon={<CalendarDays className="size-4" />}
             title="Các lớp học"
             action={
@@ -469,7 +504,9 @@ export function CourseDetailPage() {
                 </Button>
               </div>
             )}
-          </WorkspaceSection>
+              </WorkspaceSection>
+            </TabsContent>
+          </Tabs>
         </>
       ) : (
         <div className="bg-card text-muted-foreground rounded-xl border p-6 text-sm shadow-sm">
