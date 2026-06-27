@@ -351,7 +351,9 @@ export function CourseDetailPage() {
             onSelect={selectTab}
           />
 
-          <CourseChecklist completion={completion} onSelect={selectTab} />
+          {completion.firstIncomplete ? (
+            <CourseChecklist completion={completion} onSelect={selectTab} />
+          ) : null}
 
           <Tabs
             value={activeTab}
