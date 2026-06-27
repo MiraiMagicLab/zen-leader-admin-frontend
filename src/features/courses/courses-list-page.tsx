@@ -198,19 +198,18 @@ export function CoursesListPage() {
   const columns = useMemo<ColumnDef<CourseResponse>[]>(() => {
     const base: ColumnDef<CourseResponse>[] = [
       { accessorKey: 'code', header: 'Code' },
-      { accessorKey: 'title', header: 'Title' },
       {
-        accessorKey: 'description',
-        header: 'Description',
+        accessorKey: 'title',
+        header: 'Title',
         cell: ({ row }) => (
-          <span className="text-muted-foreground line-clamp-2 max-w-md text-sm">
-            {stripHtml(row.original.description) || 'No summary provided'}
-          </span>
+          <div className="max-w-[22rem] font-medium break-words whitespace-normal">
+            {row.original.title}
+          </div>
         ),
       },
       {
         accessorKey: 'courseRuns',
-        header: 'Course runs',
+        header: 'Runs',
         cell: ({ row }) => row.original.courseRuns?.length ?? 0,
       },
       {

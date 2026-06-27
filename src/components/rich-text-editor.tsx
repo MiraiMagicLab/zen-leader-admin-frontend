@@ -170,7 +170,7 @@ export function RichTextEditor({
         suppressContentEditableWarning
         data-placeholder={placeholder}
         className={cn(
-          'prose prose-sm dark:prose-invert max-w-none px-3 py-2 text-sm outline-none',
+          'text-foreground max-w-none px-3 py-2 text-sm outline-none',
           'empty:before:text-muted-foreground empty:before:content-[attr(data-placeholder)]',
           '[&_ul]:my-2 [&_ol]:my-2 [&_p]:my-1',
         )}
