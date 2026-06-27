@@ -24,7 +24,7 @@ export function CourseProgressHeader({
   onSelect,
 }: CourseProgressHeaderProps) {
   const isReady = completion.status === 'ready';
-  const programName = course.programCode?.trim() || 'Chương trình';
+  const programName = course.programCode?.trim() || 'Program';
 
   return (
     <div className="bg-card space-y-4 rounded-xl border p-5 shadow-sm">
@@ -60,22 +60,22 @@ export function CourseProgressHeader({
                 : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
             )}
           >
-            {isReady ? 'Sẵn sàng' : 'Nháp'}
+            {isReady ? 'Ready' : 'Draft'}
           </span>
         </div>
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={onEdit}>
             <Pencil className="mr-2 size-4" />
-            Sửa thông tin
+            Edit info
           </Button>
           <Button variant="outline" size="sm" onClick={onDelete}>
             <Trash2 className="mr-2 size-4" />
-            Xóa
+            Delete
           </Button>
           {!isReady && completion.firstIncomplete ? (
             <Button size="sm" onClick={() => onSelect(completion.firstIncomplete!.anchor)}>
-              Tiếp tục: {completion.firstIncomplete.label}
+              Continue: {completion.firstIncomplete.label}
               <ArrowRight className="ml-2 size-4" />
             </Button>
           ) : null}
@@ -84,9 +84,9 @@ export function CourseProgressHeader({
 
       <div className="space-y-1.5">
         <div className="text-muted-foreground flex items-center justify-between text-xs">
-          <span>Hoàn thiện khóa học</span>
+          <span>Course setup</span>
           <span className="text-foreground font-medium">
-            {completion.doneCount}/{completion.totalCount} bước · {completion.percent}%
+            {completion.doneCount}/{completion.totalCount} steps · {completion.percent}%
           </span>
         </div>
         <Progress value={completion.percent} className="h-2" />

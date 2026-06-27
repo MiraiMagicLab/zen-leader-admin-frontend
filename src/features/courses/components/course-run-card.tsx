@@ -5,26 +5,9 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/format';
 import { formatCourseRunPricingSummary } from '@/lib/course-run-pricing';
+import { courseRunStatusClasses, courseRunStatusLabel } from '@/lib/course-run-status';
 import { ROUTES } from '@/routes/paths';
 import type { CourseRunResponse } from '@/services/types/domain';
-
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: 'Nháp',
-  OPEN: 'Đang mở',
-  IN_PROGRESS: 'Đang học',
-  COMPLETED: 'Đã xong',
-  CANCELLED: 'Đã hủy',
-};
-
-function statusClasses(status: string) {
-  if (status === 'OPEN') {
-    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300';
-  }
-  if (status === 'CANCELLED') {
-    return 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300';
-  }
-  return 'bg-muted text-muted-foreground';
-}
 
 type CourseRunCardProps = {
   run: CourseRunResponse;
@@ -34,7 +17,7 @@ type CourseRunCardProps = {
 
 export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
   const sessionCount = (run.courseSessions ?? run.sessions ?? []).length;
-  const pricing = formatCourseRunPricingSummary(run.metadata) || 'Miễn phí';
+  const pricing = formatCourseRunPricingSummary(run.metadata) || 'Free';
 
   return (
     <div className="rounded-lg border p-4">
@@ -44,10 +27,10 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
           <span
             className={cn(
               'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
-              statusClasses(run.status),
+              courseRunStatusClasses(run.status),
             )}
           >
-            {STATUS_LABEL[run.status] ?? run.status}
+            {courseRunStatusLabel(run.status)}
           </span>
           <span className="bg-primary/10 text-primary inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">
             {pricing}
@@ -55,9 +38,9 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
         </div>
         <div className="flex gap-1.5">
           <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.courseRunDetail(run.id)}>Quản lý lớp</Link>
+            <Link to={ROUTES.courseRunDetail(run.id)}>Manage class</Link>
           </Button>
-          <Button variant="outline" size="icon" className="size-8" onClick={onEdit} aria-label="Sửa lớp">
+          <Button variant="outline" size="icon" className="size-8" onClick={onEdit} aria-label="Edit class">
             <Pencil className="size-4" />
           </Button>
           <Button
@@ -65,7 +48,7 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
             size="icon"
             className="text-destructive size-8"
             onClick={onDelete}
-            aria-label="Xóa lớp"
+            aria-label="Delete class"
           >
             <Trash2 className="size-4" />
           </Button>
@@ -75,15 +58,15 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
       <div className="text-muted-foreground mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs">
         <span className="inline-flex items-center gap-1.5">
           <Video className="size-3.5" />
-          {sessionCount} buổi học
+          {sessionCount} sessions
         </span>
         <span className="inline-flex items-center gap-1.5">
           <Users className="size-3.5" />
-          Sức chứa: {run.capacity ?? 'không giới hạn'}
+          Capacity: {run.capacity ?? 'Unlimited'}
         </span>
         <span className="inline-flex items-center gap-1.5">
           <CalendarClock className="size-3.5" />
-          Ghi danh: {formatDateTime(run.enrollmentStartDate)} – {formatDateTime(run.enrollmentEndDate)}
+          Enrollment: {formatDateTime(run.enrollmentStartDate)} – {formatDateTime(run.enrollmentEndDate)}
         </span>
       </div>
     </div>

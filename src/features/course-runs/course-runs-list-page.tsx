@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -34,7 +34,13 @@ import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatCourseRunPricingSummary, hasCourseRunPricing } from '@/lib/course-run-pricing';
+import {
+  COURSE_RUN_STATUS_OPTIONS,
+  courseRunStatusClasses,
+  courseRunStatusLabel,
+} from '@/lib/course-run-status';
 import { formatDateTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
@@ -42,7 +48,7 @@ import { coursesApi } from '@/services/courses/courses-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { CourseRunResponse } from '@/services/types/domain';
 
-const STATUS_OPTIONS = ['all', 'DRAFT', 'OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+const STATUS_OPTIONS = ['all', ...COURSE_RUN_STATUS_OPTIONS];
 
 export function CourseRunsListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.courseRuns);
@@ -120,7 +126,7 @@ export function CourseRunsListPage() {
           return (
             <Button
               variant="link"
-              className="h-auto p-0"
+              className="h-auto max-w-[18rem] truncate p-0"
               asChild
               onClick={(event) => event.stopPropagation()}
             >
@@ -132,49 +138,31 @@ export function CourseRunsListPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        cell: ({ row }) => (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium',
+              courseRunStatusClasses(row.original.status),
+            )}
+          >
+            {courseRunStatusLabel(row.original.status)}
+          </span>
+        ),
       },
       {
         id: 'pricing',
-        header: 'Checkout',
+        header: 'Price',
         cell: ({ row }) =>
           hasCourseRunPricing(row.original.metadata) ? (
-            <div className="space-y-1">
-              <Badge>Paid</Badge>
-              <p className="text-muted-foreground text-xs">
-                {formatCourseRunPricingSummary(row.original.metadata)}
-              </p>
-            </div>
+            <Badge>{formatCourseRunPricingSummary(row.original.metadata) || 'Paid'}</Badge>
           ) : (
             <Badge variant="outline">Free</Badge>
           ),
       },
       {
-        id: 'enrollment',
-        header: 'Enrollment window',
-        cell: ({ row }) => (
-          <div className="space-y-1 text-sm">
-            <p>{formatDateTime(row.original.enrollmentStartDate)}</p>
-            <p className="text-muted-foreground">
-              {formatDateTime(row.original.enrollmentEndDate)}
-            </p>
-          </div>
-        ),
-      },
-      {
         accessorKey: 'startsAt',
-        header: 'Start',
+        header: 'Starts',
         cell: ({ row }) => formatDateTime(row.original.startsAt),
-      },
-      {
-        accessorKey: 'endsAt',
-        header: 'End',
-        cell: ({ row }) => formatDateTime(row.original.endsAt),
-      },
-      {
-        accessorKey: 'capacity',
-        header: 'Capacity',
-        cell: ({ row }) => row.original.capacity ?? '—',
       },
       {
         ...tableActionsColumn<CourseRunResponse>(),
@@ -185,23 +173,16 @@ export function CourseRunsListPage() {
               size="sm"
               onClick={() => navigate(ROUTES.courseRunDetail(row.original.id))}
             >
-              Detail
+              Open
             </Button>
             <Button
               variant="outline"
-              size="sm"
-              onClick={() =>
-                navigate(`${ROUTES.courseRunDetail(row.original.id)}?settings=1`)
-              }
-            >
-              Edit
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
+              size="icon"
+              className="text-destructive size-8"
+              aria-label="Delete course run"
               onClick={() => setDeleteTarget(row.original)}
             >
-              Delete
+              <Trash2 className="size-4" />
             </Button>
           </TableRowActions>
         ),
@@ -214,7 +195,7 @@ export function CourseRunsListPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Course runs"
-        description="Manage class runs, pricing, schedules, and enrollment windows."
+        description="Manage course runs: schedule, pricing, and enrollment windows."
         actions={
           <Button onClick={() => setCreateOpen(true)}>
             <Plus className="mr-2 size-4" />
@@ -240,7 +221,7 @@ export function CourseRunsListPage() {
           <SelectContent>
             {STATUS_OPTIONS.map((status) => (
               <SelectItem key={status} value={status}>
-                {status === 'all' ? 'All statuses' : status}
+                {status === 'all' ? 'All statuses' : courseRunStatusLabel(status)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -274,7 +255,7 @@ export function CourseRunsListPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete course run?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete &quot;{deleteTarget?.code}&quot;. This action cannot be undone.
+              Delete course run &quot;{deleteTarget?.code}&quot;. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

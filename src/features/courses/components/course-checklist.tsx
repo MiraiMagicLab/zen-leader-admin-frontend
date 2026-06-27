@@ -14,11 +14,11 @@ export function CourseChecklist({ completion, onSelect }: CourseChecklistProps) 
 
   return (
     <div className="bg-card rounded-xl border p-5 shadow-sm">
-      <h2 className="text-base font-semibold">Các bước tiếp theo</h2>
+      <h2 className="text-base font-semibold">Next steps</h2>
       <p className="text-muted-foreground mt-0.5 text-sm">
         {remaining > 0
-          ? `Còn ${remaining} bước để khóa học sẵn sàng cho học viên.`
-          : 'Khóa học đã sẵn sàng cho học viên.'}
+          ? `${remaining} step${remaining === 1 ? '' : 's'} left before this course is ready for students.`
+          : 'This course is ready for students.'}
       </p>
 
       <ul className="mt-3 flex flex-col gap-0.5">

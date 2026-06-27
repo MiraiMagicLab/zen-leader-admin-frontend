@@ -26,12 +26,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { queryKeys } from '@/hooks/query-keys';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { syllabusItemsApi, syllabusSectionsApi } from '@/services/lms/lms-api';
@@ -382,67 +382,70 @@ export function SyllabusEditor({
         })
       )}
 
-      <Sheet open={sectionSheetOpen} onOpenChange={setSectionSheetOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Add chapter</SheetTitle>
-          </SheetHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Chapter name</Label>
-              <Input
-                value={sectionTitle}
-                placeholder={`Chapter ${sections.length + 1}`}
-                onChange={(e) => setSectionTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    createSectionMutation.mutate();
-                  }
-                }}
-              />
-            </div>
+      <Dialog open={sectionSheetOpen} onOpenChange={setSectionSheetOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add chapter</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Chapter name</Label>
+            <Input
+              autoFocus
+              value={sectionTitle}
+              placeholder={`Chapter ${sections.length + 1}`}
+              onChange={(e) => setSectionTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  createSectionMutation.mutate();
+                }
+              }}
+            />
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button
               onClick={() => createSectionMutation.mutate()}
               disabled={createSectionMutation.isPending}
             >
               Create & add lessons
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Sheet open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Rename chapter</SheetTitle>
-          </SheetHeader>
+      <Dialog open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename chapter</DialogTitle>
+          </DialogHeader>
           {editSection ? (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Chapter name</Label>
-                <Input
-                  value={editSection.title}
-                  onChange={(e) =>
-                    setEditSection((current) =>
-                      current ? { ...current, title: e.target.value } : current,
-                    )
+            <div className="space-y-2">
+              <Label>Chapter name</Label>
+              <Input
+                autoFocus
+                value={editSection.title}
+                onChange={(e) =>
+                  setEditSection((current) =>
+                    current ? { ...current, title: e.target.value } : current,
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateSectionMutation.mutate();
                   }
-                />
-              </div>
+                }}
+              />
             </div>
           ) : null}
-          <SheetFooter>
+          <DialogFooter>
             <Button
               onClick={() => updateSectionMutation.mutate()}
               disabled={!editSection?.title.trim() || updateSectionMutation.isPending}
             >
               Save
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {itemEditor ? (
         <SyllabusItemEditorSheet

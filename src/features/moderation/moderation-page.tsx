@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { RefreshCw, Search } from 'lucide-react';
+import { Copy, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -25,6 +25,19 @@ import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { safetyApi } from '@/services/safety/safety-api';
 import type { UgcReportResponse } from '@/services/types/domain';
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Pending',
+  RESOLVED: 'Resolved',
+  DISMISSED: 'Dismissed',
+};
+
+const CONTENT_TYPE_LABEL: Record<string, string> = {
+  comment: 'Comment',
+  post: 'Post',
+  event: 'Event',
+  user: 'User',
+};
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -77,11 +90,22 @@ export function ModerationPage() {
         accessorKey: 'reason',
         header: 'Reason',
         cell: ({ row }) => (
-          <div className="max-w-xs">
+          <div className="max-w-xs space-y-1">
             <p className="font-medium">{row.original.reason}</p>
-            <p className="text-muted-foreground text-xs">
-              {row.original.targetContentType} · {row.original.targetContentId}
-            </p>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
+              title="Copy reported content ID"
+              onClick={() => {
+                void navigator.clipboard?.writeText(row.original.targetContentId);
+                toast.success('Content ID copied.');
+              }}
+            >
+              {CONTENT_TYPE_LABEL[row.original.targetContentType] ??
+                row.original.targetContentType}{' '}
+              · {row.original.targetContentId.slice(0, 8)}…
+              <Copy className="size-3" />
+            </button>
           </div>
         ),
       },
@@ -103,7 +127,9 @@ export function ModerationPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        cell: ({ row }) => (
+          <Badge variant="secondary">{STATUS_LABEL[row.original.status] ?? row.original.status}</Badge>
+        ),
       },
       {
         accessorKey: 'createdAt',
@@ -151,7 +177,7 @@ export function ModerationPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Moderation"
-        description="Review user reports and update moderation outcomes."
+        description="Review user reports and update their resolution."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>

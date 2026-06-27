@@ -302,7 +302,7 @@ export function EventsListPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Events"
-        description="Manage public events, schedules, and publishing status."
+        description="Manage public events, schedule, and publishing status."
         actions={
           <Button
             onClick={() => {
@@ -371,6 +371,40 @@ export function EventsListPage() {
           </SelectContent>
         </Select>
       </div>
+
+      {keyword || authorKeyword || status !== 'all' || typeFilter !== 'all' ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Filtering:</span>
+          {keyword ? (
+            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">Keyword: {keyword}</span>
+          ) : null}
+          {authorKeyword ? (
+            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">Creator: {authorKeyword}</span>
+          ) : null}
+          {status !== 'all' ? (
+            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">Status: {status}</span>
+          ) : null}
+          {typeFilter !== 'all' ? (
+            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">
+              Type: {typeFilter === 'official' ? 'System' : 'User'}
+            </span>
+          ) : null}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7"
+            onClick={() => {
+              setKeyword('');
+              setAuthorKeyword('');
+              setStatus('all');
+              setTypeFilter('all');
+              setPage(0);
+            }}
+          >
+            Clear filters
+          </Button>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { courseRunStatusLabel } from '@/lib/course-run-status';
 import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
@@ -705,16 +706,14 @@ export function CourseRunDetailPage() {
       <PageHeader
         title={run?.code ?? 'Course run'}
         description={
-          run && course
-            ? `Course: ${course.title}`
-            : 'Manage live sessions and enrollment.'
+          run && course ? `Course: ${course.title}` : 'Manage sessions and enrollment.'
         }
         actions={
           run ? (
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={openRunSettings}>
                 <Settings2 className="mr-2 size-4" />
-                Course run settings
+                Run settings
               </Button>
               <Button
                 variant="destructive"
@@ -724,8 +723,8 @@ export function CourseRunDetailPage() {
                     title: 'Delete course run?',
                     description: (
                       <>
-                        Delete run &quot;{run.code}&quot; and related sessions. This cannot be
-                        undone.
+                        Delete course run &quot;{run.code}&quot; along with its sessions. This
+                        cannot be undone.
                       </>
                     ),
                     action: () => deleteRunMutation.mutate(),
@@ -753,7 +752,7 @@ export function CourseRunDetailPage() {
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
                     <dt className="text-muted-foreground">Status</dt>
                     <dd>
-                      <Badge variant="secondary">{run.status}</Badge>
+                      <Badge variant="secondary">{courseRunStatusLabel(run.status)}</Badge>
                     </dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
@@ -772,7 +771,7 @@ export function CourseRunDetailPage() {
                     </dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Pricing</dt>
+                    <dt className="text-muted-foreground">Price</dt>
                     <dd className="font-medium">
                       {hasCourseRunPricing(run.metadata)
                         ? formatCourseRunPricingSummary(run.metadata)
@@ -780,22 +779,22 @@ export function CourseRunDetailPage() {
                     </dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Start date</dt>
+                    <dt className="text-muted-foreground">Starts</dt>
                     <dd>{formatDateTime(run.startsAt)}</dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">End date</dt>
+                    <dt className="text-muted-foreground">Ends</dt>
                     <dd>{formatDateTime(run.endsAt)}</dd>
                   </div>
                 </dl>
 
                 <dl className="divide-y text-sm">
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Enrollment opens</dt>
+                    <dt className="text-muted-foreground">Open enrollment</dt>
                     <dd>{formatDateTime(run.enrollmentStartDate)}</dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Enrollment closes</dt>
+                    <dt className="text-muted-foreground">Close enrollment</dt>
                     <dd>{formatDateTime(run.enrollmentEndDate)}</dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
@@ -834,7 +833,7 @@ export function CourseRunDetailPage() {
             <TabsContent value="sessions" className="space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-                  <CardTitle className="text-base">Live sessions</CardTitle>
+                  <CardTitle className="text-base">Online sessions</CardTitle>
                   <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
                     <Plus className="mr-2 size-4" />
                     Add session

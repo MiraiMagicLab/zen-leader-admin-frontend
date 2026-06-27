@@ -26,10 +26,15 @@ import { meetingsApi } from '@/services/meetings/meetings-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { LiveSessionResponse } from '@/services/types/domain';
 
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE: 'Live',
+  ENDED: 'Ended',
+};
+
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
-  { value: 'ACTIVE', label: 'ACTIVE' },
-  { value: 'ENDED', label: 'ENDED' },
+  { value: 'ACTIVE', label: 'Live' },
+  { value: 'ENDED', label: 'Ended' },
 ] as const;
 
 export function LiveSessionsPage() {
@@ -71,7 +76,7 @@ export function LiveSessionsPage() {
     mutationFn: (roomCode: string) => meetingsApi.getJoinToken(roomCode),
     onSuccess: async (data) => {
       await navigator.clipboard.writeText(data.token);
-      toast.success('Join token copied to clipboard.');
+      toast.success('Join link copied.');
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -83,13 +88,10 @@ export function LiveSessionsPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
-      },
-      {
-        accessorKey: 'ownerId',
-        header: 'Owner',
         cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.original.ownerId.slice(0, 8)}…</span>
+          <Badge variant="secondary">
+            {STATUS_LABEL[row.original.status] ?? row.original.status}
+          </Badge>
         ),
       },
       {
@@ -99,7 +101,7 @@ export function LiveSessionsPage() {
       },
       {
         accessorKey: 'createdAt',
-        header: 'Created at',
+        header: 'Created',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -113,7 +115,7 @@ export function LiveSessionsPage() {
               onClick={() => joinMutation.mutate(row.original.roomCode)}
             >
               <Video className="mr-1 size-4" />
-              Copy token
+              Copy link
             </Button>
             {row.original.status !== 'ENDED' ? (
               <Button
@@ -143,7 +145,7 @@ export function LiveSessionsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Live sessions"
-        description="Review meeting rooms and session status for live delivery."
+        description="View meeting rooms and live session status."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -175,7 +177,7 @@ export function LiveSessionsPage() {
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Active</p>
+            <p className="text-muted-foreground text-sm">Live now</p>
             <p className="mt-2 text-2xl font-semibold">
               {sessionsQuery.data?.data?.filter((session) => session.status === 'ACTIVE').length ?? 0}
             </p>
@@ -183,7 +185,7 @@ export function LiveSessionsPage() {
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Linked to events</p>
+            <p className="text-muted-foreground text-sm">Linked to event</p>
             <p className="mt-2 text-2xl font-semibold">
               {sessionsQuery.data?.data?.filter((session) => Boolean(session.eventId)).length ?? 0}
             </p>

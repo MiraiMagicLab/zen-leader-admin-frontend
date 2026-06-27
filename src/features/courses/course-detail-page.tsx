@@ -182,7 +182,7 @@ export function CourseDetailPage() {
   const course = courseQuery.data;
   const courseRuns = course?.courseRuns ?? [];
   const completion = computeCourseCompletion(course);
-  const programDisplayName = course?.programCode?.trim() || 'Chương trình';
+  const programDisplayName = course?.programCode?.trim() || 'Program';
   const paidRunCount = courseRuns.filter((run) => hasCourseRunPricing(run.metadata)).length;
 
   useEffect(() => {
@@ -225,7 +225,7 @@ export function CourseDetailPage() {
         androidProductId: androidProductId || null,
       }),
     onSuccess: async () => {
-      toast.success('Đã cập nhật mã mua trong ứng dụng.');
+      toast.success('In-app purchase IDs updated.');
       setEditIapOpen(false);
       await invalidateCourseQueries();
     },
@@ -251,7 +251,7 @@ export function CourseDetailPage() {
           : null,
       }),
     onSuccess: async () => {
-      toast.success('Đã cập nhật lớp học.');
+      toast.success('Class updated.');
       setEditingRun(null);
       setRunForm(emptyRunForm);
       await invalidateCourseQueries();
@@ -262,7 +262,7 @@ export function CourseDetailPage() {
   const deleteRunMutation = useMutation({
     mutationFn: (runId: string) => courseRunsApi.remove(runId),
     onSuccess: async () => {
-      toast.success('Đã xóa lớp học.');
+      toast.success('Class deleted.');
       setPendingConfirm(null);
       await invalidateCourseQueries();
     },
@@ -292,7 +292,7 @@ export function CourseDetailPage() {
       });
     },
     onSuccess: async () => {
-      toast.success('Đã cập nhật khóa học.');
+      toast.success('Course updated.');
       setEditCourseOpen(false);
       await invalidateCourseQueries();
     },
@@ -302,7 +302,7 @@ export function CourseDetailPage() {
   const deleteCourseMutation = useMutation({
     mutationFn: () => coursesApi.remove(courseId!),
     onSuccess: () => {
-      toast.success('Đã xóa khóa học.');
+      toast.success('Course deleted.');
       void navigate(ROUTES.courses);
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -329,17 +329,17 @@ export function CourseDetailPage() {
 
   const confirmDeleteCourse = () =>
     setPendingConfirm({
-      title: 'Xóa khóa học?',
+      title: 'Delete course?',
       description: (
-        <>Xóa &quot;{course?.title}&quot; cùng toàn bộ giáo trình. Không thể hoàn tác.</>
+        <>Delete &quot;{course?.title}&quot; and its entire syllabus. This cannot be undone.</>
       ),
       action: () => deleteCourseMutation.mutate(),
     });
 
   const confirmDeleteRun = (run: CourseRunResponse) =>
     setPendingConfirm({
-      title: 'Xóa lớp học?',
-      description: <>Xóa lớp &quot;{run.code}&quot;. Không thể hoàn tác.</>,
+      title: 'Delete class?',
+      description: <>Delete class &quot;{run.code}&quot;. This cannot be undone.</>,
       action: () => deleteRunMutation.mutate(run.id),
     });
 
@@ -369,13 +369,13 @@ export function CourseDetailPage() {
           >
             <TabsList className="grid h-10 w-full max-w-xl grid-cols-3">
               <TabsTrigger value="info" className="h-full">
-                Thông tin
+                Information
               </TabsTrigger>
               <TabsTrigger value="syllabus" className="h-full">
-                Giáo trình ({totalSyllabusItems})
+                Syllabus ({totalSyllabusItems})
               </TabsTrigger>
               <TabsTrigger value="runs" className="h-full">
-                Các lớp ({courseRuns.length})
+                Classes ({courseRuns.length})
               </TabsTrigger>
             </TabsList>
 
@@ -383,10 +383,10 @@ export function CourseDetailPage() {
               <WorkspaceSection
                 id="info"
                 icon={<Info className="size-4" />}
-                title="Thông tin khóa học"
+                title="Course information"
                 action={
                   <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
-                    Sửa thông tin
+                    Edit info
                   </Button>
                 }
               >
@@ -401,16 +401,16 @@ export function CourseDetailPage() {
                 ) : (
                   <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1.5 text-center text-xs">
                     <ImageIcon className="size-7" />
-                    <span>Chưa có ảnh</span>
+                    <span>No image</span>
                   </div>
                 )}
               </div>
 
               <div className="space-y-3">
                 <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
-                  <dt className="text-muted-foreground">Mã khóa</dt>
+                  <dt className="text-muted-foreground">Course code</dt>
                   <dd className="font-mono">{course.code}</dd>
-                  <dt className="text-muted-foreground">Chương trình</dt>
+                  <dt className="text-muted-foreground">Program</dt>
                   <dd>
                     {course.programId ? (
                       <Link
@@ -420,14 +420,14 @@ export function CourseDetailPage() {
                         {programDisplayName}
                       </Link>
                     ) : (
-                      <span className="text-muted-foreground">Chưa liên kết</span>
+                      <span className="text-muted-foreground">Not linked</span>
                     )}
                   </dd>
-                  <dt className="text-muted-foreground">Cập nhật</dt>
+                  <dt className="text-muted-foreground">Updated</dt>
                   <dd>{formatDateTime(course.updatedAt)}</dd>
                 </dl>
                 <div>
-                  <p className="text-muted-foreground mb-1 text-sm">Mô tả</p>
+                  <p className="text-muted-foreground mb-1 text-sm">Description</p>
                   <RichTextPreview value={course.description} />
                 </div>
               </div>
@@ -437,7 +437,7 @@ export function CourseDetailPage() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="flex items-center gap-2 text-sm font-medium">
                   <ShoppingBag className="text-muted-foreground size-4" />
-                  Mua trong ứng dụng (tùy chọn)
+                  Mobile in-app purchase (optional)
                 </p>
                 <Button
                   variant="outline"
@@ -445,18 +445,18 @@ export function CourseDetailPage() {
                   disabled={iapMutation.isPending}
                   onClick={() => setEditIapOpen(true)}
                 >
-                  Sửa mã mua
+                  Edit purchase IDs
                 </Button>
               </div>
               <div className="text-muted-foreground mt-3 grid gap-2 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
-                <span>Lớp có thu phí</span>
+                <span>Paid classes</span>
                 <span className="text-foreground tabular-nums">
                   {paidRunCount} / {courseRuns.length}
                 </span>
                 <span>Apple Product ID</span>
-                <span className="text-foreground break-all">{appleProductId || 'Chưa đặt'}</span>
+                <span className="text-foreground break-all">{appleProductId || 'Not set'}</span>
                 <span>Android Product ID</span>
-                <span className="text-foreground break-all">{androidProductId || 'Chưa đặt'}</span>
+                <span className="text-foreground break-all">{androidProductId || 'Not set'}</span>
               </div>
             </div>
               </WorkspaceSection>
@@ -466,7 +466,7 @@ export function CourseDetailPage() {
               <WorkspaceSection
                 id="syllabus"
                 icon={<BookOpen className="size-4" />}
-                title="Giáo trình"
+                title="Syllabus"
               >
                 <SyllabusEditor
                   courseId={courseId}
@@ -481,11 +481,11 @@ export function CourseDetailPage() {
               <WorkspaceSection
                 id="runs"
             icon={<CalendarDays className="size-4" />}
-            title="Các lớp học"
+            title="Classes"
             action={
               <Button size="sm" onClick={() => setCreateRunOpen(true)}>
                 <Plus className="mr-2 size-4" />
-                Mở lớp mới
+                Open a class
               </Button>
             }
           >
@@ -503,14 +503,14 @@ export function CourseDetailPage() {
             ) : (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <p className="text-sm font-medium">
-                  Mở lớp để xếp lịch và cho học viên ghi danh
+                  Open a class to schedule sessions and let students enroll
                 </p>
                 <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-                  Mỗi lớp có lịch học, danh sách buổi và ghi danh riêng. Giáo trình dùng chung.
+                  Each class has its own schedule, sessions, and enrollment. The syllabus is shared.
                 </p>
                 <Button className="mt-4" size="sm" onClick={() => setCreateRunOpen(true)}>
                   <Plus className="mr-2 size-4" />
-                  Mở lớp mới
+                  Open a class
                 </Button>
               </div>
             )}
@@ -520,7 +520,7 @@ export function CourseDetailPage() {
         </>
       ) : (
         <div className="bg-card text-muted-foreground rounded-xl border p-6 text-sm shadow-sm">
-          Đang tải khóa học…
+          Loading course…
         </div>
       )}
 
@@ -537,25 +537,25 @@ export function CourseDetailPage() {
       <Sheet open={editCourseOpen} onOpenChange={setEditCourseOpen}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sửa khóa học</SheetTitle>
+            <SheetTitle>Edit course</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Mã khóa</Label>
+              <Label>Course code</Label>
               <Input
                 value={courseForm.code}
                 onChange={(e) => setCourseForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Tiêu đề</Label>
+              <Label>Title</Label>
               <Input
                 value={courseForm.title}
                 onChange={(e) => setCourseForm((prev) => ({ ...prev, title: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Ảnh bìa (URL)</Label>
+              <Label>Cover image (URL)</Label>
               <Input
                 value={courseForm.thumbnailUrl}
                 placeholder="https://..."
@@ -565,36 +565,36 @@ export function CourseDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Tải ảnh bìa mới</Label>
+              <Label>Upload new cover image</Label>
               <ImageFilePicker
                 file={courseForm.thumbnailFile}
                 existingUrl={courseForm.thumbnailUrl}
                 previewAlt={courseForm.title || 'Course thumbnail'}
-                helperText="Chọn ảnh mới sẽ thay ảnh bìa hiện tại sau khi lưu."
+                helperText="Choosing a new image replaces the current cover after saving."
                 onFileChange={(thumbnailFile) =>
                   setCourseForm((prev) => ({ ...prev, thumbnailFile }))
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label>Mô tả</Label>
+              <Label>Description</Label>
               <RichTextEditor
                 value={courseForm.description}
                 minHeight="14rem"
-                placeholder="Nhập mô tả khóa học…"
+                placeholder="Enter a course description…"
                 onChange={(description) =>
                   setCourseForm((prev) => ({ ...prev, description }))
                 }
               />
             </div>
             <div className="space-y-2">
-              <Label>Xem trước mô tả</Label>
+              <Label>Description preview</Label>
               <div className="bg-muted/20 rounded-md border p-4">
                 <RichTextPreview value={courseForm.description} />
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Thứ tự</Label>
+              <Label>Order</Label>
               <Input
                 type="number"
                 value={courseForm.orderIndex}
@@ -609,7 +609,7 @@ export function CourseDetailPage() {
               onClick={() => updateCourseMutation.mutate()}
               disabled={updateCourseMutation.isPending}
             >
-              Lưu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -618,10 +618,10 @@ export function CourseDetailPage() {
       <Dialog open={editIapOpen} onOpenChange={setEditIapOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Cấu hình mã mua trong ứng dụng</DialogTitle>
+            <DialogTitle>Configure in-app purchase IDs</DialogTitle>
             <DialogDescription>
-              Chỉ dùng để ánh xạ mua trong ứng dụng (IAP). Giá web/PayPal cấu hình theo từng lớp
-              học.
+              Used only for in-app purchase (IAP) mapping. Web/PayPal pricing is configured per
+              class.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -644,7 +644,7 @@ export function CourseDetailPage() {
           </div>
           <DialogFooter>
             <Button onClick={() => iapMutation.mutate()} disabled={iapMutation.isPending}>
-              Lưu mã mua
+              Save purchase IDs
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -659,18 +659,18 @@ export function CourseDetailPage() {
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Sửa lớp học</SheetTitle>
+            <SheetTitle>Edit class</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Mã lớp</Label>
+              <Label>Class code</Label>
               <Input
                 value={runForm.code}
                 onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Trạng thái</Label>
+              <Label>Status</Label>
               <Select
                 value={runForm.status}
                 onValueChange={(value) => setRunForm((prev) => ({ ...prev, status: value }))}
@@ -689,14 +689,14 @@ export function CourseDetailPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Bắt đầu</Label>
+                <Label>Starts</Label>
                 <DateTimePicker
                   value={runForm.startsAt}
                   onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Kết thúc</Label>
+                <Label>Ends</Label>
                 <DateTimePicker
                   value={runForm.endsAt}
                   onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
@@ -705,7 +705,7 @@ export function CourseDetailPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Mở ghi danh</Label>
+                <Label>Enrollment opens</Label>
                 <DateTimePicker
                   value={runForm.enrollmentStartDate}
                   onChange={(value) =>
@@ -714,7 +714,7 @@ export function CourseDetailPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Đóng ghi danh</Label>
+                <Label>Enrollment closes</Label>
                 <DateTimePicker
                   value={runForm.enrollmentEndDate}
                   onChange={(value) =>
@@ -724,7 +724,7 @@ export function CourseDetailPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Sức chứa</Label>
+              <Label>Capacity</Label>
               <Input
                 type="number"
                 value={runForm.capacity}
@@ -732,12 +732,12 @@ export function CourseDetailPage() {
               />
             </div>
             <div className="bg-muted/20 rounded-lg border p-4">
-              <p className="text-sm font-medium">Giá thanh toán</p>
+              <p className="text-sm font-medium">Pricing</p>
               <p className="text-muted-foreground mt-1 text-sm">
-                Đặt một giá USD chung cho lớp này để thanh toán tạo đúng đơn hàng.
+                Set a single USD price for this class so checkout creates the correct order.
               </p>
               <div className="mt-4 space-y-2">
-                <Label>Giá chung (USD)</Label>
+                <Label>Price (USD)</Label>
                 <Input
                   inputMode="decimal"
                   placeholder="19.99"
@@ -754,7 +754,7 @@ export function CourseDetailPage() {
               onClick={() => updateRunMutation.mutate()}
               disabled={updateRunMutation.isPending}
             >
-              Lưu
+              Save
             </Button>
           </SheetFooter>
         </SheetContent>

@@ -45,7 +45,6 @@ import {
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
-import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { UserResponse } from '@/services/types/domain';
@@ -210,7 +209,7 @@ export function UsersListPage() {
     () => [
       {
         accessorKey: 'displayName',
-        header: 'Display name',
+        header: 'User',
         cell: ({ row }) => (
           <div>
             <p className="font-medium">{row.original.displayName}</p>
@@ -220,7 +219,7 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'roles',
-        header: 'Role',
+        header: 'Roles',
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
             {getDisplayRoles(row.original).map((role) => (
@@ -232,46 +231,19 @@ export function UsersListPage() {
         ),
       },
       {
-        accessorKey: 'isActive',
+        id: 'status',
         header: 'Status',
         cell: ({ row }) => {
-          const status = renderStatus(row.original);
-          return <Badge variant={status.variant}>{status.label}</Badge>;
+          const user = row.original;
+          const status = renderStatus(user);
+          return (
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={status.variant}>{status.label}</Badge>
+              {!user.isVerified ? <Badge variant="outline">Unverified</Badge> : null}
+              {user.bannedUntil ? <Badge variant="destructive">Banned</Badge> : null}
+            </div>
+          );
         },
-      },
-      {
-        accessorKey: 'isVerified',
-        header: 'Verified',
-        cell: ({ row }) => (
-          <Badge variant={row.original.isVerified ? 'default' : 'outline'}>
-            {row.original.isVerified ? 'Verified' : 'Unverified'}
-          </Badge>
-        ),
-      },
-      {
-        accessorKey: 'bannedUntil',
-        header: 'Ban',
-        cell: ({ row }) =>
-          row.original.bannedUntil ? (
-            <Badge variant="destructive">{formatDateTime(row.original.bannedUntil)}</Badge>
-          ) : (
-            <span className="text-muted-foreground text-xs">-</span>
-          ),
-      },
-      {
-        accessorKey: 'deletedAt',
-        header: 'Deleted at',
-        cell: ({ row }) =>
-          row.original.deletedAt ? (
-            <Badge variant="destructive">{formatDateTime(row.original.deletedAt)}</Badge>
-          ) : (
-            <span className="text-muted-foreground text-xs">-</span>
-          ),
-      },
-      {
-        accessorKey: 'createdAt',
-        header: 'Created date',
-        cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
         id: 'actions',
@@ -346,7 +318,7 @@ export function UsersListPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Users"
-        description="Manage account access, roles, verification status, and moderation-related actions."
+        description="Manage account access, roles, verification status, and moderation actions."
         actions={
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>

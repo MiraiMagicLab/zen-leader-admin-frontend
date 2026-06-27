@@ -48,36 +48,39 @@ export function computeCourseCompletion(
   const steps: CompletionStep[] = [
     {
       id: 'info',
-      label: 'Thông tin khóa học',
-      summary: infoDone ? 'Đã điền' : 'Cần thêm mô tả',
+      label: 'Course information',
+      summary: infoDone ? 'Complete' : 'Add a description',
       done: infoDone,
       anchor: 'info',
     },
     {
       id: 'syllabus',
-      label: 'Giáo trình',
-      summary: lessonCount > 0 ? `${sections.length} chương · ${lessonCount} bài` : 'Chưa có bài',
+      label: 'Syllabus',
+      summary:
+        lessonCount > 0
+          ? `${sections.length} chapter${sections.length === 1 ? '' : 's'} · ${lessonCount} lesson${lessonCount === 1 ? '' : 's'}`
+          : 'No lessons yet',
       done: lessonCount > 0,
       anchor: 'syllabus',
     },
     {
       id: 'runs',
-      label: 'Mở lớp học',
-      summary: runs.length > 0 ? `${runs.length} lớp` : 'Chưa có lớp',
+      label: 'Open a class',
+      summary: runs.length > 0 ? `${runs.length} class${runs.length === 1 ? '' : 'es'}` : 'No classes yet',
       done: runs.length > 0,
       anchor: 'runs',
     },
     {
       id: 'sessions',
-      label: 'Buổi học',
-      summary: sessionCount > 0 ? `${sessionCount} buổi` : 'Chưa có buổi',
+      label: 'Sessions',
+      summary: sessionCount > 0 ? `${sessionCount} session${sessionCount === 1 ? '' : 's'}` : 'No sessions yet',
       done: sessionCount > 0,
       anchor: 'runs',
     },
     {
       id: 'ready',
-      label: 'Sẵn sàng cho học viên',
-      summary: hasOpenRun ? 'Có lớp đang mở' : 'Chưa có lớp mở',
+      label: 'Ready for students',
+      summary: hasOpenRun ? 'A class is open' : 'No open class',
       done: hasOpenRun,
       anchor: 'runs',
     },

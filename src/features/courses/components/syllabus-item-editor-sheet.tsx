@@ -255,16 +255,16 @@ export function SyllabusItemEditorSheet({
               />
               {videoFile ? (
                 <p className="text-muted-foreground text-xs">
-                  Đã chọn: → Selected: {videoFile.name} ({Math.round(videoFile.size / 1024 / 1024)} MB)
+                  Selected: {videoFile.name} ({Math.round(videoFile.size / 1024 / 1024)} MB)
                 </p>
               ) : existingVideoAttachment ? (
                 <p className="text-muted-foreground text-xs">
-                  Video hiện tại:{' '}
+                  Current video:{' '}
                   {existingVideoAttachment.fileName ?? existingVideoAttachment.url}
                 </p>
               ) : (
                 <p className="text-muted-foreground text-xs">
-                  Chọn file video trên máy — hệ thống upload lên R2 và gắn vào bài học. → Select a local video file — the system uploads it to R2 and attaches it to the lesson.
+                  Select a local video file — the system uploads it to R2 and attaches it to the lesson.
                 </p>
               )}
             </div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Search } from 'lucide-react';
+import { Copy, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
@@ -29,16 +29,24 @@ import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { paymentsApi } from '@/services/payments/payments-api';
 import type { AdminPaymentOrderResponse } from '@/services/types/domain';
 
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Awaiting payment',
+  PAID: 'Paid',
+  ENROLL_FAILED: 'Enrollment failed',
+  EXPIRED: 'Expired',
+  CANCELLED: 'Cancelled',
+  REFUND_PENDING: 'Refund pending',
+  REFUNDED: 'Refunded',
+};
+
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
-  { value: 'PENDING', label: 'PENDING' },
-  { value: 'PAID', label: 'PAID' },
-  { value: 'ENROLL_FAILED', label: 'ENROLL_FAILED' },
-  { value: 'EXPIRED', label: 'EXPIRED' },
-  { value: 'CANCELLED', label: 'CANCELLED' },
-  { value: 'REFUND_PENDING', label: 'REFUND_PENDING' },
-  { value: 'REFUNDED', label: 'REFUNDED' },
-] as const;
+  ...Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => ({ value, label })),
+];
+
+function paymentStatusLabel(status: string) {
+  return PAYMENT_STATUS_LABEL[status] ?? status;
+}
 
 export function PaymentsPage() {
   useAdminPageMeta(ADMIN_PAGE_META.payments);
@@ -83,7 +91,18 @@ export function PaymentsPage() {
         accessorKey: 'orderId',
         header: 'Order code',
         cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.original.orderId.slice(0, 8)}…</span>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-mono text-xs"
+            title="Copy full order code"
+            onClick={() => {
+              void navigator.clipboard?.writeText(row.original.orderId);
+              toast.success('Order code copied.');
+            }}
+          >
+            {row.original.orderId.slice(0, 8)}…
+            <Copy className="size-3" />
+          </button>
         ),
       },
       {
@@ -115,40 +134,33 @@ export function PaymentsPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        cell: ({ row }) => (
+          <Badge variant="secondary">{paymentStatusLabel(row.original.status)}</Badge>
+        ),
       },
       {
-        id: 'followUp',
-        header: 'Follow-up',
+        id: 'enrollment',
+        header: 'Enrollment',
         cell: ({ row }) => {
-          if (row.original.enrollmentActive) {
-            return 'Done';
+          const order = row.original;
+          if (order.enrollmentActive) {
+            return <Badge>Enrolled</Badge>;
           }
-          if (row.original.status === 'ENROLL_FAILED') {
-            return row.original.enrollmentFailureMessage || 'Retry enrollment needed';
+          if (order.status === 'ENROLL_FAILED') {
+            return <Badge variant="destructive">Enrollment failed</Badge>;
           }
-          if (row.original.status === 'PAID') {
-            return 'Enrollment is still missing';
+          if (order.status === 'PAID') {
+            return <Badge variant="outline">Awaiting enrollment</Badge>;
           }
-          if (row.original.status === 'PENDING') {
-            return 'Waiting for payment confirmation';
+          if (order.status === 'PENDING') {
+            return <Badge variant="outline">Awaiting payment</Badge>;
           }
-          return 'No action';
+          return <span className="text-muted-foreground text-xs">—</span>;
         },
       },
       {
-        accessorKey: 'enrollmentActive',
-        header: 'Enrolled',
-        cell: ({ row }) =>
-          row.original.enrollmentActive ? (
-            <Badge>Active</Badge>
-          ) : (
-            <Badge variant="outline">Not yet</Badge>
-          ),
-      },
-      {
         accessorKey: 'createdAt',
-        header: 'Created at',
+        header: 'Created',
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -181,7 +193,7 @@ export function PaymentsPage() {
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Payments"
-        description="Review payment orders and resolve enrollment follow-up."
+        description="Review payment orders and resolve pending enrollments."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -229,7 +241,7 @@ export function PaymentsPage() {
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Pending</p>
+            <p className="text-muted-foreground text-sm">Awaiting payment</p>
             <p className="mt-2 text-2xl font-semibold">
               {ordersQuery.data?.data?.filter((order) => order.status === 'PENDING').length ?? 0}
             </p>
