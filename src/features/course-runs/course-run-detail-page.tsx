@@ -46,6 +46,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
@@ -904,7 +912,7 @@ export function CourseRunDetailPage() {
       )}
 
       <Sheet open={runSettingsOpen} onOpenChange={setRunSettingsOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Course run settings</SheetTitle>
           </SheetHeader>
@@ -1029,7 +1037,7 @@ export function CourseRunDetailPage() {
       </Sheet>
 
       <Sheet open={createSessionOpen} onOpenChange={setCreateSessionOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Add session</SheetTitle>
           </SheetHeader>
@@ -1123,7 +1131,7 @@ export function CourseRunDetailPage() {
           setEditSession(null);
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Edit session</SheetTitle>
           </SheetHeader>
@@ -1239,7 +1247,7 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet
+      <Dialog
         open={enrollOpen}
         onOpenChange={(open) => {
           setEnrollOpen(open);
@@ -1250,11 +1258,11 @@ export function CourseRunDetailPage() {
           }
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Add learners</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add learners</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -1290,16 +1298,16 @@ export function CourseRunDetailPage() {
               label="Select learners"
             />
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+          <DialogFooter>
             <Button
               onClick={() => enrollMutation.mutate()}
               disabled={enrollUsers.length === 0 || enrollMutation.isPending}
             >
               Enroll {enrollUsers.length > 0 ? `(${enrollUsers.length})` : ''}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Sheet
         open={importOpen}
@@ -1312,7 +1320,7 @@ export function CourseRunDetailPage() {
           }
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Import enrollments via Excel</SheetTitle>
           </SheetHeader>
@@ -1467,59 +1475,60 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[520px] sm:max-w-[520px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Edit enrollment</SheetTitle>
+      <Dialog open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit enrollment</DialogTitle>
             {editEnrollment ? (
-              <SheetDescription>
+              <DialogDescription>
                 {editEnrollment.userDisplayName ?? editEnrollment.userEmail ?? 'Learner'}
                 {editEnrollment.userEmail && editEnrollment.userDisplayName
                   ? ` · ${editEnrollment.userEmail}`
                   : ''}
-              </SheetDescription>
+              </DialogDescription>
             ) : null}
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={editStatus} onValueChange={setEditStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                    <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
-                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STUDENT">STUDENT</SelectItem>
-                    <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                  <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
+                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="STUDENT">STUDENT</SelectItem>
+                  <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end sm:gap-2">
+          <DialogFooter>
             <Button variant="outline" onClick={() => setEditEnrollment(null)}>
               Cancel
             </Button>
-            <Button onClick={() => updateEnrollmentMutation.mutate()} disabled={updateEnrollmentMutation.isPending}>
+            <Button
+              onClick={() => updateEnrollmentMutation.mutate()}
+              disabled={updateEnrollmentMutation.isPending}
+            >
               Save
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={Boolean(pendingConfirm)}

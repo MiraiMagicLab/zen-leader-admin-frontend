@@ -27,6 +27,14 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -527,7 +535,7 @@ export function CourseDetailPage() {
       />
 
       <Sheet open={editCourseOpen} onOpenChange={setEditCourseOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Sửa khóa học</SheetTitle>
           </SheetHeader>
@@ -607,16 +615,16 @@ export function CourseDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={editIapOpen} onOpenChange={setEditIapOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Cấu hình mã mua trong ứng dụng</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="bg-muted/20 text-muted-foreground rounded-lg border p-4 text-sm">
-              Phần này chỉ dùng để ánh xạ mua trong ứng dụng (IAP). Giá thanh toán web/PayPal được
-              cấu hình theo từng lớp học.
-            </div>
+      <Dialog open={editIapOpen} onOpenChange={setEditIapOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cấu hình mã mua trong ứng dụng</DialogTitle>
+            <DialogDescription>
+              Chỉ dùng để ánh xạ mua trong ứng dụng (IAP). Giá web/PayPal cấu hình theo từng lớp
+              học.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label>Apple Product ID</Label>
               <Input
@@ -634,13 +642,13 @@ export function CourseDetailPage() {
               />
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+          <DialogFooter>
             <Button onClick={() => iapMutation.mutate()} disabled={iapMutation.isPending}>
               Lưu mã mua
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Sheet
         open={Boolean(editingRun)}
@@ -649,7 +657,7 @@ export function CourseDetailPage() {
           setRunForm(emptyRunForm);
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Sửa lớp học</SheetTitle>
           </SheetHeader>

@@ -283,7 +283,7 @@ export function ProgramsListPage() {
       />
 
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>
               {editing ? 'Edit program' : 'Add program'}

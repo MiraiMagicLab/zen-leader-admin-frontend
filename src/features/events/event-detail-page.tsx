@@ -30,6 +30,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
@@ -420,7 +427,7 @@ export function EventDetailPage() {
       </Card>
 
       <Sheet open={editEventOpen} onOpenChange={setEditEventOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Edit event</SheetTitle>
           </SheetHeader>
@@ -495,7 +502,7 @@ export function EventDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet
+      <Dialog
         open={editCommentOpen && Boolean(editComment)}
         onOpenChange={(open) => {
           setEditCommentOpen(open);
@@ -504,31 +511,29 @@ export function EventDetailPage() {
           }
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Edit comment</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-comment-content">Content</Label>
-              <Textarea
-                id="edit-comment-content"
-                rows={8}
-                value={editCommentContent}
-                onChange={(currentEvent) => setEditCommentContent(currentEvent.target.value)}
-              />
-            </div>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit comment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="edit-comment-content">Content</Label>
+            <Textarea
+              id="edit-comment-content"
+              rows={8}
+              value={editCommentContent}
+              onChange={(currentEvent) => setEditCommentContent(currentEvent.target.value)}
+            />
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+          <DialogFooter>
             <Button
               onClick={() => updateCommentMutation.mutate()}
               disabled={!editCommentContent.trim() || updateCommentMutation.isPending}
             >
               Save comment
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={Boolean(pendingEventAction)}
