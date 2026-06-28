@@ -12,6 +12,8 @@ import { ServerPagination } from '@/components/admin/server-pagination';
 import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -170,6 +172,40 @@ export function CoursesListPage() {
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
+
+  const initialForm: FormState = editing
+    ? {
+        code: editing.code,
+        title: editing.title,
+        description: editing.description ?? '',
+        orderIndex: editing.orderIndex,
+        thumbnailFile: null,
+        programId: editing.programId,
+      }
+    : { ...emptyForm, programId: programId ?? '' };
+
+  const isDirty =
+    dialogOpen &&
+    (form.code !== initialForm.code ||
+      form.title !== initialForm.title ||
+      form.description !== initialForm.description ||
+      form.orderIndex !== initialForm.orderIndex ||
+      form.programId !== initialForm.programId ||
+      form.thumbnailFile !== null);
+
+  useBeforeUnload(dialogOpen && isDirty);
+
+  const requiredFilled =
+    form.code.trim().length > 0 &&
+    form.title.trim().length > 0 &&
+    Boolean(editing?.programId ?? programId ?? form.programId);
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open && !confirmDiscard(isDirty)) {
+      return;
+    }
+    setDialogOpen(open);
+  };
 
   const openCreateDialog = () => {
     setEditing(null);
@@ -353,7 +389,7 @@ export function CoursesListPage() {
         onPageChange={setPage}
       />
 
-      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Sheet open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>{editing ? 'Edit course' : 'Add course'}</SheetTitle>
@@ -378,7 +414,9 @@ export function CoursesListPage() {
             ) : null}
             {!isProgramScope && !editing ? (
               <div className="space-y-2">
-                <Label>Program</Label>
+                <Label>
+                  Program <span className="text-destructive">*</span>
+                </Label>
                 <Select
                   value={form.programId || undefined}
                   onValueChange={(value) => {
@@ -422,7 +460,9 @@ export function CoursesListPage() {
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Code</Label>
+                <Label>
+                  Code <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   value={form.code}
                   aria-invalid={Boolean(fieldErrors.code)}
@@ -464,7 +504,9 @@ export function CoursesListPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Title</Label>
+              <Label>
+                Title <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={form.title}
                 aria-invalid={Boolean(fieldErrors.title)}
@@ -507,7 +549,10 @@ export function CoursesListPage() {
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || !requiredFilled}
+            >
               Save
             </Button>
           </SheetFooter>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -68,6 +68,8 @@ import {
   mergeCourseRunPricingMetadata,
 } from '@/lib/course-run-pricing';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
@@ -259,6 +261,55 @@ export function CourseRunDetailPage() {
   const course = courseQuery.data;
   const sessions = sessionsQuery.data?.data ?? run?.courseSessions ?? [];
   const enrollments = enrollmentsQuery.data?.data ?? [];
+
+  // Unsaved-changes detection for each form.
+  const runSettingsBaseline = useMemo(
+    () => (run ? toRunSettingsForm(run) : null),
+    [run],
+  );
+  const runSettingsDirty =
+    runSettings != null &&
+    runSettingsBaseline != null &&
+    (Object.keys(runSettings) as Array<keyof RunSettingsForm>).some(
+      (field) => runSettings[field] !== runSettingsBaseline[field],
+    );
+
+  const createSessionDirty = (Object.keys(emptySessionForm) as Array<keyof SessionForm>).some(
+    (field) => sessionForm[field] !== emptySessionForm[field],
+  );
+
+  const editSessionDirty =
+    editSession != null &&
+    (() => {
+      const original = sessions.find((session) => session.id === editSession.id);
+      if (!original) {
+        return true;
+      }
+      const baseline = toSessionForm(original);
+      return (Object.keys(baseline) as Array<keyof SessionForm>).some(
+        (field) => editSession.form[field] !== baseline[field],
+      );
+    })();
+
+  const enrollDirty =
+    enrollUsers.length > 0 || enrollStatus !== 'ACTIVE' || enrollRole !== 'STUDENT';
+
+  const editEnrollmentDirty =
+    editEnrollment != null &&
+    (editStatus !== editEnrollment.status ||
+      editRole !== (editEnrollment.role ?? 'STUDENT'));
+
+  const importDirty = importFile != null || importPreview != null;
+
+  const anyFormDirty =
+    (runSettingsOpen && runSettingsDirty) ||
+    (createSessionOpen && createSessionDirty) ||
+    (Boolean(editSession) && editSessionDirty) ||
+    (enrollOpen && enrollDirty) ||
+    (Boolean(editEnrollment) && editEnrollmentDirty) ||
+    (importOpen && importDirty);
+
+  useBeforeUnload(anyFormDirty);
 
   const openEditEnrollment = (enrollment: EnrollmentResponse) => {
     setEditEnrollment(enrollment);
@@ -515,15 +566,15 @@ export function CourseRunDetailPage() {
     setRunSettingsOpen(true);
   };
 
-  useEffect(() => {
-    if (searchParams.get('settings') !== '1' || !run) {
-      return;
-    }
-
+  // Open the settings sheet when arriving with ?settings=1. Handled during render
+  // (guarded by state) instead of in an effect to avoid react-hooks/set-state-in-effect.
+  const [settingsParamHandled, setSettingsParamHandled] = useState(false);
+  if (searchParams.get('settings') === '1' && run && !settingsParamHandled) {
+    setSettingsParamHandled(true);
     setRunSettings(toRunSettingsForm(run));
     setRunSettingsOpen(true);
     setSearchParams({}, { replace: true });
-  }, [run, searchParams, setSearchParams]);
+  }
 
   const openEditSession = (session: SessionResponse) => {
     setEditSession({
@@ -910,7 +961,15 @@ export function CourseRunDetailPage() {
         </Card>
       )}
 
-      <Sheet open={runSettingsOpen} onOpenChange={setRunSettingsOpen}>
+      <Sheet
+        open={runSettingsOpen}
+        onOpenChange={(open) => {
+          if (!open && !confirmDiscard(runSettingsDirty)) {
+            return;
+          }
+          setRunSettingsOpen(open);
+        }}
+      >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Course run settings</SheetTitle>
@@ -919,17 +978,25 @@ export function CourseRunDetailPage() {
             <>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                 <div className="space-y-2">
-                  <Label>Class code</Label>
+                  <Label>
+                    Class code <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={runSettings.code}
+                    aria-invalid={runSettings.code.trim() === ''}
                     onChange={(event) =>
                       setRunSettings((current) => current && { ...current, code: event.target.value })
                     }
                   />
+                  {runSettings.code.trim() === '' ? (
+                    <p className="text-destructive text-sm">Class code is required.</p>
+                  ) : null}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Status</Label>
+                    <Label>
+                      Status <span className="text-destructive">*</span>
+                    </Label>
                     <Select
                       value={runSettings.status}
                       onValueChange={(value) =>
@@ -982,7 +1049,9 @@ export function CourseRunDetailPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Start</Label>
+                    <Label>
+                      Start <span className="text-destructive">*</span>
+                    </Label>
                     <DateTimePicker
                       value={runSettings.startsAt}
                       onChange={(startsAt) =>
@@ -991,7 +1060,9 @@ export function CourseRunDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>End</Label>
+                    <Label>
+                      End <span className="text-destructive">*</span>
+                    </Label>
                     <DateTimePicker
                       value={runSettings.endsAt}
                       onChange={(endsAt) =>
@@ -1026,7 +1097,16 @@ export function CourseRunDetailPage() {
                 </div>
               </div>
               <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-                <Button onClick={() => updateRunMutation.mutate()} disabled={updateRunMutation.isPending}>
+                <Button
+                  onClick={() => updateRunMutation.mutate()}
+                  disabled={
+                    updateRunMutation.isPending ||
+                    runSettings.code.trim() === '' ||
+                    runSettings.status.trim() === '' ||
+                    runSettings.startsAt.trim() === '' ||
+                    runSettings.endsAt.trim() === ''
+                  }
+                >
                   Save
                 </Button>
               </SheetFooter>
@@ -1035,20 +1115,37 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={createSessionOpen} onOpenChange={setCreateSessionOpen}>
+      <Sheet
+        open={createSessionOpen}
+        onOpenChange={(open) => {
+          if (!open && !confirmDiscard(createSessionDirty)) {
+            return;
+          }
+          setCreateSessionOpen(open);
+          if (!open) {
+            setSessionForm(emptySessionForm);
+          }
+        }}
+      >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Add session</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Title</Label>
+              <Label>
+                Title <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={sessionForm.title}
+                aria-invalid={sessionForm.title.trim() === ''}
                 onChange={(event) =>
                   setSessionForm((current) => ({ ...current, title: event.target.value }))
                 }
               />
+              {sessionForm.title.trim() === '' ? (
+                <p className="text-destructive text-sm">Title is required.</p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
@@ -1117,7 +1214,10 @@ export function CourseRunDetailPage() {
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => createSessionMutation.mutate()} disabled={createSessionMutation.isPending}>
+            <Button
+              onClick={() => createSessionMutation.mutate()}
+              disabled={createSessionMutation.isPending || sessionForm.title.trim() === ''}
+            >
               Save
             </Button>
           </SheetFooter>
@@ -1126,8 +1226,13 @@ export function CourseRunDetailPage() {
 
       <Sheet
         open={Boolean(editSession)}
-        onOpenChange={() => {
-          setEditSession(null);
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!confirmDiscard(editSessionDirty)) {
+              return;
+            }
+            setEditSession(null);
+          }
         }}
       >
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
@@ -1138,9 +1243,12 @@ export function CourseRunDetailPage() {
             <>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                 <div className="space-y-2">
-                  <Label>Title</Label>
+                  <Label>
+                    Title <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={editSession.form.title}
+                    aria-invalid={editSession.form.title.trim() === ''}
                     onChange={(event) =>
                       setEditSession((current) =>
                         current && {
@@ -1150,6 +1258,9 @@ export function CourseRunDetailPage() {
                       )
                     }
                   />
+                  {editSession.form.title.trim() === '' ? (
+                    <p className="text-destructive text-sm">Title is required.</p>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
@@ -1237,7 +1348,12 @@ export function CourseRunDetailPage() {
                 </div>
               </div>
               <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-                <Button onClick={() => updateSessionMutation.mutate()} disabled={updateSessionMutation.isPending}>
+                <Button
+                  onClick={() => updateSessionMutation.mutate()}
+                  disabled={
+                    updateSessionMutation.isPending || editSession.form.title.trim() === ''
+                  }
+                >
                   Save
                 </Button>
               </SheetFooter>
@@ -1249,6 +1365,9 @@ export function CourseRunDetailPage() {
       <Dialog
         open={enrollOpen}
         onOpenChange={(open) => {
+          if (!open && !confirmDiscard(enrollDirty)) {
+            return;
+          }
           setEnrollOpen(open);
           if (!open) {
             setEnrollUsers([]);
@@ -1311,6 +1430,9 @@ export function CourseRunDetailPage() {
       <Sheet
         open={importOpen}
         onOpenChange={(open) => {
+          if (!open && !confirmDiscard(importDirty)) {
+            return;
+          }
           setImportOpen(open);
           if (!open) {
             setImportPreview(null);
@@ -1474,7 +1596,17 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Dialog open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
+      <Dialog
+        open={Boolean(editEnrollment)}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!confirmDiscard(editEnrollmentDirty)) {
+              return;
+            }
+            setEditEnrollment(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit enrollment</DialogTitle>
@@ -1516,7 +1648,14 @@ export function CourseRunDetailPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditEnrollment(null)}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirmDiscard(editEnrollmentDirty)) {
+                  setEditEnrollment(null);
+                }
+              }}
+            >
               Cancel
             </Button>
             <Button

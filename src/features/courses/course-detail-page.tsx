@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -59,6 +59,8 @@ import {
   hasCourseRunPricing,
   mergeCourseRunPricingMetadata,
 } from '@/lib/course-run-pricing';
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
@@ -185,10 +187,12 @@ export function CourseDetailPage() {
   const programDisplayName = course?.programCode?.trim() || 'Program';
   const paidRunCount = courseRuns.filter((run) => hasCourseRunPricing(run.metadata)).length;
 
+  const syncedCourseIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!course) {
+    if (!course || syncedCourseIdRef.current === course.id) {
       return;
     }
+    syncedCourseIdRef.current = course.id;
     setAppleProductId(course.appleProductId ?? '');
     setAndroidProductId(course.androidProductId ?? '');
     setCourseForm({
@@ -342,6 +346,73 @@ export function CourseDetailPage() {
       description: <>Delete class &quot;{run.code}&quot;. This cannot be undone.</>,
       action: () => deleteRunMutation.mutate(run.id),
     });
+
+  const courseFormDirty =
+    editCourseOpen &&
+    Boolean(course) &&
+    (courseForm.code !== course!.code ||
+      courseForm.title !== course!.title ||
+      courseForm.description !== (course!.description ?? '') ||
+      courseForm.orderIndex !== String(course!.orderIndex ?? 0) ||
+      courseForm.thumbnailUrl !== (course!.thumbnailUrl ?? '') ||
+      courseForm.thumbnailFile !== null);
+
+  const iapDirty =
+    editIapOpen &&
+    Boolean(course) &&
+    (appleProductId !== (course!.appleProductId ?? '') ||
+      androidProductId !== (course!.androidProductId ?? ''));
+
+  const runDirty =
+    Boolean(editingRun) &&
+    (runForm.code !== editingRun!.code ||
+      runForm.status !== editingRun!.status ||
+      runForm.startsAt !== (editingRun!.startsAt ? toLocalDateTimeFromIso(editingRun!.startsAt) : '') ||
+      runForm.endsAt !== (editingRun!.endsAt ? toLocalDateTimeFromIso(editingRun!.endsAt) : '') ||
+      runForm.timezone !== (editingRun!.timezone ?? 'Asia/Ho_Chi_Minh') ||
+      runForm.capacity !== (editingRun!.capacity != null ? String(editingRun!.capacity) : '') ||
+      runForm.paypalPriceUsd !== getPayPalPriceUsd(editingRun!.metadata) ||
+      runForm.enrollmentStartDate !==
+        (editingRun!.enrollmentStartDate ? toLocalDateTimeFromIso(editingRun!.enrollmentStartDate) : '') ||
+      runForm.enrollmentEndDate !==
+        (editingRun!.enrollmentEndDate ? toLocalDateTimeFromIso(editingRun!.enrollmentEndDate) : ''));
+
+  useBeforeUnload(
+    (editCourseOpen && courseFormDirty) ||
+      (editIapOpen && iapDirty) ||
+      (Boolean(editingRun) && runDirty),
+  );
+
+  const handleEditCourseOpenChange = (open: boolean) => {
+    if (!open && !confirmDiscard(courseFormDirty)) {
+      return;
+    }
+    setEditCourseOpen(open);
+  };
+
+  const handleEditIapOpenChange = (open: boolean) => {
+    if (!open && !confirmDiscard(iapDirty)) {
+      return;
+    }
+    setEditIapOpen(open);
+  };
+
+  const handleEditRunOpenChange = (open: boolean) => {
+    if (!open) {
+      if (!confirmDiscard(runDirty)) {
+        return;
+      }
+      setEditingRun(null);
+      setRunForm(emptyRunForm);
+    }
+  };
+
+  const courseFormValid =
+    courseForm.code.trim().length > 0 && courseForm.title.trim().length > 0;
+  const runFormValid =
+    runForm.code.trim().length > 0 &&
+    runForm.startsAt.trim().length > 0 &&
+    runForm.endsAt.trim().length > 0;
 
   if (!courseId) {
     return null;
@@ -534,21 +605,25 @@ export function CourseDetailPage() {
         }}
       />
 
-      <Sheet open={editCourseOpen} onOpenChange={setEditCourseOpen}>
+      <Sheet open={editCourseOpen} onOpenChange={handleEditCourseOpenChange}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Edit course</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Course code</Label>
+              <Label>
+                Course code <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={courseForm.code}
                 onChange={(e) => setCourseForm((prev) => ({ ...prev, code: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Title</Label>
+              <Label>
+                Title <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={courseForm.title}
                 onChange={(e) => setCourseForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -607,7 +682,7 @@ export function CourseDetailPage() {
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               onClick={() => updateCourseMutation.mutate()}
-              disabled={updateCourseMutation.isPending}
+              disabled={updateCourseMutation.isPending || !courseFormValid}
             >
               Save
             </Button>
@@ -615,7 +690,7 @@ export function CourseDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Dialog open={editIapOpen} onOpenChange={setEditIapOpen}>
+      <Dialog open={editIapOpen} onOpenChange={handleEditIapOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Configure in-app purchase IDs</DialogTitle>
@@ -650,20 +725,16 @@ export function CourseDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Sheet
-        open={Boolean(editingRun)}
-        onOpenChange={() => {
-          setEditingRun(null);
-          setRunForm(emptyRunForm);
-        }}
-      >
+      <Sheet open={Boolean(editingRun)} onOpenChange={handleEditRunOpenChange}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Edit class</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Class code</Label>
+              <Label>
+                Class code <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={runForm.code}
                 onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
@@ -689,14 +760,18 @@ export function CourseDetailPage() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Starts</Label>
+                <Label>
+                  Starts <span className="text-destructive">*</span>
+                </Label>
                 <DateTimePicker
                   value={runForm.startsAt}
                   onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Ends</Label>
+                <Label>
+                  Ends <span className="text-destructive">*</span>
+                </Label>
                 <DateTimePicker
                   value={runForm.endsAt}
                   onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
@@ -752,7 +827,7 @@ export function CourseDetailPage() {
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               onClick={() => updateRunMutation.mutate()}
-              disabled={updateRunMutation.isPending}
+              disabled={updateRunMutation.isPending || !runFormValid}
             >
               Save
             </Button>

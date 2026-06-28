@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { MoreHorizontal, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
@@ -103,6 +105,32 @@ export function EventsListPage() {
   const [status, setStatus] = useState('all');
   const [typeFilter, setTypeFilter] = useState<EventTypeFilter>('all');
   const [pendingAction, setPendingAction] = useState<PendingEventAction | null>(null);
+  const [touched, setTouched] = useState<{
+    title: boolean;
+    startTime: boolean;
+    endTime: boolean;
+  }>({ title: false, startTime: false, endTime: false });
+
+  const isDirty =
+    form.title !== emptyForm.title ||
+    form.description !== emptyForm.description ||
+    form.content !== emptyForm.content ||
+    form.startTime !== emptyForm.startTime ||
+    form.endTime !== emptyForm.endTime ||
+    form.publishImmediately !== emptyForm.publishImmediately ||
+    form.isOfficial !== emptyForm.isOfficial ||
+    form.thumbnailFile !== emptyForm.thumbnailFile;
+
+  const requiredMissing = !form.title.trim() || !form.startTime || !form.endTime;
+
+  useBeforeUnload(sheetOpen && isDirty);
+
+  const closeSheet = (open: boolean) => {
+    if (!open && !confirmDiscard(isDirty)) {
+      return;
+    }
+    setSheetOpen(open);
+  };
 
   const listParams = useMemo<EventAdminFeedParams>(
     () => ({
@@ -307,6 +335,7 @@ export function EventsListPage() {
           <Button
             onClick={() => {
               setForm(emptyForm);
+              setTouched({ title: false, startTime: false, endTime: false });
               setSheetOpen(true);
             }}
           >
@@ -449,7 +478,7 @@ export function EventsListPage() {
         onPageChange={setPage}
       />
 
-      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <Sheet open={sheetOpen} onOpenChange={closeSheet}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Add event</SheetTitle>
@@ -457,91 +486,132 @@ export function EventsListPage() {
               Create the event details, schedule, and thumbnail before publishing.
             </SheetDescription>
           </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="event-title">Title</Label>
-              <Input
-                id="event-title"
-                value={form.title}
-                onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-description">Description</Label>
-              <Textarea
-                id="event-description"
-                value={form.description}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, description: event.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-content">Content</Label>
-              <Textarea
-                id="event-content"
-                rows={6}
-                value={form.content}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, content: event.target.value }))
-                }
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-4">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Basic info
+              </p>
               <div className="space-y-2">
-                <Label>Start time</Label>
-                <DateTimePicker
-                  value={form.startTime}
-                  onChange={(startTime) => setForm((current) => ({ ...current, startTime }))}
+                <Label htmlFor="event-title">
+                  Event title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="event-title"
+                  value={form.title}
+                  aria-invalid={touched.title && !form.title.trim()}
+                  onBlur={() => setTouched((t) => ({ ...t, title: true }))}
+                  onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                />
+                {touched.title && !form.title.trim() ? (
+                  <p className="text-destructive text-sm">Event title is required.</p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="event-description">Short summary</Label>
+                <Textarea
+                  id="event-description"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, description: event.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
-                <Label>End time</Label>
-                <DateTimePicker
-                  value={form.endTime}
-                  onChange={(endTime) => setForm((current) => ({ ...current, endTime }))}
+                <Label htmlFor="event-content">Full details</Label>
+                <Textarea
+                  id="event-content"
+                  rows={6}
+                  value={form.content}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, content: event.target.value }))
+                  }
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="event-thumbnail">Thumbnail image</Label>
-              <ImageFilePicker
-                id="event-thumbnail"
-                file={form.thumbnailFile}
-                previewAlt={form.title || 'Event thumbnail'}
-                onFileChange={(thumbnailFile) =>
-                  setForm((current) => ({ ...current, thumbnailFile }))
-                }
-              />
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Schedule
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>
+                    Start time <span className="text-destructive">*</span>
+                  </Label>
+                  <DateTimePicker
+                    value={form.startTime}
+                    onChange={(startTime) => {
+                      setForm((current) => ({ ...current, startTime }));
+                      setTouched((t) => ({ ...t, startTime: true }));
+                    }}
+                  />
+                  {touched.startTime && !form.startTime ? (
+                    <p className="text-destructive text-sm">Start time is required.</p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    End time <span className="text-destructive">*</span>
+                  </Label>
+                  <DateTimePicker
+                    value={form.endTime}
+                    onChange={(endTime) => {
+                      setForm((current) => ({ ...current, endTime }));
+                      setTouched((t) => ({ ...t, endTime: true }));
+                    }}
+                  />
+                  {touched.endTime && !form.endTime ? (
+                    <p className="text-destructive text-sm">End time is required.</p>
+                  ) : null}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.publishImmediately}
-                onCheckedChange={(checked) =>
-                  setForm((current) => ({ ...current, publishImmediately: checked }))
-                }
-              />
-              <Label>Publish immediately</Label>
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Media
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="event-thumbnail">Thumbnail image</Label>
+                <ImageFilePicker
+                  id="event-thumbnail"
+                  file={form.thumbnailFile}
+                  previewAlt={form.title || 'Event thumbnail'}
+                  onFileChange={(thumbnailFile) =>
+                    setForm((current) => ({ ...current, thumbnailFile }))
+                  }
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.isOfficial}
-                onCheckedChange={(checked) =>
-                  setForm((current) => ({ ...current, isOfficial: checked }))
-                }
-              />
-              <Label>System event</Label>
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Status
+              </p>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.publishImmediately}
+                  onCheckedChange={(checked) =>
+                    setForm((current) => ({ ...current, publishImmediately: checked }))
+                  }
+                />
+                <Label>Publish immediately</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.isOfficial}
+                  onCheckedChange={(checked) =>
+                    setForm((current) => ({ ...current, isOfficial: checked }))
+                  }
+                />
+                <Label>System event</Label>
+              </div>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={
-                createMutation.isPending ||
-                !form.title.trim() ||
-                !form.startTime ||
-                !form.endTime
-              }
+              disabled={createMutation.isPending || requiredMissing}
             >
               Create event
             </Button>

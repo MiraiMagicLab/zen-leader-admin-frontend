@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Copy, RefreshCw, Search } from 'lucide-react';
@@ -7,8 +7,19 @@ import { toast } from 'sonner';
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -54,6 +65,9 @@ export function ModerationPage() {
   const [statusFilter, setStatusFilter] = useState('PENDING');
   const [search, setSearch] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<'RESOLVED' | 'DISMISSED' | null>(null);
+  const [bulkPending, setBulkPending] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -84,8 +98,74 @@ export function ModerationPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
+  const rows = reportsQuery.data?.data ?? [];
+  // Only pending reports can be resolved or dismissed in bulk.
+  const pendingRows = rows.filter((report) => report.status === 'PENDING');
+  const selectedPending = pendingRows.filter((report) => selectedIds.includes(report.id));
+  const allPendingSelected =
+    pendingRows.length > 0 && selectedPending.length === pendingRows.length;
+
+  const toggleRow = useCallback((reportId: string, checked: boolean) => {
+    setSelectedIds((current) =>
+      checked ? [...new Set([...current, reportId])] : current.filter((id) => id !== reportId),
+    );
+  }, []);
+
+  const pendingIds = pendingRows.map((report) => report.id).join(',');
+  const toggleAll = useCallback(
+    (checked: boolean) => {
+      setSelectedIds(checked ? (pendingIds ? pendingIds.split(',') : []) : []);
+    },
+    [pendingIds],
+  );
+
+  const runBulkUpdate = async () => {
+    if (!bulkAction) {
+      return;
+    }
+    const targets = selectedPending.map((report) => report.id);
+    setBulkPending(true);
+    try {
+      for (const reportId of targets) {
+        await safetyApi.updateReportStatus(reportId, bulkAction);
+      }
+      toast.success(
+        `${targets.length} ${targets.length === 1 ? 'report' : 'reports'} ${
+          bulkAction === 'RESOLVED' ? 'resolved' : 'dismissed'
+        }.`,
+      );
+      setSelectedIds([]);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.safety.all });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setBulkPending(false);
+      setBulkAction(null);
+    }
+  };
+
   const columns = useMemo<ColumnDef<UgcReportResponse>[]>(
     () => [
+      {
+        id: 'select',
+        header: () => (
+          <Checkbox
+            aria-label="Select all pending reports on this page"
+            checked={allPendingSelected}
+            disabled={pendingRows.length === 0}
+            onCheckedChange={(checked) => toggleAll(checked === true)}
+          />
+        ),
+        cell: ({ row }) =>
+          row.original.status === 'PENDING' ? (
+            <Checkbox
+              aria-label="Select report"
+              checked={selectedIds.includes(row.original.id)}
+              onCheckedChange={(checked) => toggleRow(row.original.id, checked === true)}
+            />
+          ) : null,
+        enableSorting: false,
+      },
       {
         accessorKey: 'reason',
         header: 'Reason',
@@ -112,6 +192,7 @@ export function ModerationPage() {
       {
         id: 'reporter',
         header: 'Reporter',
+        meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => (
           <div>
             <p>{row.original.reporterDisplayName}</p>
@@ -134,6 +215,7 @@ export function ModerationPage() {
       {
         accessorKey: 'createdAt',
         header: 'Time',
+        meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -170,7 +252,7 @@ export function ModerationPage() {
           ) : null,
       },
     ],
-    [updateStatusMutation],
+    [updateStatusMutation, selectedIds, allPendingSelected, pendingRows, toggleAll, toggleRow],
   );
 
   return (
@@ -216,9 +298,36 @@ export function ModerationPage() {
         </div>
       </div>
 
+      {selectedPending.length > 0 ? (
+        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
+          <span className="text-sm font-medium">{selectedPending.length} selected</span>
+          <div className="flex flex-1 flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              onClick={() => setBulkAction('RESOLVED')}
+            >
+              Resolve selected ({selectedPending.length})
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              onClick={() => setBulkAction('DISMISSED')}
+            >
+              Dismiss selected ({selectedPending.length})
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <DataTable
         columns={columns}
-        data={reportsQuery.data?.data ?? []}
+        data={rows}
         isLoading={reportsQuery.isLoading}
         emptyMessage="No reports found."
         showRowIndex
@@ -231,6 +340,42 @@ export function ModerationPage() {
         totalPages={reportsQuery.data?.totalPages ?? 1}
         onPageChange={setPage}
       />
+
+      <AlertDialog
+        open={bulkAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !bulkPending) {
+            setBulkAction(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkAction === 'RESOLVED'
+                ? 'Resolve selected reports?'
+                : 'Dismiss selected reports?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark {selectedPending.length}{' '}
+              {selectedPending.length === 1 ? 'report' : 'reports'} as{' '}
+              {bulkAction === 'RESOLVED' ? 'resolved' : 'dismissed'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void runBulkUpdate();
+              }}
+            >
+              {bulkPending ? 'Working…' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

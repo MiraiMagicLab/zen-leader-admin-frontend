@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -22,6 +22,8 @@ import {
 } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { syllabusItemsApi, syllabusSectionsApi } from '@/services/lms/lms-api';
 import type { SyllabusItemUpsertRequest } from '@/services/types/domain';
@@ -104,12 +106,21 @@ export function SyllabusItemEditorSheet({
   const [isHidden, setIsHidden] = useState(false);
   const [isOptional, setIsOptional] = useState(false);
 
+  const syncedKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!open) {
+      syncedKeyRef.current = null;
       return;
     }
+    // Sync form state once per (item loaded / new-form) transition to avoid
+    // overwriting in-progress user edits on unrelated re-renders.
     if (isEdit && itemQuery.data) {
       const item = itemQuery.data;
+      const key = `edit:${item.id}`;
+      if (syncedKeyRef.current === key) {
+        return;
+      }
+      syncedKeyRef.current = key;
       const content = item.contentData ?? {};
       setTitle(item.title);
       setDescription(item.description ?? '');
@@ -121,6 +132,11 @@ export function SyllabusItemEditorSheet({
       return;
     }
     if (!isEdit) {
+      const key = `new:${defaultType}`;
+      if (syncedKeyRef.current === key) {
+        return;
+      }
+      syncedKeyRef.current = key;
       setTitle('');
       setDescription('');
       setType(defaultType);
@@ -202,8 +218,52 @@ export function SyllabusItemEditorSheet({
 
   const itemType = type.toUpperCase();
 
+  const isDirty = (() => {
+    if (!open) {
+      return false;
+    }
+    if (videoFile) {
+      return true;
+    }
+    if (isEdit) {
+      const item = itemQuery.data;
+      if (!item) {
+        return false;
+      }
+      return (
+        title !== item.title ||
+        description !== (item.description ?? '') ||
+        type !== normalizeItemType(item.type) ||
+        body !== readContentField(item.contentData ?? {}, 'body', 'content') ||
+        isHidden !== (item.isHidden ?? false) ||
+        isOptional !== (item.isOptional ?? false)
+      );
+    }
+    return (
+      title.trim().length > 0 ||
+      description.trim().length > 0 ||
+      body.trim().length > 0 ||
+      type !== defaultType ||
+      isHidden ||
+      isOptional
+    );
+  })();
+
+  useBeforeUnload(open && isDirty);
+
+  const handleOpenChange = (next: boolean) => {
+    if (!next && !confirmDiscard(isDirty)) {
+      return;
+    }
+    onOpenChange(next);
+  };
+
+  const requiredFilled =
+    title.trim().length > 0 &&
+    (itemType !== 'VIDEO' || Boolean(videoFile) || Boolean(existingVideoAttachment));
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[640px] sm:max-w-[640px]">
         <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
           <SheetTitle>{isEdit ? 'Edit lesson' : 'Add lesson'}</SheetTitle>
@@ -213,8 +273,14 @@ export function SyllabusItemEditorSheet({
         </SheetHeader>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+          {isEdit && itemQuery.isLoading ? (
+            <p className="text-muted-foreground text-sm">Loading lesson…</p>
+          ) : (
+          <>
           <div className="space-y-2">
-            <Label>Title *</Label>
+            <Label>
+              Title <span className="text-destructive">*</span>
+            </Label>
             <Input
               value={title}
               placeholder="e.g. Session 1 — Introduction to Zen Leader"
@@ -247,7 +313,9 @@ export function SyllabusItemEditorSheet({
 
           {itemType === 'VIDEO' ? (
             <div className="space-y-2">
-              <Label>Local video *</Label>
+              <Label>
+                Video file <span className="text-destructive">*</span>
+              </Label>
               <Input
                 type="file"
                 accept="video/*"
@@ -264,7 +332,7 @@ export function SyllabusItemEditorSheet({
                 </p>
               ) : (
                 <p className="text-muted-foreground text-xs">
-                  Select a local video file — the system uploads it to R2 and attaches it to the lesson.
+                  Choose a video file from your computer. It is uploaded and attached to this lesson when you save.
                 </p>
               )}
             </div>
@@ -300,15 +368,17 @@ export function SyllabusItemEditorSheet({
               ) : null}
             </div>
           </details>
+          </>
+          )}
         </div>
 
         <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
           <Button
             onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || (isEdit && itemQuery.isLoading)}
+            disabled={saveMutation.isPending || (isEdit && itemQuery.isLoading) || !requiredFilled}
           >
             {isEdit ? 'Save' : 'Create lesson'}
           </Button>

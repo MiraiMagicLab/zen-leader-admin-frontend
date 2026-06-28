@@ -4,6 +4,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
@@ -62,6 +64,17 @@ type PendingCommentDelete = {
   commentId: string;
   authorName: string;
 };
+
+function humanizeKey(key: string): string {
+  const spaced = key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .trim();
+  if (!spaced) {
+    return key;
+  }
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
 
 function CommentItem({
   comment,
@@ -122,6 +135,20 @@ export function EventDetailPage() {
   const [editIsOfficial, setEditIsOfficial] = useState(false);
   const [editThumbnailFile, setEditThumbnailFile] = useState<File | null>(null);
   const [editThumbnailUrl, setEditThumbnailUrl] = useState('');
+  const [editTouched, setEditTouched] = useState<{
+    title: boolean;
+    start: boolean;
+    end: boolean;
+  }>({ title: false, start: false, end: false });
+  const [editInitial, setEditInitial] = useState({
+    title: '',
+    description: '',
+    content: '',
+    start: '',
+    end: '',
+    isOfficial: false,
+    thumbnailUrl: '',
+  });
   const [editComment, setEditComment] = useState<CommentResponse | null>(null);
   const [editCommentContent, setEditCommentContent] = useState('');
   const [pendingEventAction, setPendingEventAction] = useState<PendingEventAction | null>(null);
@@ -224,6 +251,40 @@ export function EventDetailPage() {
   const isConfirmingEventAction =
     publishMutation.isPending || unpublishMutation.isPending || deleteEventMutation.isPending;
 
+  const isEditEventDirty =
+    editTitle !== editInitial.title ||
+    editDescription !== editInitial.description ||
+    editContent !== editInitial.content ||
+    editStart !== editInitial.start ||
+    editEnd !== editInitial.end ||
+    editIsOfficial !== editInitial.isOfficial ||
+    editThumbnailUrl !== editInitial.thumbnailUrl ||
+    editThumbnailFile !== null;
+
+  const editEventRequiredMissing = !editTitle.trim() || !editStart || !editEnd;
+
+  const isEditCommentDirty =
+    editComment !== null && editCommentContent !== (editComment.content ?? '');
+
+  useBeforeUnload((editEventOpen && isEditEventDirty) || (editCommentOpen && isEditCommentDirty));
+
+  const closeEditEventSheet = (open: boolean) => {
+    if (!open && !confirmDiscard(isEditEventDirty)) {
+      return;
+    }
+    setEditEventOpen(open);
+  };
+
+  const closeEditCommentDialog = (open: boolean) => {
+    if (!open && !confirmDiscard(isEditCommentDirty)) {
+      return;
+    }
+    setEditCommentOpen(open);
+    if (!open) {
+      setEditComment(null);
+    }
+  };
+
   const openEditSheet = () => {
     if (!event) {
       return;
@@ -235,14 +296,27 @@ export function EventDetailPage() {
       return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
+    const start = toLocal(event.startTime);
+    const end = toLocal(event.endTime);
+
     setEditTitle(event.title);
     setEditDescription(event.description ?? '');
     setEditContent(event.content ?? '');
-    setEditStart(toLocal(event.startTime));
-    setEditEnd(toLocal(event.endTime));
+    setEditStart(start);
+    setEditEnd(end);
     setEditIsOfficial(event.isOfficial);
     setEditThumbnailFile(null);
     setEditThumbnailUrl(event.thumbnailUrl ?? '');
+    setEditInitial({
+      title: event.title,
+      description: event.description ?? '',
+      content: event.content ?? '',
+      start,
+      end,
+      isOfficial: event.isOfficial,
+      thumbnailUrl: event.thumbnailUrl ?? '',
+    });
+    setEditTouched({ title: false, start: false, end: false });
     setEditEventOpen(true);
   };
 
@@ -379,7 +453,7 @@ export function EventDetailPage() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {metadataEntries.map(([key, value]) => (
                     <div key={key} className="rounded-md border p-3">
-                      <p className="text-muted-foreground text-xs uppercase">{key}</p>
+                      <p className="text-muted-foreground text-xs">{humanizeKey(key)}</p>
                       <p className="mt-1 break-words text-sm">
                         {typeof value === 'string' ? value : JSON.stringify(value)}
                       </p>
@@ -426,75 +500,127 @@ export function EventDetailPage() {
         </CardContent>
       </Card>
 
-      <Sheet open={editEventOpen} onOpenChange={setEditEventOpen}>
+      <Sheet open={editEventOpen} onOpenChange={closeEditEventSheet}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Edit event</SheetTitle>
           </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-title">Title</Label>
-              <Input
-                id="edit-event-title"
-                value={editTitle}
-                onChange={(currentEvent) => setEditTitle(currentEvent.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-description">Description</Label>
-              <Textarea
-                id="edit-event-description"
-                value={editDescription}
-                onChange={(currentEvent) => setEditDescription(currentEvent.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-content">Content</Label>
-              <Textarea
-                id="edit-event-content"
-                rows={8}
-                value={editContent}
-                onChange={(currentEvent) => setEditContent(currentEvent.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-thumbnail-url">Thumbnail URL</Label>
-              <Input
-                id="edit-event-thumbnail-url"
-                value={editThumbnailUrl}
-                placeholder="https://..."
-                onChange={(currentEvent) => setEditThumbnailUrl(currentEvent.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-event-thumbnail-file">Replace thumbnail</Label>
-              <ImageFilePicker
-                id="edit-event-thumbnail-file"
-                file={editThumbnailFile}
-                existingUrl={editThumbnailUrl}
-                previewAlt={editTitle || 'Event thumbnail'}
-                onFileChange={setEditThumbnailFile}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-4">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Basic info
+              </p>
               <div className="space-y-2">
-                <Label>Start time</Label>
-                <DateTimePicker value={editStart} onChange={setEditStart} />
+                <Label htmlFor="edit-event-title">
+                  Event title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="edit-event-title"
+                  value={editTitle}
+                  aria-invalid={editTouched.title && !editTitle.trim()}
+                  onBlur={() => setEditTouched((t) => ({ ...t, title: true }))}
+                  onChange={(currentEvent) => setEditTitle(currentEvent.target.value)}
+                />
+                {editTouched.title && !editTitle.trim() ? (
+                  <p className="text-destructive text-sm">Event title is required.</p>
+                ) : null}
               </div>
               <div className="space-y-2">
-                <Label>End time</Label>
-                <DateTimePicker value={editEnd} onChange={setEditEnd} />
+                <Label htmlFor="edit-event-description">Short summary</Label>
+                <Textarea
+                  id="edit-event-description"
+                  value={editDescription}
+                  onChange={(currentEvent) => setEditDescription(currentEvent.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-event-content">Full details</Label>
+                <Textarea
+                  id="edit-event-content"
+                  rows={8}
+                  value={editContent}
+                  onChange={(currentEvent) => setEditContent(currentEvent.target.value)}
+                />
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch checked={editIsOfficial} onCheckedChange={setEditIsOfficial} />
-              <Label>System event</Label>
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Schedule
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>
+                    Start time <span className="text-destructive">*</span>
+                  </Label>
+                  <DateTimePicker
+                    value={editStart}
+                    onChange={(value) => {
+                      setEditStart(value);
+                      setEditTouched((t) => ({ ...t, start: true }));
+                    }}
+                  />
+                  {editTouched.start && !editStart ? (
+                    <p className="text-destructive text-sm">Start time is required.</p>
+                  ) : null}
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    End time <span className="text-destructive">*</span>
+                  </Label>
+                  <DateTimePicker
+                    value={editEnd}
+                    onChange={(value) => {
+                      setEditEnd(value);
+                      setEditTouched((t) => ({ ...t, end: true }));
+                    }}
+                  />
+                  {editTouched.end && !editEnd ? (
+                    <p className="text-destructive text-sm">End time is required.</p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Media
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="edit-event-thumbnail-url">Thumbnail link</Label>
+                <Input
+                  id="edit-event-thumbnail-url"
+                  value={editThumbnailUrl}
+                  placeholder="https://..."
+                  onChange={(currentEvent) => setEditThumbnailUrl(currentEvent.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-event-thumbnail-file">Upload new image</Label>
+                <ImageFilePicker
+                  id="edit-event-thumbnail-file"
+                  file={editThumbnailFile}
+                  existingUrl={editThumbnailUrl}
+                  previewAlt={editTitle || 'Event thumbnail'}
+                  onFileChange={setEditThumbnailFile}
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Status
+              </p>
+              <div className="flex items-center gap-2">
+                <Switch checked={editIsOfficial} onCheckedChange={setEditIsOfficial} />
+                <Label>System event</Label>
+              </div>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
             <Button
               onClick={() => updateMutation.mutate()}
-              disabled={!editTitle.trim() || !editStart || !editEnd || updateMutation.isPending}
+              disabled={editEventRequiredMissing || updateMutation.isPending}
             >
               Save changes
             </Button>
@@ -504,25 +630,26 @@ export function EventDetailPage() {
 
       <Dialog
         open={editCommentOpen && Boolean(editComment)}
-        onOpenChange={(open) => {
-          setEditCommentOpen(open);
-          if (!open) {
-            setEditComment(null);
-          }
-        }}
+        onOpenChange={closeEditCommentDialog}
       >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit comment</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="edit-comment-content">Content</Label>
+            <Label htmlFor="edit-comment-content">
+              Comment text <span className="text-destructive">*</span>
+            </Label>
             <Textarea
               id="edit-comment-content"
               rows={8}
               value={editCommentContent}
+              aria-invalid={!editCommentContent.trim()}
               onChange={(currentEvent) => setEditCommentContent(currentEvent.target.value)}
             />
+            {!editCommentContent.trim() ? (
+              <p className="text-destructive text-sm">Comment text is required.</p>
+            ) : null}
           </div>
           <DialogFooter>
             <Button
