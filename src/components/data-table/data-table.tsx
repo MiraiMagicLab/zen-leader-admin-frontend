@@ -6,6 +6,7 @@ import {
   getCoreRowModel,
   getPaginationRowModel,
   getSortedRowModel,
+  type RowData,
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
@@ -34,6 +35,15 @@ import {
   TABLE_ACTIONS_COLUMN_WIDTH,
 } from '@/components/admin/table-row-actions';
 import { cn } from '@/lib/utils';
+
+declare module '@tanstack/react-table' {
+  // Per-column className applied to both the header cell and body cells.
+  // Use for responsive hiding, e.g. meta: { className: 'hidden md:table-cell' }.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    className?: string;
+  }
+}
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
@@ -104,6 +114,7 @@ export function DataTable<TData, TValue>({
                   <TableHead
                     key={header.id}
                     className={cn(
+                      header.column.columnDef.meta?.className,
                       header.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
                     )}
                     style={
@@ -151,6 +162,7 @@ export function DataTable<TData, TValue>({
                     <TableCell
                       key={cell.id}
                       className={cn(
+                        cell.column.columnDef.meta?.className,
                         cell.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
                       )}
                       style={

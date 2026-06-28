@@ -1,16 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { RefreshCw, Search } from 'lucide-react';
+import { Copy, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -29,16 +40,31 @@ import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { paymentsApi } from '@/services/payments/payments-api';
 import type { AdminPaymentOrderResponse } from '@/services/types/domain';
 
+const PAYMENT_STATUS_LABEL: Record<string, string> = {
+  PENDING: 'Awaiting payment',
+  PAID: 'Paid',
+  ENROLL_FAILED: 'Enrollment failed',
+  EXPIRED: 'Expired',
+  CANCELLED: 'Cancelled',
+  REFUND_PENDING: 'Refund pending',
+  REFUNDED: 'Refunded',
+};
+
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
-  { value: 'PENDING', label: 'PENDING' },
-  { value: 'PAID', label: 'PAID' },
-  { value: 'ENROLL_FAILED', label: 'ENROLL_FAILED' },
-  { value: 'EXPIRED', label: 'EXPIRED' },
-  { value: 'CANCELLED', label: 'CANCELLED' },
-  { value: 'REFUND_PENDING', label: 'REFUND_PENDING' },
-  { value: 'REFUNDED', label: 'REFUNDED' },
-] as const;
+  ...Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => ({ value, label })),
+];
+
+function paymentStatusLabel(status: string) {
+  return PAYMENT_STATUS_LABEL[status] ?? status;
+}
+
+function canRetryEnrollment(order: AdminPaymentOrderResponse): boolean {
+  return (
+    order.status === 'ENROLL_FAILED' ||
+    (order.status === 'PAID' && !order.enrollmentActive)
+  );
+}
 
 export function PaymentsPage() {
   useAdminPageMeta(ADMIN_PAGE_META.payments);
@@ -48,6 +74,9 @@ export function PaymentsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -77,13 +106,87 @@ export function PaymentsPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
+  const rows = ordersQuery.data?.data ?? [];
+  // Only orders with enrollment issues can be retried.
+  const retryableRows = rows.filter(canRetryEnrollment);
+  const selectedRetryable = retryableRows.filter((order) => selectedIds.includes(order.orderId));
+  const allRetryableSelected =
+    retryableRows.length > 0 && selectedRetryable.length === retryableRows.length;
+
+  const toggleRow = useCallback((orderId: string, checked: boolean) => {
+    setSelectedIds((current) =>
+      checked ? [...new Set([...current, orderId])] : current.filter((id) => id !== orderId),
+    );
+  }, []);
+
+  const retryableIds = retryableRows.map((order) => order.orderId).join(',');
+  const toggleAll = useCallback(
+    (checked: boolean) => {
+      setSelectedIds(checked ? (retryableIds ? retryableIds.split(',') : []) : []);
+    },
+    [retryableIds],
+  );
+
+  const runBulkRetry = async () => {
+    const targets = selectedRetryable.map((order) => order.orderId);
+    setBulkPending(true);
+    try {
+      for (const orderId of targets) {
+        await paymentsApi.retryEnrollment(orderId);
+      }
+      toast.success(
+        `Enrollment retry started for ${targets.length} ${
+          targets.length === 1 ? 'order' : 'orders'
+        }.`,
+      );
+      setSelectedIds([]);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setBulkPending(false);
+      setBulkOpen(false);
+    }
+  };
+
   const columns = useMemo<ColumnDef<AdminPaymentOrderResponse>[]>(
     () => [
+      {
+        id: 'select',
+        header: () => (
+          <Checkbox
+            aria-label="Select all retryable orders on this page"
+            checked={allRetryableSelected}
+            disabled={retryableRows.length === 0}
+            onCheckedChange={(checked) => toggleAll(checked === true)}
+          />
+        ),
+        cell: ({ row }) =>
+          canRetryEnrollment(row.original) ? (
+            <Checkbox
+              aria-label="Select order"
+              checked={selectedIds.includes(row.original.orderId)}
+              onCheckedChange={(checked) => toggleRow(row.original.orderId, checked === true)}
+            />
+          ) : null,
+        enableSorting: false,
+      },
       {
         accessorKey: 'orderId',
         header: 'Order code',
         cell: ({ row }) => (
-          <span className="font-mono text-xs">{row.original.orderId.slice(0, 8)}…</span>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-mono text-xs"
+            title="Copy full order code"
+            onClick={() => {
+              void navigator.clipboard?.writeText(row.original.orderId);
+              toast.success('Order code copied.');
+            }}
+          >
+            {row.original.orderId.slice(0, 8)}…
+            <Copy className="size-3" />
+          </button>
         ),
       },
       {
@@ -115,40 +218,34 @@ export function PaymentsPage() {
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        cell: ({ row }) => (
+          <Badge variant="secondary">{paymentStatusLabel(row.original.status)}</Badge>
+        ),
       },
       {
-        id: 'followUp',
-        header: 'Follow-up',
+        id: 'enrollment',
+        header: 'Enrollment',
         cell: ({ row }) => {
-          if (row.original.enrollmentActive) {
-            return 'Done';
+          const order = row.original;
+          if (order.enrollmentActive) {
+            return <Badge>Enrolled</Badge>;
           }
-          if (row.original.status === 'ENROLL_FAILED') {
-            return row.original.enrollmentFailureMessage || 'Retry enrollment needed';
+          if (order.status === 'ENROLL_FAILED') {
+            return <Badge variant="destructive">Enrollment failed</Badge>;
           }
-          if (row.original.status === 'PAID') {
-            return 'Enrollment is still missing';
+          if (order.status === 'PAID') {
+            return <Badge variant="outline">Awaiting enrollment</Badge>;
           }
-          if (row.original.status === 'PENDING') {
-            return 'Waiting for payment confirmation';
+          if (order.status === 'PENDING') {
+            return <Badge variant="outline">Awaiting payment</Badge>;
           }
-          return 'No action';
+          return <span className="text-muted-foreground text-xs">—</span>;
         },
       },
       {
-        accessorKey: 'enrollmentActive',
-        header: 'Enrolled',
-        cell: ({ row }) =>
-          row.original.enrollmentActive ? (
-            <Badge>Active</Badge>
-          ) : (
-            <Badge variant="outline">Not yet</Badge>
-          ),
-      },
-      {
         accessorKey: 'createdAt',
-        header: 'Created at',
+        header: 'Created',
+        meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
@@ -174,14 +271,14 @@ export function PaymentsPage() {
         ),
       },
     ],
-    [retryMutation],
+    [retryMutation, selectedIds, allRetryableSelected, retryableRows, toggleAll, toggleRow],
   );
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Payments"
-        description="Review payment orders and resolve enrollment follow-up."
+        description="Review payment orders and resolve pending enrollments."
         actions={
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -229,7 +326,7 @@ export function PaymentsPage() {
         </Card>
         <Card>
           <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Pending</p>
+            <p className="text-muted-foreground text-sm">Awaiting payment</p>
             <p className="mt-2 text-2xl font-semibold">
               {ordersQuery.data?.data?.filter((order) => order.status === 'PENDING').length ?? 0}
             </p>
@@ -249,9 +346,29 @@ export function PaymentsPage() {
         </Card>
       </div>
 
+      {selectedRetryable.length > 0 ? (
+        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
+          <span className="text-sm font-medium">{selectedRetryable.length} selected</span>
+          <div className="flex flex-1 flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              onClick={() => setBulkOpen(true)}
+            >
+              <RefreshCw className="mr-2 size-4" />
+              Retry enrollment ({selectedRetryable.length})
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <DataTable
         columns={columns}
-        data={ordersQuery.data?.data ?? []}
+        data={rows}
         isLoading={ordersQuery.isLoading}
         emptyMessage="No payment orders yet."
         showRowIndex
@@ -264,6 +381,37 @@ export function PaymentsPage() {
         totalPages={ordersQuery.data?.totalPages ?? 1}
         onPageChange={setPage}
       />
+
+      <AlertDialog
+        open={bulkOpen}
+        onOpenChange={(open) => {
+          if (!open && !bulkPending) {
+            setBulkOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Retry enrollment for selected orders?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will start an enrollment retry for {selectedRetryable.length}{' '}
+              {selectedRetryable.length === 1 ? 'order' : 'orders'} with enrollment issues.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void runBulkRetry();
+              }}
+            >
+              {bulkPending ? 'Working…' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

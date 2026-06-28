@@ -18,7 +18,7 @@ export function RichTextPreview({
   return (
     <div
       className={cn(
-        'prose prose-sm max-w-none text-sm',
+        'text-foreground max-w-none text-sm',
         '[&_a]:text-primary [&_a]:underline [&_ol]:pl-5 [&_ul]:pl-5',
         className,
       )}

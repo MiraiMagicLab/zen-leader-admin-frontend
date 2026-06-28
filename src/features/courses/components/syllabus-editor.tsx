@@ -26,13 +26,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { queryKeys } from '@/hooks/query-keys';
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { syllabusItemsApi, syllabusSectionsApi } from '@/services/lms/lms-api';
 import type { SyllabusItemResponse, SyllabusSectionResponse } from '@/services/types/domain';
@@ -74,6 +76,7 @@ export function SyllabusEditor({
   const [sectionSheetOpen, setSectionSheetOpen] = useState(false);
   const [sectionTitle, setSectionTitle] = useState('');
   const [editSection, setEditSection] = useState<SyllabusSectionResponse | null>(null);
+  const [editSectionOriginalTitle, setEditSectionOriginalTitle] = useState('');
   const [itemEditor, setItemEditor] = useState<ItemEditorState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
@@ -193,6 +196,8 @@ export function SyllabusEditor({
     for (const section of sections) {
       const item = section.items?.find((entry) => entry.id === initialItemId);
       if (item) {
+        // Legitimate side effect: open the editor for a deep-linked ?itemId once data arrives.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         openEditItem(section, item);
         onInitialItemHandled?.();
         return;
@@ -210,6 +215,28 @@ export function SyllabusEditor({
     itemEditor,
     onInitialItemHandled,
   ]);
+
+  const addChapterDirty = sectionSheetOpen && sectionTitle.trim().length > 0;
+  const renameChapterDirty =
+    Boolean(editSection) && (editSection?.title ?? '') !== editSectionOriginalTitle;
+
+  useBeforeUnload(addChapterDirty || renameChapterDirty);
+
+  const handleAddChapterOpenChange = (open: boolean) => {
+    if (!open && !confirmDiscard(addChapterDirty)) {
+      return;
+    }
+    setSectionSheetOpen(open);
+  };
+
+  const handleRenameChapterOpenChange = (open: boolean) => {
+    if (!open) {
+      if (!confirmDiscard(renameChapterDirty)) {
+        return;
+      }
+      setEditSection(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -277,7 +304,12 @@ export function SyllabusEditor({
                         <CopyPlus className="mr-2 size-4" />
                         Duplicate chapter
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => setEditSection(section)}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setEditSection(section);
+                          setEditSectionOriginalTitle(section.title);
+                        }}
+                      >
                         <Pencil className="mr-2 size-4" />
                         Rename chapter
                       </DropdownMenuItem>
@@ -382,67 +414,72 @@ export function SyllabusEditor({
         })
       )}
 
-      <Sheet open={sectionSheetOpen} onOpenChange={setSectionSheetOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Add chapter</SheetTitle>
-          </SheetHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Chapter name</Label>
-              <Input
-                value={sectionTitle}
-                placeholder={`Chapter ${sections.length + 1}`}
-                onChange={(e) => setSectionTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    createSectionMutation.mutate();
-                  }
-                }}
-              />
-            </div>
+      <Dialog open={sectionSheetOpen} onOpenChange={handleAddChapterOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add chapter</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Chapter name</Label>
+            <Input
+              autoFocus
+              value={sectionTitle}
+              placeholder={`Chapter ${sections.length + 1}`}
+              onChange={(e) => setSectionTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  createSectionMutation.mutate();
+                }
+              }}
+            />
           </div>
-          <SheetFooter>
+          <DialogFooter>
             <Button
               onClick={() => createSectionMutation.mutate()}
               disabled={createSectionMutation.isPending}
             >
               Create & add lessons
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-      <Sheet open={Boolean(editSection)} onOpenChange={() => setEditSection(null)}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>Rename chapter</SheetTitle>
-          </SheetHeader>
+      <Dialog open={Boolean(editSection)} onOpenChange={handleRenameChapterOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename chapter</DialogTitle>
+          </DialogHeader>
           {editSection ? (
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Chapter name</Label>
-                <Input
-                  value={editSection.title}
-                  onChange={(e) =>
-                    setEditSection((current) =>
-                      current ? { ...current, title: e.target.value } : current,
-                    )
+            <div className="space-y-2">
+              <Label>
+                Chapter name <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                autoFocus
+                value={editSection.title}
+                onChange={(e) =>
+                  setEditSection((current) =>
+                    current ? { ...current, title: e.target.value } : current,
+                  )
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateSectionMutation.mutate();
                   }
-                />
-              </div>
+                }}
+              />
             </div>
           ) : null}
-          <SheetFooter>
+          <DialogFooter>
             <Button
               onClick={() => updateSectionMutation.mutate()}
               disabled={!editSection?.title.trim() || updateSectionMutation.isPending}
             >
               Save
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {itemEditor ? (
         <SyllabusItemEditorSheet

@@ -1,20 +1,32 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   Ban,
+  Lock,
   MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
   ShieldCheck,
   ShieldOff,
+  Unlock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,9 +55,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
+import { confirmDiscard } from '@/lib/confirm-discard';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
-import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { UserResponse } from '@/services/types/domain';
@@ -58,6 +71,13 @@ import {
 } from '@/services/users/users-api';
 
 const ROLE_OPTIONS = ['admin', 'user'];
+
+const EMPTY_CREATE_FORM = {
+  email: '',
+  displayName: '',
+  password: '',
+  role: 'user',
+};
 
 function getDefaultBanDate(): string {
   const date = new Date();
@@ -99,12 +119,17 @@ export function UsersListPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [createForm, setCreateForm] = useState({
-    email: '',
-    displayName: '',
-    password: '',
-    role: 'user',
-  });
+  const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<'lock' | 'unlock' | null>(null);
+  const [bulkPending, setBulkPending] = useState(false);
+
+  const createDirty =
+    createForm.email.trim() !== '' ||
+    createForm.displayName.trim() !== '' ||
+    createForm.password !== '' ||
+    createForm.role !== 'user';
+  useBeforeUnload(createDialogOpen && createDirty);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -196,6 +221,53 @@ export function UsersListPage() {
     setRolesDialogOpen(true);
   };
 
+  const rows = usersQuery.data?.data ?? [];
+  // Only non-deleted users can be locked/unlocked.
+  const selectableRows = rows.filter((user) => !isDeletedUser(user));
+  const selectedRowsOnPage = selectableRows.filter((user) => selectedIds.includes(user.id));
+  const allSelectableSelected =
+    selectableRows.length > 0 && selectedRowsOnPage.length === selectableRows.length;
+
+  const toggleRow = useCallback((userId: string, checked: boolean) => {
+    setSelectedIds((current) =>
+      checked ? [...new Set([...current, userId])] : current.filter((id) => id !== userId),
+    );
+  }, []);
+
+  const selectableIds = selectableRows.map((user) => user.id).join(',');
+  const toggleAll = useCallback(
+    (checked: boolean) => {
+      setSelectedIds(checked ? (selectableIds ? selectableIds.split(',') : []) : []);
+    },
+    [selectableIds],
+  );
+
+  const runBulkStatus = async () => {
+    if (!bulkAction) {
+      return;
+    }
+    const isActive = bulkAction === 'unlock';
+    const targets = selectedRowsOnPage.map((user) => user.id);
+    setBulkPending(true);
+    try {
+      for (const userId of targets) {
+        await updateUserStatusApi(userId, { isActive });
+      }
+      toast.success(
+        `${targets.length} ${targets.length === 1 ? 'user' : 'users'} ${
+          isActive ? 'unlocked' : 'locked'
+        }.`,
+      );
+      setSelectedIds([]);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error));
+    } finally {
+      setBulkPending(false);
+      setBulkAction(null);
+    }
+  };
+
   const handleBanSubmit = () => {
     if (!selectedUser) {
       return;
@@ -209,8 +281,28 @@ export function UsersListPage() {
   const columns = useMemo<ColumnDef<UserResponse>[]>(
     () => [
       {
+        id: 'select',
+        header: () => (
+          <Checkbox
+            aria-label="Select all users on this page"
+            checked={allSelectableSelected}
+            disabled={selectableRows.length === 0}
+            onCheckedChange={(checked) => toggleAll(checked === true)}
+          />
+        ),
+        cell: ({ row }) =>
+          isDeletedUser(row.original) ? null : (
+            <Checkbox
+              aria-label="Select user"
+              checked={selectedIds.includes(row.original.id)}
+              onCheckedChange={(checked) => toggleRow(row.original.id, checked === true)}
+            />
+          ),
+        enableSorting: false,
+      },
+      {
         accessorKey: 'displayName',
-        header: 'Display name',
+        header: 'User',
         cell: ({ row }) => (
           <div>
             <p className="font-medium">{row.original.displayName}</p>
@@ -220,7 +312,8 @@ export function UsersListPage() {
       },
       {
         accessorKey: 'roles',
-        header: 'Role',
+        header: 'Roles',
+        meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => (
           <div className="flex flex-wrap gap-1">
             {getDisplayRoles(row.original).map((role) => (
@@ -232,46 +325,19 @@ export function UsersListPage() {
         ),
       },
       {
-        accessorKey: 'isActive',
+        id: 'status',
         header: 'Status',
         cell: ({ row }) => {
-          const status = renderStatus(row.original);
-          return <Badge variant={status.variant}>{status.label}</Badge>;
+          const user = row.original;
+          const status = renderStatus(user);
+          return (
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={status.variant}>{status.label}</Badge>
+              {!user.isVerified ? <Badge variant="outline">Unverified</Badge> : null}
+              {user.bannedUntil ? <Badge variant="destructive">Banned</Badge> : null}
+            </div>
+          );
         },
-      },
-      {
-        accessorKey: 'isVerified',
-        header: 'Verified',
-        cell: ({ row }) => (
-          <Badge variant={row.original.isVerified ? 'default' : 'outline'}>
-            {row.original.isVerified ? 'Verified' : 'Unverified'}
-          </Badge>
-        ),
-      },
-      {
-        accessorKey: 'bannedUntil',
-        header: 'Ban',
-        cell: ({ row }) =>
-          row.original.bannedUntil ? (
-            <Badge variant="destructive">{formatDateTime(row.original.bannedUntil)}</Badge>
-          ) : (
-            <span className="text-muted-foreground text-xs">-</span>
-          ),
-      },
-      {
-        accessorKey: 'deletedAt',
-        header: 'Deleted at',
-        cell: ({ row }) =>
-          row.original.deletedAt ? (
-            <Badge variant="destructive">{formatDateTime(row.original.deletedAt)}</Badge>
-          ) : (
-            <span className="text-muted-foreground text-xs">-</span>
-          ),
-      },
-      {
-        accessorKey: 'createdAt',
-        header: 'Created date',
-        cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
         id: 'actions',
@@ -339,14 +405,22 @@ export function UsersListPage() {
         ),
       },
     ],
-    [banMutation, statusMutation],
+    [
+      banMutation,
+      statusMutation,
+      selectedIds,
+      allSelectableSelected,
+      selectableRows,
+      toggleAll,
+      toggleRow,
+    ],
   );
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         title="Users"
-        description="Manage account access, roles, verification status, and moderation-related actions."
+        description="Manage account access, roles, verification status, and moderation actions."
         actions={
           <div className="flex gap-2">
             <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
@@ -420,9 +494,40 @@ export function UsersListPage() {
         </Card>
       </div>
 
+      {selectedRowsOnPage.length > 0 ? (
+        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
+          <span className="text-sm font-medium">
+            {selectedRowsOnPage.length} selected
+          </span>
+          <div className="flex flex-1 flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              onClick={() => setBulkAction('lock')}
+            >
+              <Lock className="mr-2 size-4" />
+              Lock selected ({selectedRowsOnPage.length})
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={bulkPending}
+              onClick={() => setBulkAction('unlock')}
+            >
+              <Unlock className="mr-2 size-4" />
+              Unlock selected ({selectedRowsOnPage.length})
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+              Clear
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <DataTable
         columns={columns}
-        data={usersQuery.data?.data ?? []}
+        data={rows}
         isLoading={usersQuery.isLoading}
         emptyMessage="No users found."
         showRowIndex
@@ -445,9 +550,12 @@ export function UsersListPage() {
       <Dialog
         open={createDialogOpen}
         onOpenChange={(open) => {
+          if (!open && !confirmDiscard(createDirty)) {
+            return;
+          }
           setCreateDialogOpen(open);
           if (open) {
-            setCreateForm({ email: '', displayName: '', password: '', role: 'user' });
+            setCreateForm(EMPTY_CREATE_FORM);
           }
         }}
       >
@@ -464,7 +572,9 @@ export function UsersListPage() {
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor="create-user-email">Email</Label>
+              <Label htmlFor="create-user-email">
+                Email <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="create-user-email"
                 name="create-user-email"
@@ -477,7 +587,9 @@ export function UsersListPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-user-name">Display name</Label>
+              <Label htmlFor="create-user-name">
+                Display name <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="create-user-name"
                 name="create-user-name"
@@ -492,7 +604,9 @@ export function UsersListPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="create-user-password">Password</Label>
+              <Label htmlFor="create-user-password">
+                Password <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="create-user-password"
                 name="create-user-password"
@@ -638,6 +752,39 @@ export function UsersListPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={bulkAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !bulkPending) {
+            setBulkAction(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkAction === 'unlock' ? 'Unlock selected users?' : 'Lock selected users?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will {bulkAction === 'unlock' ? 'unlock' : 'lock'} {selectedRowsOnPage.length}{' '}
+              {selectedRowsOnPage.length === 1 ? 'account' : 'accounts'}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkPending}
+              onClick={(event) => {
+                event.preventDefault();
+                void runBulkStatus();
+              }}
+            >
+              {bulkPending ? 'Working…' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -27,7 +26,13 @@ import { getRouteLabel } from '@/lib/route-labels';
 import { ROUTES } from '@/routes/paths';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
-import { Moon, Sun, LogOut, ChevronDown } from 'lucide-react';
+import { Moon, Sun, Monitor, LogOut, ChevronDown } from 'lucide-react';
+
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light', icon: Sun },
+  { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'system', label: 'System', icon: Monitor },
+] as const;
 
 export const DashboardHeader = memo(() => {
   const navigate = useNavigate();
@@ -38,11 +43,6 @@ export const DashboardHeader = memo(() => {
 
   const pageLabel = getRouteLabel(location.pathname);
   const isHome = location.pathname === ROUTES.home;
-
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'system' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   const handleLogout = () => {
     logoutMutation.mutate(undefined, {
@@ -92,50 +92,76 @@ export const DashboardHeader = memo(() => {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="hover:bg-accent data-[state=open]:bg-accent flex items-center gap-2 rounded-full border border-border/60 bg-card/50 py-1 pr-1 pl-1 shadow-sm transition-colors md:pr-3"
+              className="hover:bg-muted data-[state=open]:bg-muted flex items-center gap-2 rounded-lg border bg-card py-1 pr-2 pl-1 transition-colors"
             >
               <Avatar size="sm">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
-              <div className="hidden text-left md:block">
-                <p className="max-w-[140px] truncate text-sm leading-none font-medium">
+              <div className="hidden text-left leading-tight md:block">
+                <p className="max-w-[140px] truncate text-sm font-medium">
                   {user?.name ?? 'Admin'}
                 </p>
-                <p className="text-muted-foreground mt-0.5 max-w-[140px] truncate text-xs capitalize">
+                <p className="text-muted-foreground max-w-[140px] truncate text-xs capitalize">
                   {user?.role ?? 'admin'}
                 </p>
               </div>
               <ChevronDown className="text-muted-foreground hidden size-4 md:block" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col gap-1">
-                <p className="text-sm leading-none font-medium">
-                  {user?.name ?? 'Admin'}
-                </p>
-                <p className="text-muted-foreground text-xs">{user?.email}</p>
+          <DropdownMenuContent align="end" className="w-64 p-0">
+            <div className="flex items-center gap-3 p-3">
+              <Avatar size="default">
+                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{user?.name ?? 'Admin'}</p>
+                <p className="text-muted-foreground truncate text-xs">{user?.email}</p>
               </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setTheme(isDark ? 'light' : 'dark')}>
-              {isDark ? (
-                <Sun className="mr-2 h-4 w-4" />
-              ) : (
-                <Moon className="mr-2 h-4 w-4" />
-              )}
-              {isDark ? 'Light mode' : 'Dark mode'}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign out
-            </DropdownMenuItem>
+            </div>
+
+            <DropdownMenuSeparator className="m-0" />
+
+            <div className="p-2">
+              <p className="text-muted-foreground mb-1.5 px-1 text-xs font-medium">Appearance</p>
+              <div className="bg-muted/60 grid grid-cols-3 gap-1 rounded-lg p-1">
+                {THEME_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const active = theme === option.value;
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setTheme(option.value)}
+                      className={cn(
+                        'flex flex-col items-center gap-1 rounded-md py-1.5 text-xs font-medium transition-colors',
+                        active
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <Icon className="size-4" />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <DropdownMenuSeparator className="m-0" />
+
+            <div className="p-1">
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 size-4" />
+                Sign out
+              </DropdownMenuItem>
+            </div>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

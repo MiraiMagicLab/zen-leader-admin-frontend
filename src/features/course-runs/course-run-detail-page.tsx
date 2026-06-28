@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { PageHeader } from '@/components/admin/page-header';
+import { courseRunStatusLabel } from '@/lib/course-run-status';
 import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
@@ -46,6 +47,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
@@ -59,6 +68,8 @@ import {
   mergeCourseRunPricingMetadata,
 } from '@/lib/course-run-pricing';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
@@ -250,6 +261,55 @@ export function CourseRunDetailPage() {
   const course = courseQuery.data;
   const sessions = sessionsQuery.data?.data ?? run?.courseSessions ?? [];
   const enrollments = enrollmentsQuery.data?.data ?? [];
+
+  // Unsaved-changes detection for each form.
+  const runSettingsBaseline = useMemo(
+    () => (run ? toRunSettingsForm(run) : null),
+    [run],
+  );
+  const runSettingsDirty =
+    runSettings != null &&
+    runSettingsBaseline != null &&
+    (Object.keys(runSettings) as Array<keyof RunSettingsForm>).some(
+      (field) => runSettings[field] !== runSettingsBaseline[field],
+    );
+
+  const createSessionDirty = (Object.keys(emptySessionForm) as Array<keyof SessionForm>).some(
+    (field) => sessionForm[field] !== emptySessionForm[field],
+  );
+
+  const editSessionDirty =
+    editSession != null &&
+    (() => {
+      const original = sessions.find((session) => session.id === editSession.id);
+      if (!original) {
+        return true;
+      }
+      const baseline = toSessionForm(original);
+      return (Object.keys(baseline) as Array<keyof SessionForm>).some(
+        (field) => editSession.form[field] !== baseline[field],
+      );
+    })();
+
+  const enrollDirty =
+    enrollUsers.length > 0 || enrollStatus !== 'ACTIVE' || enrollRole !== 'STUDENT';
+
+  const editEnrollmentDirty =
+    editEnrollment != null &&
+    (editStatus !== editEnrollment.status ||
+      editRole !== (editEnrollment.role ?? 'STUDENT'));
+
+  const importDirty = importFile != null || importPreview != null;
+
+  const anyFormDirty =
+    (runSettingsOpen && runSettingsDirty) ||
+    (createSessionOpen && createSessionDirty) ||
+    (Boolean(editSession) && editSessionDirty) ||
+    (enrollOpen && enrollDirty) ||
+    (Boolean(editEnrollment) && editEnrollmentDirty) ||
+    (importOpen && importDirty);
+
+  useBeforeUnload(anyFormDirty);
 
   const openEditEnrollment = (enrollment: EnrollmentResponse) => {
     setEditEnrollment(enrollment);
@@ -506,15 +566,15 @@ export function CourseRunDetailPage() {
     setRunSettingsOpen(true);
   };
 
-  useEffect(() => {
-    if (searchParams.get('settings') !== '1' || !run) {
-      return;
-    }
-
+  // Open the settings sheet when arriving with ?settings=1. Handled during render
+  // (guarded by state) instead of in an effect to avoid react-hooks/set-state-in-effect.
+  const [settingsParamHandled, setSettingsParamHandled] = useState(false);
+  if (searchParams.get('settings') === '1' && run && !settingsParamHandled) {
+    setSettingsParamHandled(true);
     setRunSettings(toRunSettingsForm(run));
     setRunSettingsOpen(true);
     setSearchParams({}, { replace: true });
-  }, [run, searchParams, setSearchParams]);
+  }
 
   const openEditSession = (session: SessionResponse) => {
     setEditSession({
@@ -697,16 +757,14 @@ export function CourseRunDetailPage() {
       <PageHeader
         title={run?.code ?? 'Course run'}
         description={
-          run && course
-            ? `Course: ${course.title}`
-            : 'Manage live sessions and enrollment.'
+          run && course ? `Course: ${course.title}` : 'Manage sessions and enrollment.'
         }
         actions={
           run ? (
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={openRunSettings}>
                 <Settings2 className="mr-2 size-4" />
-                Course run settings
+                Run settings
               </Button>
               <Button
                 variant="destructive"
@@ -716,8 +774,8 @@ export function CourseRunDetailPage() {
                     title: 'Delete course run?',
                     description: (
                       <>
-                        Delete run &quot;{run.code}&quot; and related sessions. This cannot be
-                        undone.
+                        Delete course run &quot;{run.code}&quot; along with its sessions. This
+                        cannot be undone.
                       </>
                     ),
                     action: () => deleteRunMutation.mutate(),
@@ -745,7 +803,7 @@ export function CourseRunDetailPage() {
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
                     <dt className="text-muted-foreground">Status</dt>
                     <dd>
-                      <Badge variant="secondary">{run.status}</Badge>
+                      <Badge variant="secondary">{courseRunStatusLabel(run.status)}</Badge>
                     </dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
@@ -764,7 +822,7 @@ export function CourseRunDetailPage() {
                     </dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Pricing</dt>
+                    <dt className="text-muted-foreground">Price</dt>
                     <dd className="font-medium">
                       {hasCourseRunPricing(run.metadata)
                         ? formatCourseRunPricingSummary(run.metadata)
@@ -772,22 +830,22 @@ export function CourseRunDetailPage() {
                     </dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Start date</dt>
+                    <dt className="text-muted-foreground">Starts</dt>
                     <dd>{formatDateTime(run.startsAt)}</dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">End date</dt>
+                    <dt className="text-muted-foreground">Ends</dt>
                     <dd>{formatDateTime(run.endsAt)}</dd>
                   </div>
                 </dl>
 
                 <dl className="divide-y text-sm">
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Enrollment opens</dt>
+                    <dt className="text-muted-foreground">Open enrollment</dt>
                     <dd>{formatDateTime(run.enrollmentStartDate)}</dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                    <dt className="text-muted-foreground">Enrollment closes</dt>
+                    <dt className="text-muted-foreground">Close enrollment</dt>
                     <dd>{formatDateTime(run.enrollmentEndDate)}</dd>
                   </div>
                   <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
@@ -826,7 +884,7 @@ export function CourseRunDetailPage() {
             <TabsContent value="sessions" className="space-y-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
-                  <CardTitle className="text-base">Live sessions</CardTitle>
+                  <CardTitle className="text-base">Online sessions</CardTitle>
                   <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
                     <Plus className="mr-2 size-4" />
                     Add session
@@ -903,8 +961,16 @@ export function CourseRunDetailPage() {
         </Card>
       )}
 
-      <Sheet open={runSettingsOpen} onOpenChange={setRunSettingsOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+      <Sheet
+        open={runSettingsOpen}
+        onOpenChange={(open) => {
+          if (!open && !confirmDiscard(runSettingsDirty)) {
+            return;
+          }
+          setRunSettingsOpen(open);
+        }}
+      >
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Course run settings</SheetTitle>
           </SheetHeader>
@@ -912,17 +978,25 @@ export function CourseRunDetailPage() {
             <>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                 <div className="space-y-2">
-                  <Label>Class code</Label>
+                  <Label>
+                    Class code <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={runSettings.code}
+                    aria-invalid={runSettings.code.trim() === ''}
                     onChange={(event) =>
                       setRunSettings((current) => current && { ...current, code: event.target.value })
                     }
                   />
+                  {runSettings.code.trim() === '' ? (
+                    <p className="text-destructive text-sm">Class code is required.</p>
+                  ) : null}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Status</Label>
+                    <Label>
+                      Status <span className="text-destructive">*</span>
+                    </Label>
                     <Select
                       value={runSettings.status}
                       onValueChange={(value) =>
@@ -975,7 +1049,9 @@ export function CourseRunDetailPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
-                    <Label>Start</Label>
+                    <Label>
+                      Start <span className="text-destructive">*</span>
+                    </Label>
                     <DateTimePicker
                       value={runSettings.startsAt}
                       onChange={(startsAt) =>
@@ -984,7 +1060,9 @@ export function CourseRunDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>End</Label>
+                    <Label>
+                      End <span className="text-destructive">*</span>
+                    </Label>
                     <DateTimePicker
                       value={runSettings.endsAt}
                       onChange={(endsAt) =>
@@ -1019,7 +1097,16 @@ export function CourseRunDetailPage() {
                 </div>
               </div>
               <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-                <Button onClick={() => updateRunMutation.mutate()} disabled={updateRunMutation.isPending}>
+                <Button
+                  onClick={() => updateRunMutation.mutate()}
+                  disabled={
+                    updateRunMutation.isPending ||
+                    runSettings.code.trim() === '' ||
+                    runSettings.status.trim() === '' ||
+                    runSettings.startsAt.trim() === '' ||
+                    runSettings.endsAt.trim() === ''
+                  }
+                >
                   Save
                 </Button>
               </SheetFooter>
@@ -1028,20 +1115,37 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={createSessionOpen} onOpenChange={setCreateSessionOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+      <Sheet
+        open={createSessionOpen}
+        onOpenChange={(open) => {
+          if (!open && !confirmDiscard(createSessionDirty)) {
+            return;
+          }
+          setCreateSessionOpen(open);
+          if (!open) {
+            setSessionForm(emptySessionForm);
+          }
+        }}
+      >
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Add session</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
             <div className="space-y-2">
-              <Label>Title</Label>
+              <Label>
+                Title <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={sessionForm.title}
+                aria-invalid={sessionForm.title.trim() === ''}
                 onChange={(event) =>
                   setSessionForm((current) => ({ ...current, title: event.target.value }))
                 }
               />
+              {sessionForm.title.trim() === '' ? (
+                <p className="text-destructive text-sm">Title is required.</p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
@@ -1110,7 +1214,10 @@ export function CourseRunDetailPage() {
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => createSessionMutation.mutate()} disabled={createSessionMutation.isPending}>
+            <Button
+              onClick={() => createSessionMutation.mutate()}
+              disabled={createSessionMutation.isPending || sessionForm.title.trim() === ''}
+            >
               Save
             </Button>
           </SheetFooter>
@@ -1119,11 +1226,16 @@ export function CourseRunDetailPage() {
 
       <Sheet
         open={Boolean(editSession)}
-        onOpenChange={() => {
-          setEditSession(null);
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!confirmDiscard(editSessionDirty)) {
+              return;
+            }
+            setEditSession(null);
+          }
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Edit session</SheetTitle>
           </SheetHeader>
@@ -1131,9 +1243,12 @@ export function CourseRunDetailPage() {
             <>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
                 <div className="space-y-2">
-                  <Label>Title</Label>
+                  <Label>
+                    Title <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     value={editSession.form.title}
+                    aria-invalid={editSession.form.title.trim() === ''}
                     onChange={(event) =>
                       setEditSession((current) =>
                         current && {
@@ -1143,6 +1258,9 @@ export function CourseRunDetailPage() {
                       )
                     }
                   />
+                  {editSession.form.title.trim() === '' ? (
+                    <p className="text-destructive text-sm">Title is required.</p>
+                  ) : null}
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
@@ -1230,7 +1348,12 @@ export function CourseRunDetailPage() {
                 </div>
               </div>
               <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-                <Button onClick={() => updateSessionMutation.mutate()} disabled={updateSessionMutation.isPending}>
+                <Button
+                  onClick={() => updateSessionMutation.mutate()}
+                  disabled={
+                    updateSessionMutation.isPending || editSession.form.title.trim() === ''
+                  }
+                >
                   Save
                 </Button>
               </SheetFooter>
@@ -1239,9 +1362,12 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet
+      <Dialog
         open={enrollOpen}
         onOpenChange={(open) => {
+          if (!open && !confirmDiscard(enrollDirty)) {
+            return;
+          }
           setEnrollOpen(open);
           if (!open) {
             setEnrollUsers([]);
@@ -1250,11 +1376,11 @@ export function CourseRunDetailPage() {
           }
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Add learners</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Add learners</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Status</Label>
@@ -1290,20 +1416,23 @@ export function CourseRunDetailPage() {
               label="Select learners"
             />
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+          <DialogFooter>
             <Button
               onClick={() => enrollMutation.mutate()}
               disabled={enrollUsers.length === 0 || enrollMutation.isPending}
             >
               Enroll {enrollUsers.length > 0 ? `(${enrollUsers.length})` : ''}
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Sheet
         open={importOpen}
         onOpenChange={(open) => {
+          if (!open && !confirmDiscard(importDirty)) {
+            return;
+          }
           setImportOpen(open);
           if (!open) {
             setImportPreview(null);
@@ -1312,7 +1441,7 @@ export function CourseRunDetailPage() {
           }
         }}
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>Import enrollments via Excel</SheetTitle>
           </SheetHeader>
@@ -1467,59 +1596,77 @@ export function CourseRunDetailPage() {
         </SheetContent>
       </Sheet>
 
-      <Sheet open={Boolean(editEnrollment)} onOpenChange={() => setEditEnrollment(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[520px] sm:max-w-[520px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Edit enrollment</SheetTitle>
+      <Dialog
+        open={Boolean(editEnrollment)}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!confirmDiscard(editEnrollmentDirty)) {
+              return;
+            }
+            setEditEnrollment(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit enrollment</DialogTitle>
             {editEnrollment ? (
-              <SheetDescription>
+              <DialogDescription>
                 {editEnrollment.userDisplayName ?? editEnrollment.userEmail ?? 'Learner'}
                 {editEnrollment.userEmail && editEnrollment.userDisplayName
                   ? ` · ${editEnrollment.userEmail}`
                   : ''}
-              </SheetDescription>
+              </DialogDescription>
             ) : null}
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select value={editStatus} onValueChange={setEditStatus}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                    <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
-                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Role</Label>
-                <Select value={editRole} onValueChange={setEditRole}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="STUDENT">STUDENT</SelectItem>
-                    <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={editStatus} onValueChange={setEditStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">ACTIVE</SelectItem>
+                  <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
+                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={editRole} onValueChange={setEditRole}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="STUDENT">STUDENT</SelectItem>
+                  <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end sm:gap-2">
-            <Button variant="outline" onClick={() => setEditEnrollment(null)}>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (confirmDiscard(editEnrollmentDirty)) {
+                  setEditEnrollment(null);
+                }
+              }}
+            >
               Cancel
             </Button>
-            <Button onClick={() => updateEnrollmentMutation.mutate()} disabled={updateEnrollmentMutation.isPending}>
+            <Button
+              onClick={() => updateEnrollmentMutation.mutate()}
+              disabled={updateEnrollmentMutation.isPending}
+            >
               Save
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ConfirmDialog
         open={Boolean(pendingConfirm)}

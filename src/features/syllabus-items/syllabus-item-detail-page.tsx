@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Trash2, Upload } from 'lucide-react';
@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { queryKeys } from '@/hooks/query-keys';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { assetsApi } from '@/services/assets/assets-api';
@@ -83,9 +84,11 @@ export function SyllabusItemDetailPage() {
     contentData: {},
   });
 
+  const syncedItemIdRef = useRef<string | null>(null);
   useEffect(() => {
     const item = itemQuery.data;
-    if (item) {
+    if (item && syncedItemIdRef.current !== item.id) {
+      syncedItemIdRef.current = item.id;
       setForm({
         syllabusSectionId: item.syllabusSectionId,
         type: item.type.toUpperCase() === 'VIDEO' ? 'VIDEO' : 'ARTICLE',
@@ -200,6 +203,30 @@ export function SyllabusItemDetailPage() {
   const quote = readContentField(contentData, 'quote');
   const imageUrl = readContentField(contentData, 'imageUrl', 'image_url');
 
+  const isDirty =
+    Boolean(item) &&
+    (form.title !== (item!.title ?? '') ||
+      (form.description ?? '') !== (item!.description ?? '') ||
+      form.type !== (item!.type.toUpperCase() === 'VIDEO' ? 'VIDEO' : 'ARTICLE') ||
+      form.orderIndex !== item!.orderIndex ||
+      form.isHidden !== item!.isHidden ||
+      form.isOptional !== item!.isOptional ||
+      JSON.stringify(form.contentData ?? {}) !== JSON.stringify(item!.contentData ?? {}));
+
+  useBeforeUnload(isDirty);
+
+  const titleValid = form.title.trim().length > 0;
+
+  if (itemQuery.isLoading) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div className="bg-card text-muted-foreground rounded-xl border p-6 text-sm shadow-sm">
+          Loading lesson…
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
@@ -224,11 +251,13 @@ export function SyllabusItemDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Syllabus Item Info</CardTitle>
+          <CardTitle className="text-base">Lesson details</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Title</Label>
+            <Label>
+              Title <span className="text-destructive">*</span>
+            </Label>
             <Input
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
@@ -290,7 +319,10 @@ export function SyllabusItemDetailPage() {
               Optional
             </label>
           </div>
-          <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+          <Button
+            onClick={() => updateMutation.mutate()}
+            disabled={updateMutation.isPending || !titleValid}
+          >
             Save changes
           </Button>
         </CardContent>
@@ -319,12 +351,11 @@ export function SyllabusItemDetailPage() {
                       }),
                     }));
                   }}
-                  placeholder="Compose content shown in app (HTML)…"
+                  placeholder="Compose the content shown in the app…"
                   minHeight="16rem"
                 />
                 <p className="text-muted-foreground text-xs">
-                  Mobile shows <strong>body</strong> first; if empty, falls back to
-                  the short description above.
+                  Shown to learners in the app. If left empty, the short description above is used instead.
                 </p>
               </div>
               <div className="space-y-2">
@@ -337,7 +368,7 @@ export function SyllabusItemDetailPage() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Illustration (imageUrl)</Label>
+                  <Label>Illustration</Label>
                   <Input
                     value={imageUrl}
                     onChange={(e) => setContentField('imageUrl', e.target.value)}
@@ -346,7 +377,7 @@ export function SyllabusItemDetailPage() {
                   <ImagePreview src={imageUrl} alt="Illustration preview" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Cover image (coverUrl / thumbnailUrl)</Label>
+                  <Label>Cover image</Label>
                   <Input
                     value={thumbnailUrl}
                     onChange={(e) => {
@@ -370,7 +401,7 @@ export function SyllabusItemDetailPage() {
           {itemType === 'VIDEO' ? (
             <>
               <div className="space-y-2">
-                <Label>Local video</Label>
+                <Label>Video file</Label>
                 <Input
                   type="file"
                   accept="video/*"
@@ -378,7 +409,7 @@ export function SyllabusItemDetailPage() {
                 />
                 {uploadFile ? (
                   <p className="text-muted-foreground text-xs">
-                    Selected: {uploadFile.name} — click Upload to push to R2.
+                    Selected: {uploadFile.name} — use the Upload file section below to upload it.
                   </p>
                 ) : fileAttachment?.url ? (
                   <p className="text-muted-foreground text-xs">
@@ -390,8 +421,7 @@ export function SyllabusItemDetailPage() {
                   </p>
                 ) : (
                   <p className="text-muted-foreground text-xs">
-                    Select a local video file and upload — app reads{' '}
-                    <strong>fileAttachment.url</strong>.
+                    Choose a video file from your computer, then upload it in the Upload file section below.
                   </p>
                 )}
               </div>
@@ -434,10 +464,10 @@ export function SyllabusItemDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Upload file</CardTitle>
+          <CardTitle className="text-base">Attachment (PDF, image, etc.)</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Optional — attach file to <code className="text-xs">contentData.fileAttachment</code>{' '}
-            (video/PDF…). Does not replace the ARTICLE content above.
+            Optional — attach a file (video, PDF, image, and so on) to this lesson. This does not
+            replace the article content above.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">

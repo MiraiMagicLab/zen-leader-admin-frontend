@@ -6,6 +6,8 @@ import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -96,8 +98,42 @@ export function ProgramsListPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<ProgramResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<{ code: boolean; title: boolean }>({
+    code: false,
+    title: false,
+  });
   const [search, setSearch] = useState('');
   const [publishedFilter, setPublishedFilter] = useState('all');
+
+  const initialForm: FormState = editing
+    ? {
+        code: editing.code,
+        title: editing.title,
+        description: editing.description ?? '',
+        thumbnailUrl: editing.thumbnailUrl ?? '',
+        isPublished: editing.isPublished,
+        thumbnailFile: null,
+      }
+    : emptyForm;
+
+  const isDirty =
+    form.code !== initialForm.code ||
+    form.title !== initialForm.title ||
+    form.description !== initialForm.description ||
+    form.thumbnailUrl !== initialForm.thumbnailUrl ||
+    form.isPublished !== initialForm.isPublished ||
+    form.thumbnailFile !== initialForm.thumbnailFile;
+
+  const requiredMissing = !form.code.trim() || !form.title.trim();
+
+  useBeforeUnload(dialogOpen && isDirty);
+
+  const closeDialog = (open: boolean) => {
+    if (!open && !confirmDiscard(isDirty)) {
+      return;
+    }
+    setDialogOpen(open);
+  };
 
   const programsQuery = useQuery({
     queryKey: [...queryKeys.programs.list(), page],
@@ -160,6 +196,7 @@ export function ProgramsListPage() {
       thumbnailFile: null,
     });
     setFieldErrors({});
+    setTouched({ code: false, title: false });
     setDialogOpen(true);
   };
 
@@ -225,6 +262,7 @@ export function ProgramsListPage() {
               setEditing(null);
               setForm(emptyForm);
               setFieldErrors({});
+              setTouched({ code: false, title: false });
               setDialogOpen(true);
             }}
           >
@@ -282,94 +320,124 @@ export function ProgramsListPage() {
         onPageChange={setPage}
       />
 
-      <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[800px] sm:max-w-[800px]">
+      <Sheet open={dialogOpen} onOpenChange={closeDialog}>
+        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
           <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
             <SheetTitle>
               {editing ? 'Edit program' : 'Add program'}
             </SheetTitle>
           </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="code">Code</Label>
-              <Input
-                id="code"
-                value={form.code}
-                aria-invalid={Boolean(fieldErrors.code)}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, code: e.target.value }));
-                  if (fieldErrors.code) {
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.code;
-                      return next;
-                    });
-                  }
-                }}
-              />
-              {fieldErrors.code ? (
-                <p className="text-destructive text-sm">{fieldErrors.code}</p>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={form.title}
-                aria-invalid={Boolean(fieldErrors.title)}
-                onChange={(e) => {
-                  setForm((f) => ({ ...f, title: e.target.value }));
-                  if (fieldErrors.title) {
-                    setFieldErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.title;
-                      return next;
-                    });
-                  }
-                }}
-              />
-              {fieldErrors.title ? (
-                <p className="text-destructive text-sm">{fieldErrors.title}</p>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={form.description}
-                rows={5}
-                maxLength={5000}
-                placeholder="Short program summary (optional)"
-                onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              />
-              <p className="text-muted-foreground text-xs">
-                {form.description.length}/5000 characters
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            <div className="space-y-4">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Basic info
               </p>
+              <div className="space-y-2">
+                <Label htmlFor="code">
+                  Program code <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="code"
+                  value={form.code}
+                  aria-invalid={Boolean(fieldErrors.code) || (touched.code && !form.code.trim())}
+                  onBlur={() => setTouched((t) => ({ ...t, code: true }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, code: e.target.value }));
+                    if (fieldErrors.code) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.code;
+                        return next;
+                      });
+                    }
+                  }}
+                />
+                {fieldErrors.code ? (
+                  <p className="text-destructive text-sm">{fieldErrors.code}</p>
+                ) : touched.code && !form.code.trim() ? (
+                  <p className="text-destructive text-sm">Program code is required.</p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="title">
+                  Program title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="title"
+                  value={form.title}
+                  aria-invalid={Boolean(fieldErrors.title) || (touched.title && !form.title.trim())}
+                  onBlur={() => setTouched((t) => ({ ...t, title: true }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, title: e.target.value }));
+                    if (fieldErrors.title) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.title;
+                        return next;
+                      });
+                    }
+                  }}
+                />
+                {fieldErrors.title ? (
+                  <p className="text-destructive text-sm">{fieldErrors.title}</p>
+                ) : touched.title && !form.title.trim() ? (
+                  <p className="text-destructive text-sm">Program title is required.</p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={form.description}
+                  rows={5}
+                  maxLength={5000}
+                  placeholder="Short program summary (optional)"
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                />
+                <p className="text-muted-foreground text-xs">
+                  {form.description.length}/5000 characters
+                </p>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="thumbnail">Thumbnail image</Label>
-              <ImageFilePicker
-                id="thumbnail"
-                file={form.thumbnailFile}
-                existingUrl={form.thumbnailUrl}
-                previewAlt={form.title || 'Program thumbnail'}
-                onFileChange={(thumbnailFile) =>
-                  setForm((f) => ({ ...f, thumbnailFile }))
-                }
-              />
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Media
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="thumbnail">Thumbnail image</Label>
+                <ImageFilePicker
+                  id="thumbnail"
+                  file={form.thumbnailFile}
+                  existingUrl={form.thumbnailUrl}
+                  previewAlt={form.title || 'Program thumbnail'}
+                  onFileChange={(thumbnailFile) =>
+                    setForm((f) => ({ ...f, thumbnailFile }))
+                  }
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                checked={form.isPublished}
-                onCheckedChange={(checked) =>
-                  setForm((f) => ({ ...f, isPublished: checked }))
-                }
-              />
-              <Label>Publish</Label>
+
+            <div className="mt-6 space-y-4 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Status
+              </p>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={form.isPublished}
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, isPublished: checked }))
+                  }
+                />
+                <Label>Publish (visible to users)</Label>
+              </div>
             </div>
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              disabled={saveMutation.isPending || requiredMissing}
+            >
               Save
             </Button>
           </SheetFooter>
