@@ -4,8 +4,6 @@ import {
   BookOpen,
   CopyPlus,
   FileText,
-  MoreHorizontal,
-  Pencil,
   PlayCircle,
   Plus,
   Trash2,
@@ -17,12 +15,6 @@ import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -285,49 +277,43 @@ export function SyllabusEditor({
                   <CardTitle className="text-base">{section.title}</CardTitle>
                   <p className="text-muted-foreground mt-1 text-sm">{items.length} lessons</p>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1.5">
                   <Button variant="outline" size="sm" onClick={() => openAddItem(section)}>
                     <Plus className="mr-1 size-4" />
                     Lesson
                   </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="size-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        disabled={duplicateSectionMutation.isPending}
-                        onClick={() => duplicateSectionMutation.mutate(section.id)}
-                      >
-                        <CopyPlus className="mr-2 size-4" />
-                        Duplicate chapter
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setEditSection(section);
-                          setEditSectionOriginalTitle(section.title);
-                        }}
-                      >
-                        <Pencil className="mr-2 size-4" />
-                        Rename chapter
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() =>
-                          setDeleteTarget({
-                            kind: 'section',
-                            id: section.id,
-                            title: section.title,
-                          })
-                        }
-                      >
-                        <Trash2 className="mr-2 size-4" />
-                        Delete chapter
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={duplicateSectionMutation.isPending}
+                    onClick={() => duplicateSectionMutation.mutate(section.id)}
+                  >
+                    Duplicate
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditSection(section);
+                      setEditSectionOriginalTitle(section.title);
+                    }}
+                  >
+                    Rename
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive"
+                    onClick={() =>
+                      setDeleteTarget({
+                        kind: 'section',
+                        id: section.id,
+                        title: section.title,
+                      })
+                    }
+                  >
+                    Delete
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 pt-0">

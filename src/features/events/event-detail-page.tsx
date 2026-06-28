@@ -346,7 +346,7 @@ export function EventDetailPage() {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <Button variant="ghost" size="sm" asChild>
         <Link to={ROUTES.events}>
           <ArrowLeft className="mr-2 size-4" />

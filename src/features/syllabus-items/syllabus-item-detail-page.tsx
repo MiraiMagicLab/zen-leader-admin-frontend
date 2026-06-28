@@ -219,7 +219,7 @@ export function SyllabusItemDetailPage() {
 
   if (itemQuery.isLoading) {
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
+      <div className="space-y-6">
         <div className="bg-card text-muted-foreground rounded-xl border p-6 text-sm shadow-sm">
           Loading lesson…
         </div>
@@ -228,7 +228,7 @@ export function SyllabusItemDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 size-4" />
         Back

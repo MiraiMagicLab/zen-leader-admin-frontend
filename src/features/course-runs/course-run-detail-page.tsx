@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Eye,
   FileSpreadsheet,
-  MoreHorizontal,
   Plus,
   Settings2,
   Trash2,
@@ -24,12 +23,6 @@ import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -629,34 +622,29 @@ export function CourseRunDetailPage() {
         header: '',
         size: 48,
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openEditSession(row.original)}>
-                Edit session
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() =>
-                  setPendingConfirm({
-                    title: 'Delete session?',
-                    description: (
-                      <>
-                        Delete session &quot;{row.original.title}&quot;. This cannot be undone.
-                      </>
-                    ),
-                    action: () => deleteSessionMutation.mutate(row.original.id),
-                  })
-                }
-              >
-                Delete session
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => openEditSession(row.original)}>
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={() =>
+                setPendingConfirm({
+                  title: 'Delete session?',
+                  description: (
+                    <>
+                      Delete session &quot;{row.original.title}&quot;. This cannot be undone.
+                    </>
+                  ),
+                  action: () => deleteSessionMutation.mutate(row.original.id),
+                })
+              }
+            >
+              Delete
+            </Button>
+          </div>
         ),
       },
     ],
@@ -746,7 +734,7 @@ export function CourseRunDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    <div className="space-y-6">
       <Button variant="ghost" size="sm" asChild className="-ml-2">
         <Link to={run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns}>
           <ArrowLeft className="mr-2 size-4" />

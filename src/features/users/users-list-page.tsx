@@ -2,14 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
-  Ban,
   Lock,
-  MoreHorizontal,
   Plus,
   RefreshCw,
   Search,
-  ShieldCheck,
-  ShieldOff,
   Unlock,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -38,13 +34,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -343,65 +332,61 @@ export function UsersListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openRolesDialog(row.original)}>
-                Edit role
-              </DropdownMenuItem>
-              {!isDeletedUser(row.original) &&
-                (row.original.isActive ? (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      statusMutation.mutate({
-                        userId: row.original.id,
-                        isActive: false,
-                      })
-                    }
-                  >
-                    <ShieldOff className="mr-2 size-4" />
-                    Lock account
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      statusMutation.mutate({
-                        userId: row.original.id,
-                        isActive: true,
-                      })
-                    }
-                  >
-                    <ShieldCheck className="mr-2 size-4" />
-                    Unlock account
-                  </DropdownMenuItem>
-                ))}
-              {!isDeletedUser(row.original) && <DropdownMenuSeparator />}
-              {!isDeletedUser(row.original) &&
-                (row.original.bannedUntil ? (
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() =>
-                      banMutation.mutate({ userId: row.original.id, bannedUntil: null })
-                    }
-                  >
-                    <Ban className="mr-2 size-4" />
-                    Unban
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => openBanDialog(row.original)}
-                  >
-                    <Ban className="mr-2 size-4" />
-                    Ban user
-                  </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => openRolesDialog(row.original)}>
+              Edit role
+            </Button>
+            {!isDeletedUser(row.original) &&
+              (row.original.isActive ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    statusMutation.mutate({
+                      userId: row.original.id,
+                      isActive: false,
+                    })
+                  }
+                >
+                  Lock
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    statusMutation.mutate({
+                      userId: row.original.id,
+                      isActive: true,
+                    })
+                  }
+                >
+                  Unlock
+                </Button>
+              ))}
+            {!isDeletedUser(row.original) &&
+              (row.original.bannedUntil ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() =>
+                    banMutation.mutate({ userId: row.original.id, bannedUntil: null })
+                  }
+                >
+                  Unban
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive"
+                  onClick={() => openBanDialog(row.original)}
+                >
+                  Ban
+                </Button>
+              ))}
+          </div>
         ),
       },
     ],
@@ -417,7 +402,7 @@ export function UsersListPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Users"
         description="Manage account access, roles, verification status, and moderation actions."

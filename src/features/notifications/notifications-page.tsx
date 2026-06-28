@@ -73,7 +73,7 @@ export function NotificationsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Notifications"
         description="Send a notification to selected users, or to all users."

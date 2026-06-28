@@ -419,7 +419,7 @@ export function CourseDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="space-y-6">
       {course ? (
         <>
           <CourseProgressHeader

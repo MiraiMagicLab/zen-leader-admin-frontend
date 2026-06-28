@@ -318,7 +318,7 @@ export function CoursesListPage() {
   }, [isProgramScope, navigate]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       {isProgramScope ? (
         <Button variant="ghost" size="sm" asChild>
           <Link to={ROUTES.programs}>

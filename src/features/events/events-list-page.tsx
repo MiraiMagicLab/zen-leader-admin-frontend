@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { MoreHorizontal, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -25,12 +25,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -284,42 +278,41 @@ export function EventsListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link to={ROUTES.eventDetail(row.original.id)}>Details</Link>
-              </DropdownMenuItem>
-              {normalizeEventStatus(row.original.status) !== 'PUBLISHED' ? (
-                <DropdownMenuItem
-                  onClick={() =>
-                    openActionDialog(row.original.id, row.original.title, 'publish')
-                  }
-                >
-                  Publish
-                </DropdownMenuItem>
-              ) : null}
-              {normalizeEventStatus(row.original.status) !== 'DRAFT' ? (
-                <DropdownMenuItem
-                  onClick={() =>
-                    openActionDialog(row.original.id, row.original.title, 'unpublish')
-                  }
-                >
-                  Move to draft
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => openActionDialog(row.original.id, row.original.title, 'delete')}
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <Button variant="outline" size="sm" asChild>
+              <Link to={ROUTES.eventDetail(row.original.id)}>Details</Link>
+            </Button>
+            {normalizeEventStatus(row.original.status) !== 'PUBLISHED' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  openActionDialog(row.original.id, row.original.title, 'publish')
+                }
               >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                Publish
+              </Button>
+            ) : null}
+            {normalizeEventStatus(row.original.status) !== 'DRAFT' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  openActionDialog(row.original.id, row.original.title, 'unpublish')
+                }
+              >
+                Draft
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={() => openActionDialog(row.original.id, row.original.title, 'delete')}
+            >
+              Delete
+            </Button>
+          </div>
         ),
       },
     ],
@@ -327,7 +320,7 @@ export function EventsListPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Events"
         description="Manage public events, schedule, and publishing status."

@@ -275,7 +275,7 @@ export function PaymentsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Payments"
         description="Review payment orders and resolve pending enrollments."

@@ -256,7 +256,7 @@ export function ModerationPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Moderation"
         description="Review user reports and update their resolution."

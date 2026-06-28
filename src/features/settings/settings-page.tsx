@@ -18,7 +18,7 @@ export function SettingsPage() {
   const environment = import.meta.env.PROD ? 'Production' : 'Development';
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Settings"
         description="Review environment details and service configuration."

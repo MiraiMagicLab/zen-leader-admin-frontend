@@ -241,7 +241,7 @@ export function LiveSessionsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Live sessions"
         description="View meeting rooms and live session status."
