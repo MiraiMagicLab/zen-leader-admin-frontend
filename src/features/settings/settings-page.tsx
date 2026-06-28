@@ -15,6 +15,7 @@ export function SettingsPage() {
   useAdminPageMeta(ADMIN_PAGE_META.settings);
 
   const apiUrl = import.meta.env.VITE_API_URL ?? 'Unavailable';
+  const environment = import.meta.env.PROD ? 'Production' : 'Development';
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -39,7 +40,7 @@ export function SettingsPage() {
               <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                 Environment
               </p>
-              <p className="mt-1 font-semibold">Development</p>
+              <p className="mt-1 font-semibold">{environment}</p>
             </div>
           </div>
           <Separator />
