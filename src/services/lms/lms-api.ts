@@ -47,6 +47,8 @@ export const syllabusSectionsApi = {
     apiPost<SyllabusSectionResponse>(`/api/v1/syllabus-sections/${id}/duplicate`),
   remove: (id: string) =>
     apiDelete<string>(`/api/v1/syllabus-sections/${id}`),
+  reorder: (sectionIds: string[]) =>
+    apiPut<string>('/api/v1/syllabus-sections/reorder', { sectionIds }),
 };
 
 export const syllabusItemsApi = {
@@ -72,6 +74,8 @@ export const syllabusItemsApi = {
     apiPost<SyllabusItemResponse>(`/api/v1/syllabus-items/${id}/duplicate`),
   remove: (id: string) =>
     apiDelete<string>(`/api/v1/syllabus-items/${id}`),
+  reorder: (itemIds: string[]) =>
+    apiPut<string>('/api/v1/syllabus-items/reorder', { itemIds }),
   uploadFile: (syllabusItemId: string, file: File) => {
     const form = new FormData();
     form.append('file', file);

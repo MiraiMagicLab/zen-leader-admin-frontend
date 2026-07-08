@@ -1,9 +1,27 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   BookOpen,
   CopyPlus,
   FileText,
+  GripVertical,
   PlayCircle,
   Plus,
   Trash2,
@@ -58,6 +76,260 @@ function typeLabel(type: string) {
   return type.toUpperCase() === 'VIDEO' ? 'Video' : 'Article';
 }
 
+type SortableItemProps = {
+  item: SyllabusItemResponse;
+  section: SyllabusSectionResponse;
+  onEdit: (section: SyllabusSectionResponse, item: SyllabusItemResponse) => void;
+  onDelete: (item: SyllabusItemResponse) => void;
+  onDuplicate: (itemId: string) => void;
+  isDuplicatePending: boolean;
+};
+
+function SortableItem({
+  item,
+  section,
+  onEdit,
+  onDelete,
+  onDuplicate,
+  isDuplicatePending,
+}: SortableItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+    zIndex: isDragging ? 10 : 0,
+  };
+
+  const Icon = TYPE_ICONS[item.type.toUpperCase()] ?? FileText;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="hover:bg-muted/40 flex items-center gap-3 rounded-lg border p-3 transition-colors"
+    >
+      <button
+        type="button"
+        className="bg-muted flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md hover:bg-accent active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="text-muted-foreground size-4" />
+      </button>
+      <div className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-md">
+        <Icon className="text-muted-foreground size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{item.title}</p>
+        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {typeLabel(item.type)}
+          </Badge>
+          {item.isHidden ? (
+            <Badge variant="outline" className="text-xs">
+              Hidden
+            </Badge>
+          ) : null}
+          {item.isOptional ? (
+            <Badge variant="outline" className="text-xs">
+              Optional
+            </Badge>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => onEdit(section, item)}
+        >
+          Edit
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isDuplicatePending}
+          onClick={() => onDuplicate(item.id)}
+        >
+          <CopyPlus className="mr-1 size-3.5" />
+          Duplicate
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-destructive"
+          onClick={() => onDelete(item)}
+        >
+          <Trash2 className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type SortableSectionProps = {
+  section: SyllabusSectionResponse;
+  onAddItem: (section: SyllabusSectionResponse, defaultType?: string) => void;
+  onEditItem: (section: SyllabusSectionResponse, item: SyllabusItemResponse) => void;
+  onEditSection: (section: SyllabusSectionResponse) => void;
+  onDeleteSection: (section: SyllabusSectionResponse) => void;
+  onDeleteItem: (item: SyllabusItemResponse) => void;
+  onDuplicateSection: (sectionId: string) => void;
+  onDuplicateItem: (itemId: string) => void;
+  onReorderItems: (sectionId: string, itemIds: string[]) => void;
+  isDuplicateSectionPending: boolean;
+  isDuplicateItemPending: boolean;
+};
+
+function SortableSection({
+  section,
+  onAddItem,
+  onEditItem,
+  onEditSection,
+  onDeleteSection,
+  onDeleteItem,
+  onDuplicateSection,
+  onDuplicateItem,
+  onReorderItems,
+  isDuplicateSectionPending,
+  isDuplicateItemPending,
+}: SortableSectionProps) {
+  const items = section.items ?? [];
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: 'relative' as const,
+    zIndex: isDragging ? 10 : 0,
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const handleItemDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = items.findIndex((i) => i.id === active.id);
+      const newIndex = items.findIndex((i) => i.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const reordered = arrayMove(items, oldIndex, newIndex);
+      onReorderItems(section.id, reordered.map((i) => i.id));
+    },
+    [items, section.id, onReorderItems],
+  );
+
+  return (
+    <Card ref={setNodeRef} style={style}>
+      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
+        <div className="flex items-start gap-2">
+          <button
+            type="button"
+            className="bg-muted mt-1 flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md hover:bg-accent active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="text-muted-foreground size-4" />
+          </button>
+          <div>
+            <CardTitle className="text-base">{section.title}</CardTitle>
+            <p className="text-muted-foreground mt-1 text-sm">{items.length} lessons</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => onAddItem(section)}>
+            <Plus className="mr-1 size-4" />
+            Lesson
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isDuplicateSectionPending}
+            onClick={() => onDuplicateSection(section.id)}
+          >
+            Duplicate
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEditSection(section)}
+          >
+            Rename
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive"
+            onClick={() => onDeleteSection(section)}
+          >
+            Delete
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2 pt-0">
+        {items.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-4 text-center">
+            <p className="text-muted-foreground text-sm">This chapter has no lessons yet.</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <Button size="sm" variant="secondary" onClick={() => onAddItem(section, 'VIDEO')}>
+                + Video
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => onAddItem(section, 'ARTICLE')}>
+                + Article
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+            <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <SortableItem
+                    key={item.id}
+                    item={item}
+                    section={section}
+                    onEdit={onEditItem}
+                    onDelete={onDeleteItem}
+                    onDuplicate={onDuplicateItem}
+                    isDuplicatePending={isDuplicateItemPending}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SyllabusEditor({
   courseId,
   courseTitle,
@@ -71,6 +343,15 @@ export function SyllabusEditor({
   const [editSectionOriginalTitle, setEditSectionOriginalTitle] = useState('');
   const [itemEditor, setItemEditor] = useState<ItemEditorState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
   const sectionsQuery = useQuery({
     queryKey: queryKeys.syllabusSections.list(courseId),
@@ -87,6 +368,16 @@ export function SyllabusEditor({
       queryClient.invalidateQueries({ queryKey: queryKeys.courses.detail(courseId) }),
     ]);
   };
+
+  const reorderSectionsMutation = useMutation({
+    mutationFn: (sectionIds: string[]) => syllabusSectionsApi.reorder(sectionIds),
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
+  const reorderItemsMutation = useMutation({
+    mutationFn: (itemIds: string[]) => syllabusItemsApi.reorder(itemIds),
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
 
   const createSectionMutation = useMutation({
     mutationFn: () => {
@@ -163,6 +454,47 @@ export function SyllabusEditor({
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
+
+  const handleSectionDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sections.findIndex((s) => s.id === active.id);
+    const newIndex = sections.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(sections, oldIndex, newIndex);
+    const sectionIds = reordered.map((s) => s.id);
+
+    queryClient.setQueryData(queryKeys.syllabusSections.list(courseId), (old: Awaited<ReturnType<typeof syllabusSectionsApi.getPage>>) => {
+      if (!old) return old;
+      return { ...old, data: reordered };
+    });
+
+    reorderSectionsMutation.mutate(sectionIds);
+  };
+
+  const handleItemReorder = useCallback(
+    (sectionId: string, itemIds: string[]) => {
+      queryClient.setQueryData(queryKeys.syllabusSections.list(courseId), (old: Awaited<ReturnType<typeof syllabusSectionsApi.getPage>>) => {
+        if (!old) return old;
+        return {
+          ...old,
+          data: old.data.map((section) => {
+            if (section.id !== sectionId) return section;
+            const itemMap = new Map(section.items.map((i) => [i.id, i]));
+            return {
+              ...section,
+              items: itemIds.map((id) => itemMap.get(id)!).filter(Boolean),
+            };
+          }),
+        };
+      });
+
+      reorderItemsMutation.mutate(itemIds);
+    },
+    [courseId, queryClient, reorderItemsMutation],
+  );
 
   const openAddItem = (section: SyllabusSectionResponse, defaultType = 'VIDEO') => {
     setItemEditor({
@@ -268,136 +600,35 @@ export function SyllabusEditor({
           </CardContent>
         </Card>
       ) : (
-        sections.map((section) => {
-          const items = section.items ?? [];
-          return (
-            <Card key={section.id}>
-              <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
-                <div>
-                  <CardTitle className="text-base">{section.title}</CardTitle>
-                  <p className="text-muted-foreground mt-1 text-sm">{items.length} lessons</p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <Button variant="outline" size="sm" onClick={() => openAddItem(section)}>
-                    <Plus className="mr-1 size-4" />
-                    Lesson
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={duplicateSectionMutation.isPending}
-                    onClick={() => duplicateSectionMutation.mutate(section.id)}
-                  >
-                    Duplicate
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setEditSection(section);
-                      setEditSectionOriginalTitle(section.title);
-                    }}
-                  >
-                    Rename
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() =>
-                      setDeleteTarget({
-                        kind: 'section',
-                        id: section.id,
-                        title: section.title,
-                      })
-                    }
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2 pt-0">
-                {items.length === 0 ? (
-                  <div className="rounded-lg border border-dashed p-4 text-center">
-                    <p className="text-muted-foreground text-sm">This chapter has no lessons yet.</p>
-                    <div className="mt-3 flex flex-wrap justify-center gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => openAddItem(section, 'VIDEO')}>
-                        + Video
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={() => openAddItem(section, 'ARTICLE')}>
-                        + Article
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  items.map((item) => {
-                    const Icon = TYPE_ICONS[item.type.toUpperCase()] ?? FileText;
-                    return (
-                      <div
-                        key={item.id}
-                        className="hover:bg-muted/40 flex items-center gap-3 rounded-lg border p-3 transition-colors"
-                      >
-                        <div className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-md">
-                          <Icon className="text-muted-foreground size-4" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium">{item.title}</p>
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">
-                              {typeLabel(item.type)}
-                            </Badge>
-                            {item.isHidden ? (
-                              <Badge variant="outline" className="text-xs">
-                                Hidden
-                              </Badge>
-                            ) : null}
-                            {item.isOptional ? (
-                              <Badge variant="outline" className="text-xs">
-                                Optional
-                              </Badge>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditItem(section, item)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={duplicateItemMutation.isPending}
-                            onClick={() => duplicateItemMutation.mutate(item.id)}
-                          >
-                            <CopyPlus className="mr-1 size-3.5" />
-                            Duplicate
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive"
-                            onClick={() =>
-                              setDeleteTarget({
-                                kind: 'item',
-                                id: item.id,
-                                title: item.title,
-                              })
-                            }
-                          >
-                            <Trash2 className="size-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </CardContent>
-            </Card>
-          );
-        })
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionDragEnd}>
+          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            <div className="space-y-4">
+              {sections.map((section) => (
+                <SortableSection
+                  key={section.id}
+                  section={section}
+                  onAddItem={openAddItem}
+                  onEditItem={openEditItem}
+                  onEditSection={(s) => {
+                    setEditSection(s);
+                    setEditSectionOriginalTitle(s.title);
+                  }}
+                  onDeleteSection={(s) =>
+                    setDeleteTarget({ kind: 'section', id: s.id, title: s.title })
+                  }
+                  onDeleteItem={(item) =>
+                    setDeleteTarget({ kind: 'item', id: item.id, title: item.title })
+                  }
+                  onDuplicateSection={(id) => duplicateSectionMutation.mutate(id)}
+                  onDuplicateItem={(id) => duplicateItemMutation.mutate(id)}
+                  onReorderItems={handleItemReorder}
+                  isDuplicateSectionPending={duplicateSectionMutation.isPending}
+                  isDuplicateItemPending={duplicateItemMutation.isPending}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       )}
 
       <Dialog open={sectionSheetOpen} onOpenChange={handleAddChapterOpenChange}>
