@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { MoreHorizontal, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -24,12 +24,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -284,46 +278,40 @@ export function EventsListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex justify-end gap-1.5">
+          <div className="flex justify-end gap-1.5 overflow-x-auto">
             <Button variant="outline" size="sm" asChild>
               <Link to={ROUTES.eventDetail(row.original.id)}>Details</Link>
             </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="size-8 p-0">
-                  <MoreHorizontal className="size-4" />
-                  <span className="sr-only">More actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {normalizeEventStatus(row.original.status) !== 'PUBLISHED' ? (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      openActionDialog(row.original.id, row.original.title, 'publish')
-                    }
-                  >
-                    Publish
-                  </DropdownMenuItem>
-                ) : null}
-                {normalizeEventStatus(row.original.status) !== 'DRAFT' ? (
-                  <DropdownMenuItem
-                    onClick={() =>
-                      openActionDialog(row.original.id, row.original.title, 'unpublish')
-                    }
-                  >
-                    Draft
-                  </DropdownMenuItem>
-                ) : null}
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() =>
-                    openActionDialog(row.original.id, row.original.title, 'delete')
-                  }
-                >
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {normalizeEventStatus(row.original.status) !== 'PUBLISHED' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  openActionDialog(row.original.id, row.original.title, 'publish')
+                }
+              >
+                Publish
+              </Button>
+            ) : null}
+            {normalizeEventStatus(row.original.status) !== 'DRAFT' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  openActionDialog(row.original.id, row.original.title, 'unpublish')
+                }
+              >
+                Draft
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={() => openActionDialog(row.original.id, row.original.title, 'delete')}
+            >
+              Delete
+            </Button>
           </div>
         ),
       },
