@@ -24,6 +24,122 @@ function exec(command: string, value?: string) {
   document.execCommand(command, false, value);
 }
 
+const ALLOWED_PASTE_TAGS = new Set([
+  'P',
+  'BR',
+  'B',
+  'STRONG',
+  'I',
+  'EM',
+  'U',
+  'A',
+  'UL',
+  'OL',
+  'LI',
+  'H1',
+  'H2',
+  'H3',
+  'H4',
+  'H5',
+  'H6',
+  'BLOCKQUOTE',
+  'SUB',
+  'SUP',
+  'IMG',
+  'HR',
+  'DIV',
+  'SPAN',
+]);
+
+/**
+ * Sanitize pasted HTML: keep semantic formatting (bold, italic, underline,
+ * headings, lists, links) but strip all inline styles, class names,
+ * and non-semantic wrapper tags (font, center, etc.).
+ */
+function sanitizePastedHtml(rawHtml: string): string {
+  const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+
+  function walk(node: Node): void {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      node.parentNode?.removeChild(node);
+      return;
+    }
+
+    const el = node as HTMLElement;
+    const tag = el.tagName;
+
+    // Recurse into children first so removals don't break iteration
+    const children = Array.from(el.childNodes);
+    for (const child of children) {
+      walk(child);
+    }
+
+    // Strip presentation attributes
+    el.removeAttribute('style');
+    el.removeAttribute('class');
+    el.removeAttribute('color');
+    el.removeAttribute('bgcolor');
+    el.removeAttribute('background');
+    el.removeAttribute('face');
+    el.removeAttribute('size');
+    el.removeAttribute('width');
+    el.removeAttribute('height');
+    el.removeAttribute('align');
+
+    // For <a> tags, keep only the href
+    if (tag === 'A') {
+      const href = el.getAttribute('href');
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name !== 'href') {
+          el.removeAttribute(attr.name);
+        }
+      }
+      if (!href) {
+        // Unwrap links without href — replace with text content
+        const text = document.createTextNode(el.textContent ?? '');
+        el.parentNode?.replaceChild(text, el);
+        return;
+      }
+    }
+
+    // For <img> tags, keep only src and alt
+    if (tag === 'IMG') {
+      const src = el.getAttribute('src');
+      const alt = el.getAttribute('alt') ?? '';
+      for (const attr of Array.from(el.attributes)) {
+        if (attr.name !== 'src' && attr.name !== 'alt') {
+          el.removeAttribute(attr.name);
+        }
+      }
+      if (!src) {
+        el.parentNode?.removeChild(el);
+        return;
+      }
+      el.setAttribute('alt', alt);
+    }
+
+    // Unwrap disallowed tags — keep their children
+    if (!ALLOWED_PASTE_TAGS.has(tag)) {
+      const parent = el.parentNode;
+      if (!parent) return;
+      while (el.firstChild) {
+        parent.insertBefore(el.firstChild, el);
+      }
+      parent.removeChild(el);
+    }
+  }
+
+  for (const child of Array.from(doc.body.childNodes)) {
+    walk(child);
+  }
+
+  return doc.body.innerHTML;
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -177,6 +293,14 @@ export function RichTextEditor({
         style={{ minHeight }}
         onInput={emitChange}
         onBlur={emitChange}
+        onPaste={(e) => {
+          const html = e.clipboardData.getData('text/html');
+          if (!html) return; // plain text paste — let the browser handle it
+          e.preventDefault();
+          const clean = sanitizePastedHtml(html);
+          exec('insertHTML', clean);
+          emitChange();
+        }}
       />
     </div>
   );
