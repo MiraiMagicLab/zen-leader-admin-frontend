@@ -112,6 +112,8 @@ export function UsersListPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'lock' | 'unlock' | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
+  const [banConfirmOpen, setBanConfirmOpen] = useState(false);
+  const [unbanConfirmOpen, setUnbanConfirmOpen] = useState(false);
 
   const createDirty =
     createForm.email.trim() !== '' ||
@@ -332,7 +334,7 @@ export function UsersListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex flex-wrap justify-end gap-1.5">
+          <div className="flex justify-end gap-1.5 overflow-x-auto">
             <Button variant="outline" size="sm" onClick={() => openRolesDialog(row.original)}>
               Edit role
             </Button>
@@ -370,9 +372,10 @@ export function UsersListPage() {
                   variant="ghost"
                   size="sm"
                   className="text-destructive"
-                  onClick={() =>
-                    banMutation.mutate({ userId: row.original.id, bannedUntil: null })
-                  }
+                  onClick={() => {
+                    setSelectedUser(row.original);
+                    setUnbanConfirmOpen(true);
+                  }}
                 >
                   Unban
                 </Button>
@@ -381,7 +384,10 @@ export function UsersListPage() {
                   variant="ghost"
                   size="sm"
                   className="text-destructive"
-                  onClick={() => openBanDialog(row.original)}
+                  onClick={() => {
+                    setSelectedUser(row.original);
+                    setBanConfirmOpen(true);
+                  }}
                 >
                   Ban
                 </Button>
@@ -766,6 +772,71 @@ export function UsersListPage() {
               }}
             >
               {bulkPending ? 'Working…' : 'Confirm'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={banConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setBanConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ban this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser
+                ? `"${selectedUser.displayName}" will be restricted from accessing the platform. You can set the ban duration on the next screen.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={() => {
+                setBanConfirmOpen(false);
+                openBanDialog(selectedUser!);
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={unbanConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUnbanConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unban this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser
+                ? `"${selectedUser.displayName}" will regain access to the platform immediately.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedUser) {
+                  banMutation.mutate({ userId: selectedUser.id, bannedUntil: null });
+                }
+                setUnbanConfirmOpen(false);
+              }}
+            >
+              Unban
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
