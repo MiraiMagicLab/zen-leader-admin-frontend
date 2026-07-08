@@ -295,12 +295,13 @@ export function CoursesListPage() {
         <TableRowActions>
           <Button
             variant="outline"
+            className="border-sky-600 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
             size="sm"
             onClick={() => navigate(ROUTES.courseDetail(row.original.id))}
           >
             Detail
           </Button>
-          <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
+          <Button variant="outline" className="border-teal-600 text-teal-600 hover:bg-teal-50 hover:text-teal-700" size="sm" onClick={() => openEditDialog(row.original)}>
             Edit
           </Button>
           <Button
