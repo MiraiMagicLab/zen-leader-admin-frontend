@@ -86,6 +86,9 @@ function renderStatus(user: UserResponse) {
   if (isDeletedUser(user)) {
     return { label: 'Deleted', variant: 'destructive' as const };
   }
+  if (user.bannedUntil) {
+    return { label: 'Banned', variant: 'destructive' as const };
+  }
   if (user.isActive) {
     return { label: 'Active', variant: 'default' as const };
   }
@@ -114,6 +117,7 @@ export function UsersListPage() {
   const [bulkPending, setBulkPending] = useState(false);
   const [banConfirmOpen, setBanConfirmOpen] = useState(false);
   const [unbanConfirmOpen, setUnbanConfirmOpen] = useState(false);
+  const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
 
   const createDirty =
     createForm.email.trim() !== '' ||
@@ -325,7 +329,6 @@ export function UsersListPage() {
             <div className="flex flex-wrap gap-1">
               <Badge variant={status.variant}>{status.label}</Badge>
               {!user.isVerified ? <Badge variant="outline">Unverified</Badge> : null}
-              {user.bannedUntil ? <Badge variant="destructive">Banned</Badge> : null}
             </div>
           );
         },
@@ -343,12 +346,10 @@ export function UsersListPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    statusMutation.mutate({
-                      userId: row.original.id,
-                      isActive: false,
-                    })
-                  }
+                  onClick={() => {
+                    setSelectedUser(row.original);
+                    setLockConfirmOpen(true);
+                  }}
                 >
                   Lock
                 </Button>
@@ -837,6 +838,39 @@ export function UsersListPage() {
               }}
             >
               Unban
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={lockConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLockConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Lock this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser
+                ? `"${selectedUser.displayName}" will be locked out of their account until you unlock them.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedUser) {
+                  statusMutation.mutate({ userId: selectedUser.id, isActive: false });
+                }
+                setLockConfirmOpen(false);
+              }}
+            >
+              Lock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
