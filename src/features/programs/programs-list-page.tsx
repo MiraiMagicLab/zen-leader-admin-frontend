@@ -229,12 +229,13 @@ export function ProgramsListPage() {
           <TableRowActions>
             <Button
               variant="outline"
+              className="border-sky-600 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
               size="sm"
               onClick={() => navigate(ROUTES.programCourses(row.original.id))}
             >
               Course
             </Button>
-            <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
+            <Button variant="outline" className="border-violet-600 text-violet-600 hover:bg-violet-50 hover:text-violet-700" size="sm" onClick={() => openEditDialog(row.original)}>
               Edit
             </Button>
             <Button

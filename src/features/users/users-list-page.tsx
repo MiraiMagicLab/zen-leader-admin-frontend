@@ -338,13 +338,14 @@ export function UsersListPage() {
         header: '',
         cell: ({ row }) => (
           <div className="flex justify-end gap-1.5 overflow-x-auto">
-            <Button variant="outline" size="sm" onClick={() => openRolesDialog(row.original)}>
+            <Button variant="outline" className="border-violet-600 text-violet-600 hover:bg-violet-50 hover:text-violet-700" size="sm" onClick={() => openRolesDialog(row.original)}>
               Edit role
             </Button>
             {!isDeletedUser(row.original) &&
               (row.original.isActive ? (
                 <Button
                   variant="outline"
+                  className="border-slate-600 text-slate-600 hover:bg-slate-50 hover:text-slate-700"
                   size="sm"
                   onClick={() => {
                     setSelectedUser(row.original);
@@ -356,6 +357,7 @@ export function UsersListPage() {
               ) : (
                 <Button
                   variant="outline"
+                  className="border-slate-600 text-slate-600 hover:bg-slate-50 hover:text-slate-700"
                   size="sm"
                   onClick={() =>
                     statusMutation.mutate({

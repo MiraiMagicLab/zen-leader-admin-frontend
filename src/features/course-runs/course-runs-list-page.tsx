@@ -261,6 +261,7 @@ export function CourseRunsListPage() {
           <TableRowActions>
             <Button
               variant="outline"
+              className="border-sky-600 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
               size="sm"
               onClick={() => navigate(ROUTES.courseRunDetail(row.original.id))}
             >
