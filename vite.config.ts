@@ -15,6 +15,9 @@ export default defineConfig(({ mode }) => {
       },
       extensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.json'],
     },
+    optimizeDeps: {
+      include: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+    },
     server: {
       proxy: {
         '/api': {
