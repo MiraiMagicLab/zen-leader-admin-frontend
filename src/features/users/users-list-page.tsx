@@ -3,9 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   Lock,
+  MoreVertical,
   Plus,
   RefreshCw,
   Search,
+  ShieldAlert,
   Unlock,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -43,6 +45,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { queryKeys } from '@/hooks/query-keys';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
@@ -337,64 +345,74 @@ export function UsersListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex justify-end gap-1.5 overflow-x-auto">
-            <Button variant="outline" className="border-violet-600 text-violet-600 hover:bg-violet-50 hover:text-violet-700" size="sm" onClick={() => openRolesDialog(row.original)}>
+          <div className="flex justify-end gap-2 items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openRolesDialog(row.original)}
+            >
               Edit role
             </Button>
-            {!isDeletedUser(row.original) &&
-              (row.original.isActive ? (
-                <Button
-                  variant="outline"
-                  className="border-slate-600 text-slate-600 hover:bg-slate-50 hover:text-slate-700"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedUser(row.original);
-                    setLockConfirmOpen(true);
-                  }}
-                >
-                  Lock
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="size-8">
+                  <MoreVertical className="size-4" />
+                  <span className="sr-only">User actions</span>
                 </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  className="border-slate-600 text-slate-600 hover:bg-slate-50 hover:text-slate-700"
-                  size="sm"
-                  onClick={() =>
-                    statusMutation.mutate({
-                      userId: row.original.id,
-                      isActive: true,
-                    })
-                  }
-                >
-                  Unlock
-                </Button>
-              ))}
-            {!isDeletedUser(row.original) &&
-              (row.original.bannedUntil ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive"
-                  onClick={() => {
-                    setSelectedUser(row.original);
-                    setUnbanConfirmOpen(true);
-                  }}
-                >
-                  Unban
-                </Button>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive"
-                  onClick={() => {
-                    setSelectedUser(row.original);
-                    setBanConfirmOpen(true);
-                  }}
-                >
-                  Ban
-                </Button>
-              ))}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-36">
+                {!isDeletedUser(row.original) && (
+                  row.original.isActive ? (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setSelectedUser(row.original);
+                        setLockConfirmOpen(true);
+                      }}
+                    >
+                      <Lock className="mr-2 size-4" />
+                      Lock
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      onClick={() =>
+                        statusMutation.mutate({
+                          userId: row.original.id,
+                          isActive: true,
+                        })
+                      }
+                    >
+                      <Unlock className="mr-2 size-4" />
+                      Unlock
+                    </DropdownMenuItem>
+                  )
+                )}
+                {!isDeletedUser(row.original) && (
+                  row.original.bannedUntil ? (
+                    <DropdownMenuItem
+                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      onClick={() => {
+                        setSelectedUser(row.original);
+                        setUnbanConfirmOpen(true);
+                      }}
+                    >
+                      <ShieldAlert className="mr-2 size-4" />
+                      Unban
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      onClick={() => {
+                        setSelectedUser(row.original);
+                        setBanConfirmOpen(true);
+                      }}
+                    >
+                      <ShieldAlert className="mr-2 size-4" />
+                      Ban
+                    </DropdownMenuItem>
+                  )
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         ),
       },
