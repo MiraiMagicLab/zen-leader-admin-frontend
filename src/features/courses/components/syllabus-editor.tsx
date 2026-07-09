@@ -19,9 +19,14 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   BookOpen,
+  ChevronDown,
+  ChevronRight,
   CopyPlus,
   FileText,
   GripVertical,
+  Loader2,
+  MoreVertical,
+  Pencil,
   PlayCircle,
   Plus,
   Trash2,
@@ -33,8 +38,6 @@ import { ConfirmDialog } from '@/components/admin/confirm-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -42,6 +45,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
@@ -111,6 +122,10 @@ function SortableItem({
   };
 
   const Icon = TYPE_ICONS[item.type.toUpperCase()] ?? FileText;
+  const isVideo = item.type.toUpperCase() === 'VIDEO';
+  const hasContent = isVideo
+    ? Boolean((item.contentData?.fileAttachment as any)?.url)
+    : Boolean(String(item.contentData?.body || item.contentData?.content || '').trim());
 
   return (
     <div
@@ -131,7 +146,7 @@ function SortableItem({
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium">{item.title}</p>
-        <div className="mt-0.5 flex flex-wrap items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center gap-2">
           <Badge variant="secondary" className="text-xs">
             {typeLabel(item.type)}
           </Badge>
@@ -145,9 +160,24 @@ function SortableItem({
               Optional
             </Badge>
           ) : null}
+          {hasContent ? (
+            <Badge
+              variant="secondary"
+              className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200/60 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50 text-xs py-0 h-5"
+            >
+              {isVideo ? 'Video Uploaded' : 'Content Ready'}
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="text-amber-600 border-amber-300 bg-amber-50/50 dark:text-amber-400 dark:border-amber-900/50 text-xs py-0 h-5"
+            >
+              {isVideo ? 'Missing Video' : 'Empty Content'}
+            </Badge>
+          )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1.5">
         <Button
           variant="ghost"
           size="sm"
@@ -155,23 +185,34 @@ function SortableItem({
         >
           Edit
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={isDuplicatePending}
-          onClick={() => onDuplicate(item.id)}
-        >
-          <CopyPlus className="mr-1 size-3.5" />
-          Duplicate
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-destructive"
-          onClick={() => onDelete(item)}
-        >
-          <Trash2 className="size-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8">
+              <MoreVertical className="size-4" />
+              <span className="sr-only">Lesson actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-36">
+            <DropdownMenuItem
+              disabled={isDuplicatePending}
+              onClick={() => onDuplicate(item.id)}
+            >
+              {isDuplicatePending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <CopyPlus className="mr-2 size-4" />
+              )}
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              onClick={() => onDelete(item)}
+            >
+              <Trash2 className="mr-2 size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -179,6 +220,8 @@ function SortableItem({
 
 type SortableSectionProps = {
   section: SyllabusSectionResponse;
+  collapsed: boolean;
+  onToggleCollapse: (sectionId: string) => void;
   onAddItem: (section: SyllabusSectionResponse, defaultType?: string) => void;
   onEditItem: (section: SyllabusSectionResponse, item: SyllabusItemResponse) => void;
   onEditSection: (section: SyllabusSectionResponse) => void;
@@ -193,6 +236,8 @@ type SortableSectionProps = {
 
 function SortableSection({
   section,
+  collapsed,
+  onToggleCollapse,
   onAddItem,
   onEditItem,
   onEditSection,
@@ -258,51 +303,74 @@ function SortableSection({
           >
             <GripVertical className="text-muted-foreground size-4" />
           </button>
+          <button
+            type="button"
+            className="text-muted-foreground hover:text-foreground mt-1 flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+            onClick={() => onToggleCollapse(section.id)}
+          >
+            {collapsed ? (
+              <ChevronRight className="size-4" />
+            ) : (
+              <ChevronDown className="size-4" />
+            )}
+          </button>
           <div>
             <CardTitle className="text-base">{section.title}</CardTitle>
             <p className="text-muted-foreground mt-1 text-sm">{items.length} lessons</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex shrink-0 items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => onAddItem(section)}>
             <Plus className="mr-1 size-4" />
-            Lesson
+            Add Lesson
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isDuplicateSectionPending}
-            onClick={() => onDuplicateSection(section.id)}
-          >
-            Duplicate
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onEditSection(section)}
-          >
-            Rename
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive"
-            onClick={() => onDeleteSection(section)}
-          >
-            Delete
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <MoreVertical className="size-4" />
+                <span className="sr-only">Chapter actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem
+                disabled={isDuplicateSectionPending}
+                onClick={() => onDuplicateSection(section.id)}
+              >
+                {isDuplicateSectionPending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <CopyPlus className="mr-2 size-4" />
+                )}
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onEditSection(section)}>
+                <Pencil className="mr-2 size-4" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onClick={() => onDeleteSection(section)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
+      <div className="collapsible-content" data-state={collapsed ? 'closed' : 'open'}>
       <CardContent className="space-y-2 pt-0">
         {items.length === 0 ? (
           <div className="rounded-lg border border-dashed p-4 text-center">
             <p className="text-muted-foreground text-sm">This chapter has no lessons yet.</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               <Button size="sm" variant="secondary" onClick={() => onAddItem(section, 'VIDEO')}>
-                + Video
+                <PlayCircle className="mr-1 size-3.5" />
+                Video
               </Button>
               <Button size="sm" variant="secondary" onClick={() => onAddItem(section, 'ARTICLE')}>
-                + Article
+                <FileText className="mr-1 size-3.5" />
+                Article
               </Button>
             </div>
           </div>
@@ -326,6 +394,7 @@ function SortableSection({
           </DndContext>
         )}
       </CardContent>
+      </div>
     </Card>
   );
 }
@@ -339,10 +408,12 @@ export function SyllabusEditor({
   const queryClient = useQueryClient();
   const [sectionSheetOpen, setSectionSheetOpen] = useState(false);
   const [sectionTitle, setSectionTitle] = useState('');
+  const [sectionTitleTouched, setSectionTitleTouched] = useState(false);
   const [editSection, setEditSection] = useState<SyllabusSectionResponse | null>(null);
   const [editSectionOriginalTitle, setEditSectionOriginalTitle] = useState('');
   const [itemEditor, setItemEditor] = useState<ItemEditorState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -392,6 +463,7 @@ export function SyllabusEditor({
       toast.success('Chapter created.');
       setSectionSheetOpen(false);
       setSectionTitle('');
+      setSectionTitleTouched(false);
       await invalidate();
       setItemEditor({
         sectionId: created.id,
@@ -410,7 +482,7 @@ export function SyllabusEditor({
         orderIndex: editSection!.orderIndex,
       }),
     onSuccess: async () => {
-      toast.success('Chapter updated.');
+      toast.success('Chapter renamed.');
       setEditSection(null);
       await invalidate();
     },
@@ -454,6 +526,18 @@ export function SyllabusEditor({
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
+
+  const toggleCollapse = (sectionId: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(sectionId)) {
+        next.delete(sectionId);
+      } else {
+        next.add(sectionId);
+      }
+      return next;
+    });
+  };
 
   const handleSectionDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -520,7 +604,6 @@ export function SyllabusEditor({
     for (const section of sections) {
       const item = section.items?.find((entry) => entry.id === initialItemId);
       if (item) {
-        // Legitimate side effect: open the editor for a deep-linked ?itemId once data arrives.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         openEditItem(section, item);
         onInitialItemHandled?.();
@@ -551,6 +634,10 @@ export function SyllabusEditor({
       return;
     }
     setSectionSheetOpen(open);
+    if (!open) {
+      setSectionTitle('');
+      setSectionTitleTouched(false);
+    }
   };
 
   const handleRenameChapterOpenChange = (open: boolean) => {
@@ -580,7 +667,10 @@ export function SyllabusEditor({
 
       {sectionsQuery.isLoading ? (
         <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">Loading syllabus…</CardContent>
+          <CardContent className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading syllabus…
+          </CardContent>
         </Card>
       ) : sections.length === 0 ? (
         <Card className="border-dashed">
@@ -589,7 +679,7 @@ export function SyllabusEditor({
             <div>
               <p className="font-medium">No syllabus yet</p>
               <p className="text-muted-foreground mt-1 max-w-md text-sm">
-                Create the first chapter, then add lessons (video, article, quiz) right within the
+                Create the first chapter, then add lessons (video, article) right within the
                 same form — no page navigation needed.
               </p>
             </div>
@@ -607,6 +697,8 @@ export function SyllabusEditor({
                 <SortableSection
                   key={section.id}
                   section={section}
+                  collapsed={collapsedSections.has(section.id)}
+                  onToggleCollapse={toggleCollapse}
                   onAddItem={openAddItem}
                   onEditItem={openEditItem}
                   onEditSection={(s) => {
@@ -637,25 +729,39 @@ export function SyllabusEditor({
             <DialogTitle>Add chapter</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
-            <Label>Chapter name</Label>
+            <Label>
+              Chapter name <span className="text-destructive">*</span>
+            </Label>
             <Input
               autoFocus
               value={sectionTitle}
               placeholder={`Chapter ${sections.length + 1}`}
+              aria-invalid={sectionTitleTouched && sectionTitle.trim().length > 100}
               onChange={(e) => setSectionTitle(e.target.value)}
+              onBlur={() => setSectionTitleTouched(true)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && sectionTitle.trim()) {
                   createSectionMutation.mutate();
                 }
               }}
             />
+            {sectionTitleTouched && sectionTitle.trim().length > 100 ? (
+              <p className="text-destructive text-sm">Chapter name must be 100 characters or fewer.</p>
+            ) : null}
           </div>
           <DialogFooter>
+            <Button variant="outline" onClick={() => handleAddChapterOpenChange(false)}>
+              Cancel
+            </Button>
             <Button
-              onClick={() => createSectionMutation.mutate()}
+              onClick={() => {
+                setSectionTitleTouched(true);
+                createSectionMutation.mutate();
+              }}
               disabled={createSectionMutation.isPending}
             >
-              Create & add lessons
+              {createSectionMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
+              Create chapter
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -674,24 +780,32 @@ export function SyllabusEditor({
               <Input
                 autoFocus
                 value={editSection.title}
+                aria-invalid={editSection.title.trim().length > 100}
                 onChange={(e) =>
                   setEditSection((current) =>
                     current ? { ...current, title: e.target.value } : current,
                   )
                 }
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
+                  if (e.key === 'Enter' && editSection.title.trim()) {
                     updateSectionMutation.mutate();
                   }
                 }}
               />
+              {editSection.title.trim().length > 100 ? (
+                <p className="text-destructive text-sm">Chapter name must be 100 characters or fewer.</p>
+              ) : null}
             </div>
           ) : null}
           <DialogFooter>
+            <Button variant="outline" onClick={() => handleRenameChapterOpenChange(false)}>
+              Cancel
+            </Button>
             <Button
               onClick={() => updateSectionMutation.mutate()}
               disabled={!editSection?.title.trim() || updateSectionMutation.isPending}
             >
+              {updateSectionMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
               Save
             </Button>
           </DialogFooter>

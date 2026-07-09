@@ -10,6 +10,7 @@ import {
   Settings2,
   Trash2,
   Upload,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -211,6 +212,7 @@ export function CourseRunDetailPage() {
   const [enrollRole, setEnrollRole] = useState('STUDENT');
   const [importFile, setImportFile] = useState<File | null>(null);
   const importFileBufferRef = useRef<ArrayBuffer | null>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const [editEnrollment, setEditEnrollment] = useState<EnrollmentResponse | null>(null);
   const [editStatus, setEditStatus] = useState('ACTIVE');
   const [editRole, setEditRole] = useState('STUDENT');
@@ -1462,9 +1464,11 @@ export function CourseRunDetailPage() {
             </Button>
             <div className="space-y-2">
               <Label>Choose file</Label>
-              <Input
+              <input
+                ref={importFileInputRef}
                 type="file"
                 accept=".xlsx,.xls"
+                className="hidden"
                 onChange={(event) => {
                   const picked = event.target.files?.[0] ?? null;
                   setImportPreview(null);
@@ -1496,9 +1500,49 @@ export function CourseRunDetailPage() {
                   })();
                 }}
               />
+              
               {importFile ? (
-                <p className="text-muted-foreground text-xs">Selected: {importFile.name}</p>
-              ) : null}
+                <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
+                      <FileSpreadsheet className="size-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{importFile.name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {Math.round((importFile.size / 1024) * 10) / 10} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setImportFile(null);
+                      setImportPreview(null);
+                      importFileBufferRef.current = null;
+                      if (importFileInputRef.current) {
+                        importFileInputRef.current.value = '';
+                      }
+                    }}
+                  >
+                    <X className="mr-1 size-4" /> Remove
+                  </Button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => importFileInputRef.current?.click()}
+                  className="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/5 py-8 px-4 text-center hover:bg-muted/10 transition-colors cursor-pointer"
+                >
+                  <div className="bg-muted flex size-10 items-center justify-center rounded-full">
+                    <Upload className="text-muted-foreground size-5" />
+                  </div>
+                  <p className="mt-3 text-sm font-medium">Click to upload spreadsheet template</p>
+                  <p className="text-muted-foreground mt-1 text-xs">Excel format (.xlsx or .xls)</p>
+                </button>
+              )}
             </div>
             {importPreview ? (
               <Card>

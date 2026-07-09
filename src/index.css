@@ -134,3 +134,17 @@
     background-color: var(--background);
   }
 }
+
+.collapsible-content {
+  display: grid;
+  transition: grid-template-rows 250ms ease;
+}
+.collapsible-content[data-state="open"] {
+  grid-template-rows: 1fr;
+}
+.collapsible-content[data-state="closed"] {
+  grid-template-rows: 0fr;
+}
+.collapsible-content > * {
+  overflow: hidden;
+}

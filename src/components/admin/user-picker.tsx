@@ -87,20 +87,22 @@ export function UserPicker({
 
       {selectedUsers.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground text-xs font-medium">
             Selected {selectedUsers.length} learner{selectedUsers.length === 1 ? '' : 's'}
           </p>
-          <ul className="flex flex-wrap gap-2">
+          <ul className="max-h-36 overflow-y-auto rounded-md border divide-y bg-background">
             {selectedUsers.map((user) => (
               <li
                 key={user.id}
-                className="bg-muted/40 flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm"
+                className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs hover:bg-muted/10"
               >
-                <span className="font-medium">{user.displayName}</span>
-                <span className="text-muted-foreground text-xs">{user.email}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate">{user.displayName}</p>
+                  <p className="text-muted-foreground truncate">{user.email}</p>
+                </div>
                 <button
                   type="button"
-                  className="text-muted-foreground hover:text-foreground rounded-full p-0.5"
+                  className="text-muted-foreground hover:text-destructive rounded-md p-1 hover:bg-muted transition-colors cursor-pointer shrink-0"
                   aria-label={`Remove ${user.displayName}`}
                   onClick={() => removeUser(user.id)}
                 >

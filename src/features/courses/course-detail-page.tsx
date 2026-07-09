@@ -153,7 +153,7 @@ export function CourseDetailPage() {
   const [activeTab, setActiveTabState] = useState<CompletionAnchor>(() =>
     resolveInitialTab(searchParams.get('section'), searchParams.get('tab'), Boolean(deepLinkItemId)),
   );
-  const selectTab = (tab: CompletionAnchor) => {
+  const selectTab = (tab: CompletionAnchor, shouldScroll = false) => {
     setActiveTabState(tab);
     const next = new URLSearchParams(searchParams);
     next.delete('tab');
@@ -163,6 +163,12 @@ export function CourseDetailPage() {
       next.set('section', tab);
     }
     setSearchParams(next, { replace: true });
+
+    if (shouldScroll) {
+      setTimeout(() => {
+        tabsContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
   };
 
   const [createRunOpen, setCreateRunOpen] = useState(false);
@@ -188,6 +194,7 @@ export function CourseDetailPage() {
   const paidRunCount = courseRuns.filter((run) => hasCourseRunPricing(run.metadata)).length;
 
   const syncedCourseIdRef = useRef<string | null>(null);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!course || syncedCourseIdRef.current === course.id) {
       return;
@@ -427,17 +434,18 @@ export function CourseDetailPage() {
             completion={completion}
             onEdit={() => setEditCourseOpen(true)}
             onDelete={confirmDeleteCourse}
-            onSelect={selectTab}
+            onSelect={(anchor) => selectTab(anchor, true)}
           />
 
           {completion.firstIncomplete ? (
-            <CourseChecklist completion={completion} onSelect={selectTab} />
+            <CourseChecklist completion={completion} onSelect={(anchor) => selectTab(anchor, true)} />
           ) : null}
 
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => selectTab(value as CompletionAnchor)}
-          >
+          <div ref={tabsContainerRef} className="scroll-mt-6">
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) => selectTab(value as CompletionAnchor)}
+            >
             <TabsList className="grid h-10 w-full max-w-xl grid-cols-3">
               <TabsTrigger value="info" className="h-full">
                 Information
@@ -588,6 +596,7 @@ export function CourseDetailPage() {
               </WorkspaceSection>
             </TabsContent>
           </Tabs>
+          </div>
         </>
       ) : (
         <div className="bg-card text-muted-foreground rounded-xl border p-6 text-sm shadow-sm">
@@ -630,17 +639,7 @@ export function CourseDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Cover image (URL)</Label>
-              <Input
-                value={courseForm.thumbnailUrl}
-                placeholder="https://..."
-                onChange={(e) =>
-                  setCourseForm((prev) => ({ ...prev, thumbnailUrl: e.target.value }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Upload new cover image</Label>
+              <Label>Cover image</Label>
               <ImageFilePicker
                 file={courseForm.thumbnailFile}
                 existingUrl={courseForm.thumbnailUrl}

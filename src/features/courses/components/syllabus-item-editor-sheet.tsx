@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader2, Upload, Film, ChevronDown, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -24,6 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import { cn } from '@/lib/utils';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { syllabusItemsApi, syllabusSectionsApi } from '@/services/lms/lms-api';
 import type { SyllabusItemUpsertRequest } from '@/services/types/domain';
@@ -105,15 +107,20 @@ export function SyllabusItemEditorSheet({
   const [body, setBody] = useState('');
   const [isHidden, setIsHidden] = useState(false);
   const [isOptional, setIsOptional] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const syncedKeyRef = useRef<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
   useEffect(() => {
     if (!open) {
       syncedKeyRef.current = null;
       return;
     }
-    // Sync form state once per (item loaded / new-form) transition to avoid
-    // overwriting in-progress user edits on unrelated re-renders.
     if (isEdit && itemQuery.data) {
       const item = itemQuery.data;
       const key = `edit:${item.id}`;
@@ -129,6 +136,7 @@ export function SyllabusItemEditorSheet({
       setBody(readContentField(content, 'body', 'content'));
       setIsHidden(item.isHidden ?? false);
       setIsOptional(item.isOptional ?? false);
+      setTouched({});
       return;
     }
     if (!isEdit) {
@@ -144,6 +152,7 @@ export function SyllabusItemEditorSheet({
       setBody('');
       setIsHidden(false);
       setIsOptional(false);
+      setTouched({});
     }
   }, [open, isEdit, itemQuery.data, defaultType]);
 
@@ -258,13 +267,18 @@ export function SyllabusItemEditorSheet({
     onOpenChange(next);
   };
 
+  const titleError = touched.title && !title.trim() ? 'Lesson title is required.' : null;
+  const videoError =
+    itemType === 'VIDEO' && touched.video && !videoFile && !existingVideoAttachment
+      ? 'Please select a video file.'
+      : null;
   const requiredFilled =
     title.trim().length > 0 &&
     (itemType !== 'VIDEO' || Boolean(videoFile) || Boolean(existingVideoAttachment));
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[640px] sm:max-w-[640px]">
+      <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
         <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
           <SheetTitle>{isEdit ? 'Edit lesson' : 'Add lesson'}</SheetTitle>
           {sectionTitle ? (
@@ -272,102 +286,211 @@ export function SyllabusItemEditorSheet({
           ) : null}
         </SheetHeader>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-4">
           {isEdit && itemQuery.isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading lesson…</p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading lesson…
+            </div>
           ) : (
           <>
-          <div className="space-y-2">
-            <Label>
-              Title <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              value={title}
-              placeholder="e.g. Session 1 — Introduction to Zen Leader"
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+          <div>
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Basic info</p>
+            <div className="mt-3 space-y-4">
+              <div className="space-y-2">
+                <Label>
+                  Title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  value={title}
+                  placeholder="e.g. Session 1 — Introduction to Zen Leader"
+                  aria-invalid={Boolean(titleError)}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (touched.title && e.target.value.trim()) {
+                      setTouched((prev) => ({ ...prev, title: false }));
+                    }
+                  }}
+                  onBlur={() => setTouched((prev) => ({ ...prev, title: true }))}
+                />
+                {titleError ? (
+                  <p className="text-destructive text-sm">{titleError}</p>
+                ) : null}
+              </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="VIDEO">Video</SelectItem>
-                  <SelectItem value="ARTICLE">Article</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Short description</Label>
-              <Input
-                value={description}
-                placeholder="Optional"
-                onChange={(e) => setDescription(e.target.value)}
-              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="VIDEO">Video</SelectItem>
+                      <SelectItem value="ARTICLE">Article</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Short description</Label>
+                  <Input
+                    value={description}
+                    placeholder="Optional"
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
+                  <p className="text-muted-foreground text-xs">Brief summary shown in the lesson list.</p>
+                </div>
+              </div>
             </div>
           </div>
 
           {itemType === 'VIDEO' ? (
-            <div className="space-y-2">
-              <Label>
-                Video file <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                type="file"
-                accept="video/*"
-                onChange={(e) => setVideoFile(e.target.files?.[0] ?? null)}
-              />
-              {videoFile ? (
-                <p className="text-muted-foreground text-xs">
-                  Selected: {videoFile.name} ({Math.round(videoFile.size / 1024 / 1024)} MB)
-                </p>
-              ) : existingVideoAttachment ? (
-                <p className="text-muted-foreground text-xs">
-                  Current video:{' '}
-                  {existingVideoAttachment.fileName ?? existingVideoAttachment.url}
-                </p>
-              ) : (
-                <p className="text-muted-foreground text-xs">
-                  Choose a video file from your computer. It is uploaded and attached to this lesson when you save.
-                </p>
-              )}
+            <div>
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Video</p>
+              <div className="mt-3 space-y-2">
+                <Label>
+                  Video file {existingVideoAttachment && !videoFile ? null : <span className="text-destructive">*</span>}
+                </Label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    setVideoFile(e.target.files?.[0] ?? null);
+                    if (touched.video) {
+                      setTouched((prev) => ({ ...prev, video: false }));
+                    }
+                  }}
+                  onBlur={() => setTouched((prev) => ({ ...prev, video: true }))}
+                />
+
+                {videoFile ? (
+                  <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
+                        <Film className="size-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{videoFile.name}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {Math.round((videoFile.size / 1024 / 1024) * 10) / 10} MB
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setVideoFile(null)}
+                    >
+                      <X className="mr-1 size-4" /> Remove
+                    </Button>
+                  </div>
+                ) : existingVideoAttachment ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="bg-emerald-500/10 text-emerald-600 flex size-10 shrink-0 items-center justify-center rounded-lg">
+                          <Film className="size-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">
+                            {existingVideoAttachment.fileName || 'Attached Video'}
+                          </p>
+                          <p className="text-emerald-600 font-medium text-xs">Already uploaded</p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={triggerFileInput}
+                      >
+                        Replace File
+                      </Button>
+                    </div>
+                    <div className="relative overflow-hidden rounded-lg border bg-black">
+                      <video
+                        controls
+                        preload="metadata"
+                        src={existingVideoAttachment.url}
+                        className="w-full max-h-48"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={triggerFileInput}
+                    className={cn(
+                      'flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/5 py-8 px-4 text-center hover:bg-muted/10 transition-colors cursor-pointer',
+                      videoError && 'border-destructive bg-destructive/5',
+                    )}
+                  >
+                    <div className="bg-muted flex size-10 items-center justify-center rounded-full">
+                      <Upload className="text-muted-foreground size-5" />
+                    </div>
+                    <p className="mt-3 text-sm font-medium">Click to upload video file</p>
+                    <p className="text-muted-foreground mt-1 text-xs">MP4, WebM or OGG up to 200MB</p>
+                  </button>
+                )}
+                {videoError ? (
+                  <p className="text-destructive text-sm">{videoError}</p>
+                ) : null}
+              </div>
             </div>
           ) : (
-            <div className="space-y-2">
-              <Label>Article content</Label>
-              <RichTextEditor
-                value={body}
-                minHeight="12rem"
-                placeholder="Compose content shown in app…"
-                onChange={setBody}
-              />
+            <div>
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Article content</p>
+              <div className="mt-3 space-y-2">
+                <RichTextEditor
+                  value={body}
+                  minHeight="12rem"
+                  placeholder="Compose content shown in app…"
+                  onChange={setBody}
+                />
+              </div>
             </div>
           )}
 
-          <details className="rounded-lg border p-3">
-            <summary className="cursor-pointer text-sm font-medium">Advanced options</summary>
-            <div className="mt-3 space-y-3">
-              <div className="flex flex-wrap gap-6">
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={isHidden} onCheckedChange={setIsHidden} />
-                  Hidden from students
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch checked={isOptional} onCheckedChange={setIsOptional} />
-                  Optional lesson
-                </label>
-              </div>
-              {isEdit ? (
-                <p className="text-muted-foreground text-xs">
-                  Current type: {TYPE_LABELS[itemType] ?? itemType}.
-                </p>
-              ) : null}
+          <div>
+            <div className="rounded-lg border">
+              <button
+                type="button"
+                onClick={() => setAdvancedOpen(!advancedOpen)}
+                className="flex w-full items-center justify-between p-3 text-left text-sm font-medium"
+              >
+                <span>Advanced options</span>
+                <ChevronDown
+                  className={cn(
+                    'size-4 text-muted-foreground transition-transform duration-200',
+                    advancedOpen && 'rotate-180',
+                  )}
+                />
+              </button>
+
+              {advancedOpen && (
+                <div className="border-t p-3 bg-muted/10 space-y-3 animate-in fade-in-50 duration-200">
+                  <div className="flex flex-wrap gap-6">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                      <Switch checked={isHidden} onCheckedChange={setIsHidden} />
+                      <span>Hidden from students</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                      <Switch checked={isOptional} onCheckedChange={setIsOptional} />
+                      <span>Optional lesson</span>
+                    </label>
+                  </div>
+                  {isEdit ? (
+                    <p className="text-muted-foreground text-xs">
+                      Current type: {TYPE_LABELS[itemType] ?? itemType}.
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </div>
-          </details>
+          </div>
           </>
           )}
         </div>
@@ -377,9 +500,13 @@ export function SyllabusItemEditorSheet({
             Cancel
           </Button>
           <Button
-            onClick={() => saveMutation.mutate()}
+            onClick={() => {
+              setTouched({ title: true, video: true });
+              saveMutation.mutate();
+            }}
             disabled={saveMutation.isPending || (isEdit && itemQuery.isLoading) || !requiredFilled}
           >
+            {saveMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             {isEdit ? 'Save' : 'Create lesson'}
           </Button>
         </SheetFooter>
