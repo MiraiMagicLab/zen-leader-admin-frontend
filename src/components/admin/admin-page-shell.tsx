@@ -12,6 +12,8 @@ type AdminPageShellProps = {
   className?: string;
   /** Tighter vertical rhythm for data-dense list pages. */
   density?: 'default' | 'compact';
+  /** List pages use a smaller title and hide long descriptions by default. */
+  variant?: 'default' | 'list';
 };
 
 /**
@@ -26,16 +28,27 @@ export function AdminPageShell({
   children,
   className,
   density = 'default',
+  variant = 'default',
 }: AdminPageShellProps) {
+  const isList = variant === 'list';
+
   return (
     <div
       className={cn(
         'flex w-full min-w-0 flex-col',
-        density === 'compact' ? 'gap-4' : 'gap-6',
+        density === 'compact' || isList ? 'gap-4' : 'gap-6',
         className,
       )}
     >
-      <PageHeader title={title} description={description} actions={actions} />
+      <PageHeader
+        title={title}
+        description={isList ? undefined : description}
+        actions={actions}
+        size={isList ? 'sm' : 'default'}
+      />
+      {isList && description ? (
+        <p className="text-muted-foreground -mt-2 max-w-2xl text-sm">{description}</p>
+      ) : null}
       {toolbar ? (
         <div className="flex min-w-0 flex-col gap-3">{toolbar}</div>
       ) : null}

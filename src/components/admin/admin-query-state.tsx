@@ -1,6 +1,12 @@
 import type { ReactNode } from 'react';
 import { AlertCircle, Inbox, RefreshCw } from 'lucide-react';
 
+import {
+  AdminPageLoading,
+  AdminPanelSkeleton,
+  AdminSkeletonBar,
+  AdminTableSkeleton,
+} from '@/components/admin/admin-loading';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +16,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 type AdminQueryErrorProps = {
@@ -88,26 +93,10 @@ type AdminListSkeletonProps = {
 };
 
 /**
- * Table-shaped skeleton used while the first page of a list loads.
+ * @deprecated Prefer AdminTableSkeleton — kept for backward compatibility.
  */
 export function AdminListSkeleton({ rows = 6, className }: AdminListSkeletonProps) {
-  return (
-    <div className={cn('overflow-hidden rounded-xl border bg-card', className)}>
-      <div className="border-b px-4 py-3">
-        <Skeleton className="h-4 w-40" />
-      </div>
-      <div className="divide-y">
-        {Array.from({ length: rows }).map((_, index) => (
-          <div key={index} className="flex items-center gap-4 px-4 py-3">
-            <Skeleton className="h-4 w-8" />
-            <Skeleton className="h-4 flex-1" />
-            <Skeleton className="hidden h-4 w-24 sm:block" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <AdminTableSkeleton rows={rows} className={className} />;
 }
 
 type AdminDetailSkeletonProps = {
@@ -121,15 +110,21 @@ export function AdminDetailSkeleton({ className }: AdminDetailSkeletonProps) {
   return (
     <div className={cn('space-y-6', className)}>
       <div className="space-y-2">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-4 w-96 max-w-full" />
+        <AdminSkeletonBar className="h-8 w-64" />
+        <AdminSkeletonBar className="h-4 w-96 max-w-full" />
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-24 rounded-xl" />
-        <Skeleton className="h-24 rounded-xl" />
+        <AdminSkeletonBar className="h-24 rounded-xl" />
+        <AdminSkeletonBar className="h-24 rounded-xl" />
+        <AdminSkeletonBar className="h-24 rounded-xl" />
       </div>
-      <Skeleton className="h-64 rounded-xl" />
+      <AdminSkeletonBar className="h-64 rounded-xl" />
     </div>
   );
 }
+
+/** Lazy route / full page loading state. */
+export { AdminPageLoading as AdminRouteLoading };
+
+/** Panel / inspector loading placeholder. */
+export { AdminPanelSkeleton };

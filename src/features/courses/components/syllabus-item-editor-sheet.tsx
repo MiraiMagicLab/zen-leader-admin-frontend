@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2, Upload, Film, ChevronDown, X } from 'lucide-react';
+import { Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
+
+import {
+  uploadSyllabusVideo,
+  VideoUploadField,
+} from '@/components/admin/video-upload-field';
+import type { MultipartUploadProgress } from '@/lib/multipart-upload';
 
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { Button } from '@/components/ui/button';
@@ -109,13 +115,9 @@ export function SyllabusItemEditorSheet({
   const [isOptional, setIsOptional] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [uploadProgress, setUploadProgress] = useState<MultipartUploadProgress | null>(null);
 
   const syncedKeyRef = useRef<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
   useEffect(() => {
     if (!open) {
       syncedKeyRef.current = null;
@@ -214,15 +216,19 @@ export function SyllabusItemEditorSheet({
       }
 
       if (itemType === 'VIDEO' && videoFile) {
-        await syllabusItemsApi.uploadFile(savedId, videoFile);
+        await uploadSyllabusVideo(savedId, videoFile, setUploadProgress);
       }
     },
     onSuccess: async () => {
+      setUploadProgress(null);
       toast.success(isEdit ? 'Lesson saved.' : 'Lesson created.');
       await invalidate();
       onOpenChange(false);
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => {
+      setUploadProgress(null);
+      toast.error(getApiErrorMessage(error));
+    },
   });
 
   const itemType = type.toUpperCase();
@@ -346,99 +352,19 @@ export function SyllabusItemEditorSheet({
 
           {itemType === 'VIDEO' ? (
             <div>
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Video</p>
-              <div className="mt-3 space-y-2">
-                <Label>
-                  Video file {existingVideoAttachment && !videoFile ? null : <span className="text-destructive">*</span>}
-                </Label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    setVideoFile(e.target.files?.[0] ?? null);
-                    if (touched.video) {
-                      setTouched((prev) => ({ ...prev, video: false }));
-                    }
-                  }}
-                  onBlur={() => setTouched((prev) => ({ ...prev, video: true }))}
-                />
-
-                {videoFile ? (
-                  <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
-                        <Film className="size-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium">{videoFile.name}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {Math.round((videoFile.size / 1024 / 1024) * 10) / 10} MB
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setVideoFile(null)}
-                    >
-                      <X className="mr-1 size-4" /> Remove
-                    </Button>
-                  </div>
-                ) : existingVideoAttachment ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between rounded-lg border bg-muted/20 p-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="bg-emerald-500/10 text-emerald-600 flex size-10 shrink-0 items-center justify-center rounded-lg">
-                          <Film className="size-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium">
-                            {existingVideoAttachment.fileName || 'Attached Video'}
-                          </p>
-                          <p className="text-emerald-600 font-medium text-xs">Already uploaded</p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={triggerFileInput}
-                      >
-                        Replace File
-                      </Button>
-                    </div>
-                    <div className="relative overflow-hidden rounded-lg border bg-black">
-                      <video
-                        controls
-                        preload="metadata"
-                        src={existingVideoAttachment.url}
-                        className="w-full max-h-48"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={triggerFileInput}
-                    className={cn(
-                      'flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/5 py-8 px-4 text-center hover:bg-muted/10 transition-colors cursor-pointer',
-                      videoError && 'border-destructive bg-destructive/5',
-                    )}
-                  >
-                    <div className="bg-muted flex size-10 items-center justify-center rounded-full">
-                      <Upload className="text-muted-foreground size-5" />
-                    </div>
-                    <p className="mt-3 text-sm font-medium">Click to upload video file</p>
-                    <p className="text-muted-foreground mt-1 text-xs">MP4, WebM or OGG up to 200MB</p>
-                  </button>
-                )}
-                {videoError ? (
-                  <p className="text-destructive text-sm">{videoError}</p>
-                ) : null}
-              </div>
+              <p className="text-muted-foreground mb-3 text-xs font-medium uppercase tracking-wide">
+                Video
+              </p>
+              <VideoUploadField
+                file={videoFile}
+                onFileChange={setVideoFile}
+                existingAttachment={existingVideoAttachment}
+                error={videoError ?? undefined}
+                touched={touched.video}
+                onBlur={() => setTouched((prev) => ({ ...prev, video: true }))}
+                isUploading={saveMutation.isPending}
+                uploadProgress={uploadProgress}
+              />
             </div>
           ) : (
             <div>

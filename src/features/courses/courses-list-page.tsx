@@ -318,6 +318,8 @@ export function CoursesListPage() {
 
   return (
     <AdminPageShell
+      variant="list"
+      density="compact"
       title={
         isProgramScope
           ? `Courses — ${programQuery.data?.title ?? '...'}`

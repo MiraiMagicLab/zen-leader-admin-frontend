@@ -57,6 +57,9 @@ type DataTableProps<TData, TValue> = {
   /** Client pagination inside the table. Set false when the page handles server paging. */
   showPagination?: boolean;
   onRowClick?: (row: TData) => void;
+  /** Highlights the active row (dock / inspector selection). */
+  activeRowId?: string | null;
+  getRowId?: (row: TData) => string;
   /** Compact row height for dense admin lists. */
   density?: 'default' | 'compact';
   className?: string;
@@ -93,6 +96,8 @@ export function DataTable<TData, TValue>({
   pageOffset = 0,
   showPagination = true,
   onRowClick,
+  activeRowId = null,
+  getRowId,
   density = 'compact',
   className,
 }: DataTableProps<TData, TValue>) {
@@ -119,7 +124,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className={cn('space-y-4', className)}>
-      <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+      <div className="overflow-hidden rounded-xl border bg-card">
         <div className="relative max-h-[min(70vh,720px)] overflow-auto">
           <Table>
             <TableHeader className="bg-card sticky top-0 z-10 border-b">
@@ -161,18 +166,33 @@ export function DataTable<TData, TValue>({
                   <TableRow key={`skeleton-${rowIndex}`} className="hover:bg-transparent">
                     {allColumns.map((_, colIndex) => (
                       <TableCell key={`skeleton-${rowIndex}-${colIndex}`} className={cellPad}>
-                        <Skeleton className="h-4 w-full max-w-[12rem]" />
+                        <Skeleton
+                          className={cn(
+                            'h-4',
+                            colIndex === 0
+                              ? 'w-8'
+                              : colIndex === allColumns.length - 1
+                                ? 'w-16'
+                                : 'w-full max-w-[10rem]',
+                          )}
+                        />
                       </TableCell>
                     ))}
                   </TableRow>
                 ))
               ) : table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
+                table.getRowModel().rows.map((row) => {
+                  const rowId = getRowId?.(row.original);
+                  const isActive =
+                    activeRowId != null && rowId != null && activeRowId === rowId;
+
+                  return (
                   <TableRow
                     key={row.id}
                     className={cn(
                       'hover:bg-muted/40',
                       onRowClick && 'cursor-pointer',
+                      isActive && 'bg-muted/70 border-l-2 border-l-foreground',
                     )}
                     onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                     data-state={row.getIsSelected() ? 'selected' : undefined}
@@ -201,7 +221,8 @@ export function DataTable<TData, TValue>({
                       </TableCell>
                     ))}
                   </TableRow>
-                ))
+                  );
+                })
               ) : (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={allColumns.length} className="p-6">

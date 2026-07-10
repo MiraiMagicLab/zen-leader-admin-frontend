@@ -333,6 +333,8 @@ export function EventsListPage() {
 
   return (
     <AdminPageShell
+      variant="list"
+      density="compact"
       title="Events"
       description="Manage public events, schedule, and publishing status."
       actions={

@@ -495,9 +495,10 @@ export function UsersListPage() {
 
   return (
     <AdminPageShell
+      variant="list"
+      density="compact"
       title="Users"
       description="Manage account access, roles, verification status, and moderation actions."
-      density="compact"
       actions={
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>

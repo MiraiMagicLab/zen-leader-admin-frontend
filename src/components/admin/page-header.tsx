@@ -7,6 +7,7 @@ type PageHeaderProps = {
   description?: string;
   actions?: ReactNode;
   className?: string;
+  size?: 'default' | 'sm';
 };
 
 export function PageHeader({
@@ -14,18 +15,26 @@ export function PageHeader({
   description,
   actions,
   className,
+  size = 'default',
 }: PageHeaderProps) {
   return (
     <div
       className={cn(
-        'flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between',
+        'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
         className,
       )}
     >
-      <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+      <div className="space-y-1">
+        <h1
+          className={cn(
+            'font-semibold tracking-tight',
+            size === 'sm' ? 'text-xl' : 'text-2xl sm:text-3xl',
+          )}
+        >
+          {title}
+        </h1>
         {description ? (
-          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed sm:text-base">
+          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
             {description}
           </p>
         ) : null}
