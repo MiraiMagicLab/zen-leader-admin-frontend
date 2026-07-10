@@ -1,0 +1,77 @@
+name: Build and Deploy Admin
+
+# Builds Vite admin SPA and deploys static files to VPS nginx root.
+# Requires DNS A record admin.zenleader.xyz → VPS and nginx site enabled.
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-admin-production
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install & build
+        env:
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+        run: |
+          export VITE_API_BASE_URL="${VITE_API_BASE_URL:-https://api.omniadly.com}"
+          npm ci
+          npm run build
+          tar -czf admin-dist.tgz -C dist .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: admin-dist
+          path: admin-dist.tgz
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: admin-dist
+
+      - name: Upload artifact to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: admin-dist.tgz
+          target: /tmp
+
+      - name: Extract on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            DEPLOY_PATH="${{ secrets.VPS_DEPLOY_PATH }}"
+            if [ -z "$DEPLOY_PATH" ]; then
+              DEPLOY_PATH="/home/dev/zen-leader"
+            fi
+            if [ -x "$DEPLOY_PATH/scripts/ci-deploy-admin.sh" ]; then
+              sudo "$DEPLOY_PATH/scripts/ci-deploy-admin.sh" /tmp/admin-dist.tgz
+            else
+              sudo mkdir -p /var/www/admin.zenleader.xyz
+              sudo rm -rf /var/www/admin.zenleader.xyz/*
+              sudo tar -xzf /tmp/admin-dist.tgz -C /var/www/admin.zenleader.xyz
+              sudo nginx -t && sudo systemctl reload nginx || true
+            fi
