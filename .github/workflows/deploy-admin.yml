@@ -2,6 +2,8 @@ name: Build and Deploy Admin
 
 # Builds Vite admin SPA and deploys static files to VPS nginx root.
 # DNS: admin.zenleader.xyz must be A → VPS (not Vercel).
+# Requires repo secrets: VPS_SSH_HOST, VPS_SSH_USER, VPS_SSH_KEY
+# Optional: VPS_DEPLOY_PATH (default /home/dev/zen-leader), vars.VITE_API_URL
 
 on:
   push:
@@ -25,7 +27,6 @@ jobs:
 
       - name: Install & build
         env:
-          # App reads import.meta.env.VITE_API_URL (not VITE_API_BASE_URL)
           VITE_API_URL: ${{ vars.VITE_API_URL }}
         run: |
           export VITE_API_URL="${VITE_API_URL:-https://api.omniadly.com}"
@@ -48,6 +49,17 @@ jobs:
         with:
           name: admin-dist
 
+      - name: Prepare upload directory on VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_SSH_HOST }}
+          username: ${{ secrets.VPS_SSH_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            mkdir -p "$HOME/ci-uploads"
+            rm -f "$HOME/ci-uploads/admin-dist.tgz"
+
       - name: Upload artifact to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -55,9 +67,8 @@ jobs:
           username: ${{ secrets.VPS_SSH_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: admin-dist.tgz
-          target: /tmp/zenleader-ci
+          target: ci-uploads
           overwrite: true
-          rm: true
 
       - name: Extract on VPS
         uses: appleboy/ssh-action@v1.2.0
@@ -71,10 +82,7 @@ jobs:
             if [ -z "$DEPLOY_PATH" ]; then
               DEPLOY_PATH="/home/dev/zen-leader"
             fi
-            ARTIFACT="/tmp/zenleader-ci/admin-dist.tgz"
-            if [ ! -f "$ARTIFACT" ]; then
-              # appleboy may place file directly under target
-              ARTIFACT="/tmp/zenleader-ci/admin-dist.tgz"
-              ls -la /tmp/zenleader-ci || ls -la /tmp
-            fi
+            ARTIFACT="$HOME/ci-uploads/admin-dist.tgz"
+            ls -la "$HOME/ci-uploads"
+            test -f "$ARTIFACT"
             sudo "$DEPLOY_PATH/scripts/ci-deploy-admin.sh" "$ARTIFACT"
