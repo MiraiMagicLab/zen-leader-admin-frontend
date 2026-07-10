@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Skeleton } from '@/components/ui/skeleton';
+import { AdminSkeletonBar } from '@/components/admin/admin-loading';
 import {
   TABLE_ACTIONS_COLUMN_ID,
   TABLE_ACTIONS_COLUMN_WIDTH,
@@ -166,13 +166,13 @@ export function DataTable<TData, TValue>({
                   <TableRow key={`skeleton-${rowIndex}`} className="hover:bg-transparent">
                     {allColumns.map((_, colIndex) => (
                       <TableCell key={`skeleton-${rowIndex}-${colIndex}`} className={cellPad}>
-                        <Skeleton
+                        <AdminSkeletonBar
                           className={cn(
                             'h-4',
                             colIndex === 0
                               ? 'w-8'
                               : colIndex === allColumns.length - 1
-                                ? 'w-16'
+                                ? 'w-10'
                                 : 'w-full max-w-[10rem]',
                           )}
                         />

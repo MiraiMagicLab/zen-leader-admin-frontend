@@ -5,11 +5,14 @@ import { Link } from 'react-router-dom';
 import { Copy, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
-import { AdminInspector, InspectorField } from '@/components/admin/admin-inspector';
+import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
+import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
+import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -88,7 +91,9 @@ export function ModerationPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'RESOLVED' | 'DISMISSED' | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
-  const [inspectorReport, setInspectorReport] = useState<UgcReportResponse | null>(null);
+  const [selectedReport, setSelectedReport] = useState<UgcReportResponse | null>(null);
+
+  const clearSelectedReport = useCallback(() => setSelectedReport(null), []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -127,9 +132,9 @@ export function ModerationPage() {
     pendingRows.length > 0 && selectedPending.length === pendingRows.length;
   const hasActiveFilters = statusFilter !== 'PENDING' || Boolean(search.trim());
 
-  const inspectorLiveReport =
-    (inspectorReport && rows.find((report) => report.id === inspectorReport.id)) ||
-    inspectorReport;
+  const selectedLiveReport =
+    (selectedReport && rows.find((report) => report.id === selectedReport.id)) ||
+    selectedReport;
 
   const toggleRow = useCallback((reportId: string, checked: boolean) => {
     setSelectedIds((current) =>
@@ -248,36 +253,28 @@ export function ModerationPage() {
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
       {
-        id: 'actions',
-        header: '',
+        ...tableActionsColumn<UgcReportResponse>(),
         cell: ({ row }) =>
           row.original.status === 'PENDING' ? (
-            <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  updateStatusMutation.mutate({
-                    reportId: row.original.id,
-                    status: 'RESOLVED',
-                  })
-                }
-              >
-                Resolve
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  updateStatusMutation.mutate({
-                    reportId: row.original.id,
-                    status: 'DISMISSED',
-                  })
-                }
-              >
-                Dismiss
-              </Button>
-            </div>
+            <TableRowActionMenu
+              primaryLabel="Resolve"
+              onPrimary={() =>
+                updateStatusMutation.mutate({
+                  reportId: row.original.id,
+                  status: 'RESOLVED',
+                })
+              }
+              items={[
+                {
+                  label: 'Dismiss',
+                  onClick: () =>
+                    updateStatusMutation.mutate({
+                      reportId: row.original.id,
+                      status: 'DISMISSED',
+                    }),
+                },
+              ]}
+            />
           ) : null,
       },
     ],
@@ -286,8 +283,10 @@ export function ModerationPage() {
 
   return (
     <AdminPageShell
+      variant="list"
+      density="compact"
       title="Moderation"
-      description="Review user reports and update their resolution."
+      description="Review user reports and update resolution. Select a row to inspect."
       actions={
         <Button variant="outline" size="sm" onClick={() => void reportsQuery.refetch()}>
           <RefreshCw className="mr-2 size-4" />
@@ -321,153 +320,157 @@ export function ModerationPage() {
         </AdminFilterBar>
       }
     >
-      <div className="flex flex-col gap-6">
-        {reportsQuery.isError ? (
-          <AdminQueryError
-            message={getApiErrorMessage(reportsQuery.error)}
-            onRetry={() => void reportsQuery.refetch()}
-          />
-        ) : null}
+      <>
+        <AdminDockLayout dockOpen={Boolean(selectedLiveReport)}>
+          <div className="space-y-3">
+            {reportsQuery.isError ? (
+              <AdminQueryError
+                message={getApiErrorMessage(reportsQuery.error)}
+                onRetry={() => void reportsQuery.refetch()}
+              />
+            ) : null}
 
-        {selectedPending.length > 0 ? (
-          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
-            <span className="text-sm font-medium">{selectedPending.length} selected</span>
-            <div className="flex flex-1 flex-wrap justify-end gap-2">
+            <AdminBulkBar count={selectedPending.length}>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 disabled={bulkPending}
                 onClick={() => setBulkAction('RESOLVED')}
               >
-                Resolve selected ({selectedPending.length})
+                Resolve
               </Button>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 disabled={bulkPending}
                 onClick={() => setBulkAction('DISMISSED')}
               >
-                Dismiss selected ({selectedPending.length})
+                Dismiss
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
                 Clear
               </Button>
-            </div>
+            </AdminBulkBar>
+
+            <DataTable
+              columns={columns}
+              data={rows}
+              isLoading={reportsQuery.isLoading}
+              emptyMessage="No reports found."
+              showRowIndex
+              pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+              showPagination={false}
+              activeRowId={selectedLiveReport?.id ?? null}
+              getRowId={(row) => row.id}
+              onRowClick={setSelectedReport}
+            />
+
+            <ServerPagination
+              page={page}
+              totalPages={reportsQuery.data?.totalPages ?? 1}
+              onPageChange={(nextPage) => {
+                setPage(nextPage);
+                clearSelectedReport();
+              }}
+            />
           </div>
-        ) : null}
+        </AdminDockLayout>
 
-        <DataTable
-          columns={columns}
-          data={rows}
-          isLoading={reportsQuery.isLoading}
-          emptyMessage="No reports found."
-          showRowIndex
-          pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-          showPagination={false}
-          onRowClick={setInspectorReport}
-        />
-
-        <ServerPagination
-          page={page}
-          totalPages={reportsQuery.data?.totalPages ?? 1}
-          onPageChange={setPage}
-        />
-      </div>
-
-      <AdminInspector
-        open={Boolean(inspectorLiveReport)}
-        onOpenChange={(open) => {
-          if (!open) setInspectorReport(null);
-        }}
-        title="Report detail"
-        description={inspectorLiveReport ? `Report ${inspectorLiveReport.id.slice(0, 8)}…` : undefined}
-        footer={
-          inspectorLiveReport?.status === 'PENDING' ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={updateStatusMutation.isPending}
-                onClick={() =>
-                  updateStatusMutation.mutate({
-                    reportId: inspectorLiveReport.id,
-                    status: 'DISMISSED',
-                  })
+        <AdminDockPanel
+          open={Boolean(selectedLiveReport)}
+          onClose={clearSelectedReport}
+          title="Report detail"
+          description={
+            selectedLiveReport ? `Report ${selectedLiveReport.id.slice(0, 8)}…` : undefined
+          }
+          footer={
+            selectedLiveReport?.status === 'PENDING' ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={updateStatusMutation.isPending}
+                  onClick={() =>
+                    updateStatusMutation.mutate({
+                      reportId: selectedLiveReport.id,
+                      status: 'DISMISSED',
+                    })
+                  }
+                >
+                  Dismiss
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={updateStatusMutation.isPending}
+                  onClick={() =>
+                    updateStatusMutation.mutate({
+                      reportId: selectedLiveReport.id,
+                      status: 'RESOLVED',
+                    })
+                  }
+                >
+                  Resolve
+                </Button>
+              </>
+            ) : null
+          }
+        >
+          {selectedLiveReport ? (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <InspectorField label="Report ID" value={selectedLiveReport.id} mono className="col-span-2" />
+              <InspectorField
+                label="Status"
+                value={
+                  <Badge variant="secondary">
+                    {STATUS_LABEL[selectedLiveReport.status] ?? selectedLiveReport.status}
+                  </Badge>
                 }
-              >
-                Dismiss
-              </Button>
-              <Button
-                size="sm"
-                disabled={updateStatusMutation.isPending}
-                onClick={() =>
-                  updateStatusMutation.mutate({
-                    reportId: inspectorLiveReport.id,
-                    status: 'RESOLVED',
-                  })
+              />
+              <InspectorField label="Reason" value={selectedLiveReport.reason} className="col-span-2" />
+              <InspectorField
+                label="Reporter"
+                value={
+                  <div>
+                    <p>{selectedLiveReport.reporterDisplayName}</p>
+                    <p className="text-muted-foreground text-xs">{selectedLiveReport.reporterEmail}</p>
+                  </div>
                 }
-              >
-                Resolve
-              </Button>
-            </>
-          ) : undefined
-        }
-      >
-        {inspectorLiveReport ? (
-          <dl className="grid grid-cols-2 gap-4">
-            <InspectorField label="Report ID" value={inspectorLiveReport.id} mono className="col-span-2" />
-            <InspectorField
-              label="Status"
-              value={
-                <Badge variant="secondary">
-                  {STATUS_LABEL[inspectorLiveReport.status] ?? inspectorLiveReport.status}
-                </Badge>
-              }
-            />
-            <InspectorField label="Reason" value={inspectorLiveReport.reason} className="col-span-2" />
-            <InspectorField
-              label="Reporter"
-              value={
-                <div>
-                  <p>{inspectorLiveReport.reporterDisplayName}</p>
-                  <p className="text-muted-foreground text-xs">{inspectorLiveReport.reporterEmail}</p>
-                </div>
-              }
-              className="col-span-2"
-            />
-            <InspectorField
-              label="Reported user"
-              value={inspectorLiveReport.targetUserDisplayName}
-              className="col-span-2"
-            />
-            <InspectorField
-              label="Content type"
-              value={
-                CONTENT_TYPE_LABEL[inspectorLiveReport.targetContentType] ??
-                inspectorLiveReport.targetContentType
-              }
-            />
-            <InspectorField
-              label="Content ID"
-              value={
-                targetContentLink(inspectorLiveReport) ? (
-                  <Link
-                    className="text-primary font-mono text-xs hover:underline"
-                    to={targetContentLink(inspectorLiveReport)!}
-                  >
-                    {inspectorLiveReport.targetContentId}
-                  </Link>
-                ) : (
-                  inspectorLiveReport.targetContentId
-                )
-              }
-              mono={!targetContentLink(inspectorLiveReport)}
-            />
-            <InspectorField label="Reported at" value={formatDateTime(inspectorLiveReport.createdAt)} />
-            <InspectorField label="Updated at" value={formatDateTime(inspectorLiveReport.updatedAt)} />
-          </dl>
-        ) : null}
-      </AdminInspector>
+                className="col-span-2"
+              />
+              <InspectorField
+                label="Reported user"
+                value={selectedLiveReport.targetUserDisplayName}
+                className="col-span-2"
+              />
+              <InspectorField
+                label="Content type"
+                value={
+                  CONTENT_TYPE_LABEL[selectedLiveReport.targetContentType] ??
+                  selectedLiveReport.targetContentType
+                }
+              />
+              <InspectorField
+                label="Content ID"
+                value={
+                  targetContentLink(selectedLiveReport) ? (
+                    <Link
+                      className="text-primary font-mono text-xs hover:underline"
+                      to={targetContentLink(selectedLiveReport)!}
+                    >
+                      {selectedLiveReport.targetContentId}
+                    </Link>
+                  ) : (
+                    selectedLiveReport.targetContentId
+                  )
+                }
+                mono={!targetContentLink(selectedLiveReport)}
+              />
+              <InspectorField label="Reported at" value={formatDateTime(selectedLiveReport.createdAt)} />
+              <InspectorField label="Updated at" value={formatDateTime(selectedLiveReport.updatedAt)} />
+            </dl>
+          ) : null}
+        </AdminDockPanel>
+      </>
 
       <AlertDialog
         open={bulkAction !== null}

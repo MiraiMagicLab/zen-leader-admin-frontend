@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { AdminInspector, InspectorField } from '@/components/admin/admin-inspector';
+import { AdminDockPanel } from '@/components/admin/admin-dock-panel';
+import { InspectorField } from '@/components/admin/admin-inspector';
+import { AdminPanelSkeleton } from '@/components/admin/admin-loading';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { Progress } from '@/components/ui/progress';
 import { queryKeys } from '@/hooks/query-keys';
@@ -19,8 +21,7 @@ type CourseRunProgressInspectorProps = {
 };
 
 /**
- * Read-only inspector showing syllabus and session-attendance progress for a single
- * enrollment. Lazily fetches `progressApi.getSummary` only while an enrollment is selected.
+ * Floating progress panel for a single enrollment (replaces edge-locked sheet).
  */
 export function CourseRunProgressInspector({
   runId,
@@ -31,17 +32,18 @@ export function CourseRunProgressInspector({
   const progressQuery = useQuery({
     queryKey: queryKeys.progress.summary(enrollment?.userId ?? '', runId),
     queryFn: () => progressApi.getSummary(enrollment!.userId, runId),
-    enabled: Boolean(enrollment && runId),
+    enabled: Boolean(enrollment && runId && open),
   });
 
   return (
-    <AdminInspector
+    <AdminDockPanel
       open={open}
-      onOpenChange={onOpenChange}
+      onClose={() => onOpenChange(false)}
       title="Learning progress"
       description={
         enrollment ? enrollment.userDisplayName ?? enrollment.userEmail ?? undefined : undefined
       }
+      isLoading={progressQuery.isLoading}
     >
       {progressQuery.isError ? (
         <AdminQueryError
@@ -49,11 +51,7 @@ export function CourseRunProgressInspector({
           onRetry={() => void progressQuery.refetch()}
         />
       ) : progressQuery.isLoading ? (
-        <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="h-14 animate-pulse rounded-md border bg-muted/30" />
-          ))}
-        </div>
+        <AdminPanelSkeleton lines={4} />
       ) : progressQuery.data ? (
         <div className="space-y-6">
           <div className="space-y-1.5">
@@ -91,6 +89,6 @@ export function CourseRunProgressInspector({
           </dl>
         </div>
       ) : null}
-    </AdminInspector>
+    </AdminDockPanel>
   );
 }

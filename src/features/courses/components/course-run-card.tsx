@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
-import { CalendarClock, Pencil, Trash2, Users, Video } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { CalendarClock, Trash2, Users, Video } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import { TableRowActionMenu } from '@/components/admin/table-row-actions';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatDateTime } from '@/lib/format';
 import { formatCourseRunPricingSummary } from '@/lib/course-run-pricing';
@@ -16,6 +17,7 @@ type CourseRunCardProps = {
 };
 
 export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
+  const navigate = useNavigate();
   const sessionCount = (run.courseSessions ?? run.sessions ?? []).length;
   const pricing = formatCourseRunPricingSummary(run.metadata) || 'Free';
 
@@ -32,27 +34,16 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
           >
             {courseRunStatusLabel(run.status)}
           </span>
-          <span className="bg-primary/10 text-primary inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium">
-            {pricing}
-          </span>
+          <Badge variant="secondary">{pricing}</Badge>
         </div>
-        <div className="flex gap-1.5">
-          <Button variant="outline" size="sm" asChild>
-            <Link to={ROUTES.courseRunDetail(run.id)}>Manage class</Link>
-          </Button>
-          <Button variant="outline" size="icon" className="size-8" onClick={onEdit} aria-label="Edit class">
-            <Pencil className="size-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="text-destructive size-8"
-            onClick={onDelete}
-            aria-label="Delete class"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
+        <TableRowActionMenu
+          primaryLabel="Manage"
+          onPrimary={() => navigate(ROUTES.courseRunDetail(run.id))}
+          items={[
+            { label: 'Edit', onClick: onEdit },
+            { label: 'Delete', icon: Trash2, destructive: true, onClick: onDelete },
+          ]}
+        />
       </div>
 
       <div className="text-muted-foreground mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-xs">

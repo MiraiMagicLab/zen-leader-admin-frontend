@@ -1,12 +1,7 @@
 name: Build and Deploy Admin
 
 # Builds Vite admin SPA and deploys static files to VPS nginx root.
-<<<<<<< HEAD
-# DNS: admin.zenleader.xyz must be A → VPS.
-=======
-# DNS: admin.zenleader.xyz must be A ? VPS.
->>>>>>> b46c9b9b1d5b47ec0c02320b7b005a77c2e4c450
-# Requires repo secrets: VPS_SSH_HOST, VPS_SSH_USER, VPS_SSH_KEY
+# DNS: admin.zenleader.xyz must be A ? VPS.# Requires repo secrets: VPS_SSH_HOST, VPS_SSH_USER, VPS_SSH_KEY
 # Optional: VPS_DEPLOY_PATH (default /home/dev/zen-leader), vars.VITE_API_URL
 
 on:

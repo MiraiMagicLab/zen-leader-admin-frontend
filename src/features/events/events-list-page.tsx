@@ -13,7 +13,7 @@ import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu } from '@/components/admin/table-row-actions';
+import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -278,8 +278,7 @@ export function EventsListPage() {
         cell: ({ row }) => formatDateTime(row.original.startTime),
       },
       {
-        id: 'actions',
-        header: '',
+        ...tableActionsColumn<EventResponse>(),
         cell: ({ row }) => {
           const status = normalizeEventStatus(row.original.status);
           const items = [

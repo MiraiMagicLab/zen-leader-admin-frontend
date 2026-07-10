@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
+import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -28,8 +29,8 @@ import {
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
-import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { confirmDiscard } from '@/lib/confirm-discard';
+import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { formatDateTime } from '@/lib/format';
 import { sessionsApi } from '@/services/lms/lms-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
@@ -231,29 +232,25 @@ export function CourseRunSessionsPanel({
         header: '',
         size: 48,
         cell: ({ row }) => (
-          <div className="flex flex-wrap justify-end gap-1.5">
-            <Button variant="outline" size="sm" onClick={() => openEditSession(row.original)}>
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive"
-              onClick={() =>
-                setPendingConfirm({
-                  title: 'Delete session?',
-                  description: (
-                    <>
-                      Delete session &quot;{row.original.title}&quot;. This cannot be undone.
-                    </>
-                  ),
-                  action: () => deleteSessionMutation.mutate(row.original.id),
-                })
-              }
-            >
-              Delete
-            </Button>
-          </div>
+          <TableRowActionMenu
+            primaryLabel="Edit"
+            onPrimary={() => openEditSession(row.original)}
+            items={[
+              {
+                label: 'Delete',
+                icon: Trash2,
+                destructive: true,
+                onClick: () =>
+                  setPendingConfirm({
+                    title: 'Delete session?',
+                    description: (
+                      <>Delete session &quot;{row.original.title}&quot;. This cannot be undone.</>
+                    ),
+                    action: () => deleteSessionMutation.mutate(row.original.id),
+                  }),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -262,8 +259,8 @@ export function CourseRunSessionsPanel({
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+      <Card className="border-0 shadow-none">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 px-0 pb-3">
           <CardTitle className="text-base">Online sessions</CardTitle>
           <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
             <Plus className="mr-2 size-4" />

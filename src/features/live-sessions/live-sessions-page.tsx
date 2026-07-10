@@ -1,12 +1,15 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { KeyRound, RefreshCw, Video } from 'lucide-react';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
+import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -21,6 +24,13 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
@@ -208,38 +218,35 @@ export function LiveSessionsPage() {
       {
         id: 'actions',
         header: '',
-        cell: ({ row }) => (
-          <div className="flex gap-1">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={joinMutation.isPending}
-              onClick={() => joinMutation.mutate(row.original.roomCode)}
-            >
-              <KeyRound className="mr-1 size-4" />
-              Copy join token
-            </Button>
-            {row.original.status !== 'ENDED' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={endMutation.isPending}
-                onClick={() => endMutation.mutate(row.original.id)}
-              >
-                End
-              </Button>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive"
-              disabled={deleteMutation.isPending}
-              onClick={() => deleteMutation.mutate(row.original.id)}
-            >
-              Delete
-            </Button>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const items = [
+            row.original.status !== 'ENDED'
+              ? {
+                  label: 'End session',
+                  onClick: () => endMutation.mutate(row.original.id),
+                }
+              : null,
+            {
+              label: 'Delete',
+              icon: Trash2,
+              destructive: true,
+              onClick: () => deleteMutation.mutate(row.original.id),
+            },
+          ].filter(Boolean) as Array<{
+            label: string;
+            icon?: typeof Trash2;
+            destructive?: boolean;
+            onClick: () => void;
+          }>;
+
+          return (
+            <TableRowActionMenu
+              primaryLabel="Copy token"
+              onPrimary={() => joinMutation.mutate(row.original.roomCode)}
+              items={items}
+            />
+          );
+        },
       },
     ],
     [
@@ -256,9 +263,10 @@ export function LiveSessionsPage() {
 
   return (
     <AdminPageShell
-      title="Live sessions"
-      description="Monitor meeting rooms and live session status in real time."
+      variant="list"
       density="compact"
+      title="Live sessions"
+      description="Monitor meeting rooms and session status. Auto-refreshes every 15 seconds."
       actions={
         <Button variant="outline" size="sm" onClick={() => void sessionsQuery.refetch()}>
           <RefreshCw className="mr-2 size-4" />
@@ -266,30 +274,26 @@ export function LiveSessionsPage() {
         </Button>
       }
       toolbar={
-        <div className="flex flex-wrap items-center gap-2">
-          {STATUS_OPTIONS.map((option) => (
-            <Button
-              key={option.value}
-              type="button"
-              size="sm"
-              variant={statusFilter === option.value ? 'default' : 'outline'}
-              onClick={() => {
-                setPage(0);
-                setStatusFilter(option.value);
-              }}
-              className={cn(
-                option.value === 'ACTIVE' &&
-                  statusFilter === option.value &&
-                  'bg-emerald-600 hover:bg-emerald-600/90',
-              )}
-            >
-              {option.value === 'ACTIVE' ? (
-                <Video className="mr-1.5 size-3.5" />
-              ) : null}
-              {option.label}
-            </Button>
-          ))}
-        </div>
+        <AdminFilterBar>
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => {
+              setPage(0);
+              setStatusFilter(value);
+            }}
+          >
+            <SelectTrigger className="w-36">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </AdminFilterBar>
       }
     >
       <div className="flex flex-col gap-4">
@@ -301,31 +305,28 @@ export function LiveSessionsPage() {
         ) : null}
 
         {selectedRows.length > 0 ? (
-          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
-            <span className="text-sm font-medium">{selectedRows.length} selected</span>
-            <div className="flex flex-1 flex-wrap justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={bulkPending || selectedActiveRows.length === 0}
-                onClick={() => setBulkAction('end')}
-              >
-                End selected ({selectedActiveRows.length})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-destructive"
-                disabled={bulkPending}
-                onClick={() => setBulkAction('delete')}
-              >
-                Delete selected ({selectedRows.length})
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-                Clear
-              </Button>
-            </div>
-          </div>
+          <AdminBulkBar count={selectedRows.length}>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={bulkPending || selectedActiveRows.length === 0}
+              onClick={() => setBulkAction('end')}
+            >
+              End
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              disabled={bulkPending}
+              onClick={() => setBulkAction('delete')}
+            >
+              Delete
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+              Clear
+            </Button>
+          </AdminBulkBar>
         ) : null}
 
         <DataTable

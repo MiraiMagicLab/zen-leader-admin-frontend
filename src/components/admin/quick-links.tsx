@@ -25,9 +25,9 @@ export function QuickLinks({ items, className }: QuickLinksProps) {
           <Link
             key={item.href}
             to={item.href}
-            className="group flex items-start gap-3 rounded-xl border bg-card p-4 no-underline shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
+            className="group flex items-start gap-3 rounded-lg border border-transparent p-3 no-underline transition-colors hover:border-border hover:bg-muted/40"
           >
-            <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
+            <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
               <Icon className="size-5" />
             </div>
             <div className="min-w-0 flex-1">

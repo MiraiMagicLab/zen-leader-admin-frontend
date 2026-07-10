@@ -11,6 +11,7 @@ import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-q
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
+import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -360,27 +361,38 @@ export function EventDetailPage() {
       }
       actions={
         event ? (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
             {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
-            <Button variant="outline" size="sm" onClick={openEditSheet}>
-              <Pencil className="mr-2 size-4" />
-              Edit
-            </Button>
-            {normalizeEventStatus(event.status) !== 'PUBLISHED' ? (
-              <Button variant="outline" size="sm" onClick={() => openEventActionDialog('publish')}>
-                Publish
-              </Button>
-            ) : null}
-            {normalizeEventStatus(event.status) !== 'DRAFT' ? (
-              <Button variant="outline" size="sm" onClick={() => openEventActionDialog('unpublish')}>
-                Move to draft
-              </Button>
-            ) : null}
-            <Button variant="destructive" size="sm" onClick={() => openEventActionDialog('delete')}>
-              <Trash2 className="mr-2 size-4" />
-              Delete
-            </Button>
+            <TableRowActionMenu
+              primaryLabel="Edit"
+              onPrimary={openEditSheet}
+              items={[
+                normalizeEventStatus(event.status) !== 'PUBLISHED'
+                  ? {
+                      label: 'Publish',
+                      onClick: () => openEventActionDialog('publish'),
+                    }
+                  : null,
+                normalizeEventStatus(event.status) !== 'DRAFT'
+                  ? {
+                      label: 'Move to draft',
+                      onClick: () => openEventActionDialog('unpublish'),
+                    }
+                  : null,
+                {
+                  label: 'Delete',
+                  icon: Trash2,
+                  destructive: true,
+                  onClick: () => openEventActionDialog('delete'),
+                },
+              ].filter(Boolean) as Array<{
+                label: string;
+                icon?: typeof Trash2;
+                destructive?: boolean;
+                onClick: () => void;
+              }>}
+            />
           </div>
         ) : undefined
       }

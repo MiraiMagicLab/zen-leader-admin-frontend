@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { RotateCcw } from 'lucide-react';
+import { RefreshCw, RotateCcw } from 'lucide-react';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
-import { AdminInspector, InspectorField } from '@/components/admin/admin-inspector';
+import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
+import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -42,7 +43,15 @@ export function AuditLogsPage() {
   const [entityType, setEntityType] = useState(ALL);
   const [actorUserIdInput, setActorUserIdInput] = useState('');
   const [actorUserId, setActorUserId] = useState('');
-  const [inspectorLog, setInspectorLog] = useState<AuditLogResponse | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLogResponse | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(1);
+      setActorUserId(actorUserIdInput.trim());
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [actorUserIdInput]);
 
   const hasActiveFilters =
     action !== ALL || entityType !== ALL || Boolean(actorUserId.trim());
@@ -59,10 +68,8 @@ export function AuditLogsPage() {
       }),
   });
 
-  const applyActorFilter = () => {
-    setPage(1);
-    setActorUserId(actorUserIdInput.trim());
-  };
+
+  const clearSelectedLog = () => setSelectedLog(null);
 
   const resetFilters = () => {
     setPage(1);
@@ -101,8 +108,16 @@ export function AuditLogsPage() {
 
   return (
     <AdminPageShell
+      variant="list"
+      density="compact"
       title="Audit log"
-      description="Review administrative actions and data changes across the platform."
+      description="Review administrative actions across the platform. Select a row to inspect."
+      actions={
+        <Button variant="outline" size="sm" onClick={() => void auditQuery.refetch()}>
+          <RefreshCw className="mr-2 size-4" />
+          Refresh
+        </Button>
+      }
       toolbar={
         <AdminFilterBar
           searchValue={actorUserIdInput}
@@ -111,11 +126,6 @@ export function AuditLogsPage() {
           showClear={hasActiveFilters}
           clearLabel="Clear filters"
           onClear={resetFilters}
-          trailing={
-            <Button variant="secondary" size="sm" onClick={applyActorFilter}>
-              Apply filter
-            </Button>
-          }
         >
           <Select
             value={action}
@@ -159,84 +169,88 @@ export function AuditLogsPage() {
         </AdminFilterBar>
       }
     >
-      <div className="flex flex-col gap-6">
-        {auditQuery.isError ? (
-          <AdminQueryError
-            message={getApiErrorMessage(auditQuery.error)}
-            onRetry={() => void auditQuery.refetch()}
-          />
-        ) : null}
-
-        {hasActiveFilters ? (
-          <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-sm">
-            <RotateCcw className="size-3.5" />
-            Filters:
-            {action !== ALL ? ` ${auditActionLabel(action)}` : ''}
-            {entityType !== ALL ? ` · ${auditEntityTypeLabel(entityType)}` : ''}
-            {actorUserId ? ` · User ${actorUserId}` : ''}
-          </p>
-        ) : null}
-
-        <DataTable
-          columns={columns}
-          data={auditQuery.data?.data ?? []}
-          isLoading={auditQuery.isLoading}
-          showRowIndex
-          pageOffset={(page - 1) * PAGE_SIZE}
-          showPagination={false}
-          emptyMessage="No matching audit records."
-          onRowClick={setInspectorLog}
-        />
-
-        <ServerPagination
-          page={page}
-          totalPages={auditQuery.data?.totalPages ?? 1}
-          onPageChange={setPage}
-          pageBase={1}
-        />
-      </div>
-
-      <AdminInspector
-        open={Boolean(inspectorLog)}
-        onOpenChange={(open) => {
-          if (!open) setInspectorLog(null);
-        }}
-        title="Audit log detail"
-        description={inspectorLog ? `Log ${inspectorLog.id.slice(0, 8)}…` : undefined}
-        size="lg"
-      >
-        {inspectorLog ? (
-          <div className="space-y-4">
-            <dl className="grid grid-cols-2 gap-4">
-              <InspectorField label="Action" value={auditActionLabel(inspectorLog.action)} />
-              <InspectorField label="Entity type" value={auditEntityTypeLabel(inspectorLog.entityType)} />
-              <InspectorField label="Entity ID" value={inspectorLog.entityId} mono className="col-span-2" />
-              <InspectorField
-                label="Actor"
-                value={inspectorLog.actorDisplay ?? inspectorLog.actorUserId}
+      <>
+        <AdminDockLayout dockOpen={Boolean(selectedLog)}>
+          <div className="space-y-3">
+            {auditQuery.isError ? (
+              <AdminQueryError
+                message={getApiErrorMessage(auditQuery.error)}
+                onRetry={() => void auditQuery.refetch()}
               />
-              <InspectorField label="Actor type" value={inspectorLog.actorType} />
-              <InspectorField label="Actor user ID" value={inspectorLog.actorUserId} mono />
-              <InspectorField label="Request ID" value={inspectorLog.requestId} mono />
-              <InspectorField label="IP address" value={inspectorLog.ipAddress} mono />
-              <InspectorField
-                label="User agent"
-                value={inspectorLog.userAgent}
-                className="col-span-2"
-              />
-              <InspectorField label="Timestamp" value={formatDateTime(inspectorLog.createdAt)} />
-            </dl>
-            <div className="space-y-1">
-              <dt className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Metadata
-              </dt>
-              <pre className="bg-muted/50 max-h-96 overflow-auto rounded-lg border p-3 text-xs whitespace-pre-wrap break-words">
-                {inspectorLog.metadata ? JSON.stringify(inspectorLog.metadata, null, 2) : '—'}
-              </pre>
-            </div>
+            ) : null}
+
+            {hasActiveFilters ? (
+              <p className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+                <RotateCcw className="size-3.5" />
+                Filters:
+                {action !== ALL ? ` ${auditActionLabel(action)}` : ''}
+                {entityType !== ALL ? ` · ${auditEntityTypeLabel(entityType)}` : ''}
+                {actorUserId ? ` · User ${actorUserId}` : ''}
+              </p>
+            ) : null}
+
+            <DataTable
+              columns={columns}
+              data={auditQuery.data?.data ?? []}
+              isLoading={auditQuery.isLoading}
+              showRowIndex
+              pageOffset={(page - 1) * PAGE_SIZE}
+              showPagination={false}
+              emptyMessage="No matching audit records."
+              activeRowId={selectedLog?.id ?? null}
+              getRowId={(row) => row.id}
+              onRowClick={setSelectedLog}
+            />
+
+            <ServerPagination
+              page={page}
+              totalPages={auditQuery.data?.totalPages ?? 1}
+              onPageChange={(nextPage) => {
+                setPage(nextPage);
+                clearSelectedLog();
+              }}
+              pageBase={1}
+            />
           </div>
-        ) : null}
-      </AdminInspector>
+        </AdminDockLayout>
+
+        <AdminDockPanel
+          open={Boolean(selectedLog)}
+          onClose={clearSelectedLog}
+          title="Audit log detail"
+          description={selectedLog ? `Log ${selectedLog.id.slice(0, 8)}…` : undefined}
+        >
+          {selectedLog ? (
+            <div className="space-y-4">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <InspectorField label="Action" value={auditActionLabel(selectedLog.action)} />
+                <InspectorField label="Entity type" value={auditEntityTypeLabel(selectedLog.entityType)} />
+                <InspectorField label="Entity ID" value={selectedLog.entityId} mono className="col-span-2" />
+                <InspectorField
+                  label="Actor"
+                  value={selectedLog.actorDisplay ?? selectedLog.actorUserId}
+                />
+                <InspectorField label="Actor type" value={selectedLog.actorType} />
+                <InspectorField label="Actor user ID" value={selectedLog.actorUserId} mono />
+                <InspectorField label="Request ID" value={selectedLog.requestId} mono />
+                <InspectorField label="IP address" value={selectedLog.ipAddress} mono />
+                <InspectorField
+                  label="User agent"
+                  value={selectedLog.userAgent}
+                  className="col-span-2"
+                />
+                <InspectorField label="Timestamp" value={formatDateTime(selectedLog.createdAt)} />
+              </dl>
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-xs font-medium">Metadata</p>
+                <pre className="bg-muted/40 max-h-96 overflow-auto rounded-lg border p-3 text-xs whitespace-pre-wrap break-words">
+                  {selectedLog.metadata ? JSON.stringify(selectedLog.metadata, null, 2) : '—'}
+                </pre>
+              </div>
+            </div>
+          ) : null}
+        </AdminDockPanel>
+      </>
     </AdminPageShell>
   );
 }

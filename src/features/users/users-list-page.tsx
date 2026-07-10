@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
@@ -521,36 +522,29 @@ export function UsersListPage() {
               />
             ) : null}
 
-            {selectedRowsOnPage.length > 0 ? (
-              <div className="flex flex-wrap items-center gap-2 py-1">
-                <span className="text-muted-foreground text-sm">
-                  {selectedRowsOnPage.length} selected
-                </span>
-                <div className="ml-auto flex flex-wrap gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={bulkPending}
-                    onClick={() => setBulkAction('lock')}
-                  >
-                    <Lock className="mr-2 size-4" />
-                    Lock
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={bulkPending}
-                    onClick={() => setBulkAction('unlock')}
-                  >
-                    <Unlock className="mr-2 size-4" />
-                    Unlock
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-                    Clear
-                  </Button>
-                </div>
-              </div>
-            ) : null}
+            <AdminBulkBar count={selectedRowsOnPage.length}>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={bulkPending}
+                onClick={() => setBulkAction('lock')}
+              >
+                <Lock className="mr-2 size-4" />
+                Lock
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={bulkPending}
+                onClick={() => setBulkAction('unlock')}
+              >
+                <Unlock className="mr-2 size-4" />
+                Unlock
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                Clear
+              </Button>
+            </AdminBulkBar>
 
             <DataTable
               columns={columns}

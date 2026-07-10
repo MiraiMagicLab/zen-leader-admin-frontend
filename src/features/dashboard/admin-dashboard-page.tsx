@@ -25,7 +25,7 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { AdminSkeletonBar } from '@/components/admin/admin-loading';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { BRAND } from '@/lib/brand/constants';
@@ -210,14 +210,10 @@ export function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Quick actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <QuickLinks items={quickLinks} />
-          </CardContent>
-        </Card>
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold">Quick actions</h2>
+          <QuickLinks items={quickLinks} />
+        </section>
       </div>
 
       <Card>
@@ -247,7 +243,7 @@ export function AdminDashboardPage() {
               {reportsQuery.isLoading ? (
                 <div className="space-y-1.5">
                   {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={index} className="h-11 w-full rounded-md" />
+                    <AdminSkeletonBar key={index} className="h-11 w-full rounded-md" />
                   ))}
                 </div>
               ) : pendingReports.length === 0 ? (
@@ -285,7 +281,7 @@ export function AdminDashboardPage() {
               {failedPaymentsQuery.isLoading ? (
                 <div className="space-y-1.5">
                   {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={index} className="h-11 w-full rounded-md" />
+                    <AdminSkeletonBar key={index} className="h-11 w-full rounded-md" />
                   ))}
                 </div>
               ) : failedPayments.length === 0 ? (
@@ -326,7 +322,7 @@ export function AdminDashboardPage() {
               {auditQuery.isLoading ? (
                 <div className="space-y-1.5">
                   {Array.from({ length: 3 }).map((_, index) => (
-                    <Skeleton key={index} className="h-11 w-full rounded-md" />
+                    <AdminSkeletonBar key={index} className="h-11 w-full rounded-md" />
                   ))}
                 </div>
               ) : recentAuditLogs.length === 0 ? (

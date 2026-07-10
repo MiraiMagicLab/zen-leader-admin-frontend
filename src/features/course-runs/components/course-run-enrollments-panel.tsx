@@ -1,11 +1,11 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Eye, FileSpreadsheet, Gauge, Plus, Upload, X } from 'lucide-react';
+import { Eye, FileSpreadsheet, Plus, Trash2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
-import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
+import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -315,34 +315,23 @@ export function CourseRunEnrollmentsPanel({
       {
         ...tableActionsColumn<EnrollmentResponse>(),
         cell: ({ row }) => (
-          <div onClick={(event) => event.stopPropagation()}>
-            <TableRowActions>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onOpenProgress(row.original)}
-              >
-                <Gauge className="mr-1.5 size-3.5" />
-                Progress
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setViewEnrollment(row.original)}
-              >
-                Detail
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => openEditEnrollment(row.original)}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() =>
+          <TableRowActionMenu
+            primaryLabel="Progress"
+            onPrimary={() => onOpenProgress(row.original)}
+            items={[
+              {
+                label: 'View detail',
+                onClick: () => setViewEnrollment(row.original),
+              },
+              {
+                label: 'Edit',
+                onClick: () => openEditEnrollment(row.original),
+              },
+              {
+                label: 'Delete',
+                icon: Trash2,
+                destructive: true,
+                onClick: () =>
                   setPendingConfirm({
                     title: 'Delete enrollment?',
                     description: (
@@ -355,13 +344,10 @@ export function CourseRunEnrollmentsPanel({
                       </>
                     ),
                     action: () => deleteEnrollmentMutation.mutate(row.original.id),
-                  })
-                }
-              >
-                Delete
-              </Button>
-            </TableRowActions>
-          </div>
+                  }),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -370,8 +356,8 @@ export function CourseRunEnrollmentsPanel({
 
   return (
     <>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
+      <Card className="border-0 shadow-none">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 px-0 pb-3">
           <CardTitle className="text-base">Enrollment</CardTitle>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => setEnrollOpen(true)}>
@@ -384,7 +370,7 @@ export function CourseRunEnrollmentsPanel({
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 pt-0">
+        <CardContent className="space-y-3 px-0 pt-0">
           <DataTable
             columns={enrollmentColumns}
             data={enrollments}
