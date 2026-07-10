@@ -14,9 +14,11 @@ import { toast } from 'sonner';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import {
-  AdminInspector,
-  InspectorField,
-} from '@/components/admin/admin-inspector';
+  AdminDockIndicatorStrip,
+  AdminDockLayout,
+  AdminDockPanel,
+} from '@/components/admin/admin-dock-panel';
+import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -135,7 +137,7 @@ export function UsersListPage() {
   const [unbanConfirmOpen, setUnbanConfirmOpen] = useState(false);
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [dockOpen, setDockOpen] = useState(false);
 
   const createDirty =
     createForm.email.trim() !== '' ||
@@ -495,9 +497,10 @@ export function UsersListPage() {
 
   return (
     <AdminPageShell
+      variant="list"
+      density="compact"
       title="Users"
       description="Manage account access, roles, verification status, and moderation actions."
-      density="compact"
       actions={
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>

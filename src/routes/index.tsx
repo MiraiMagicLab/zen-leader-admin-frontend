@@ -6,7 +6,7 @@ import {
 } from 'react-router-dom';
 
 import { LoginPage } from '@/features/authentication';
-import { AdminDetailSkeleton } from '@/components/admin/admin-query-state';
+import { AdminRouteLoading } from '@/components/admin/admin-query-state';
 import { AdminLayout } from '@/layouts/admin-layout';
 import { ROUTES } from '@/routes/paths';
 import { selectIsAuthenticated, useAuthStore } from '@/stores/auth-store';
@@ -115,7 +115,7 @@ function CatchAllRoute() {
 }
 
 function LazyPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<AdminDetailSkeleton />}>{children}</Suspense>;
+  return <Suspense fallback={<AdminRouteLoading />}>{children}</Suspense>;
 }
 
 export const appRouter = createBrowserRouter([

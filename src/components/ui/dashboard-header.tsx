@@ -95,10 +95,10 @@ export const DashboardHeader = memo(() => {
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              className="hover:bg-muted data-[state=open]:bg-muted flex items-center gap-2 rounded-lg border bg-card py-1 pr-2 pl-1 transition-colors"
+              className="hover:bg-muted data-[state=open]:bg-muted flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors"
             >
               <Avatar size="sm">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                <AvatarFallback className="bg-muted text-foreground text-xs font-medium">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
@@ -116,7 +116,7 @@ export const DashboardHeader = memo(() => {
           <DropdownMenuContent align="end" className="w-64 p-0">
             <div className="flex items-center gap-3 p-3">
               <Avatar size="default">
-                <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                <AvatarFallback className="bg-muted text-foreground text-sm font-medium">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>

@@ -245,6 +245,8 @@ export function ProgramsListPage() {
 
   return (
     <AdminPageShell
+      variant="list"
+      density="compact"
       title="Programs"
       description="Manage training programs and related courses."
       actions={

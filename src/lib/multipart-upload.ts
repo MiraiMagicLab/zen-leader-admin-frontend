@@ -20,9 +20,7 @@ export type MultipartUploadOptions = {
   signal?: AbortSignal;
 };
 
-/**
- * Uploads a large file directly to Cloudflare R2 via backend-managed multipart sessions.
- */
+/** Uploads a file via backend-managed multipart session directly to R2. */
 export async function uploadFileMultipart(
   file: File,
   options: MultipartUploadOptions = {},
@@ -92,10 +90,14 @@ export async function uploadFileMultipart(
     try {
       await storageObjectsApi.abort(storageObjectId);
     } catch {
-      // Best-effort cleanup; preserve the original failure.
+      // Best-effort cleanup.
     }
     throw error;
   }
+}
+
+export function shouldUseMultipartUpload(file: File): boolean {
+  return file.type.startsWith('video/') || file.size > 50 * 1024 * 1024;
 }
 
 async function uploadPartWithRetry(params: {
@@ -191,9 +193,4 @@ function sleep(ms: number) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
-}
-
-/** Uses direct multipart upload for large video files. */
-export function shouldUseMultipartUpload(file: File): boolean {
-  return file.type.startsWith('video/') || file.size > 50 * 1024 * 1024;
 }
