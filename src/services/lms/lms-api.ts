@@ -6,7 +6,6 @@ import {
   apiPut,
   apiGetBlob,
 } from '@/services/lib/api-request';
-import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type {
   SyllabusSectionResponse,
   SyllabusSectionUpsertRequest,
@@ -122,49 +121,12 @@ export const enrollmentsApi = {
     ),
   manualEnroll: (payload: ManualEnrollmentRequest) =>
     apiPost<EnrollmentResponse>('/api/v1/admin/enrollments/manual', payload),
-  manualEnrollMany: async (payload: BulkManualEnrollmentRequest) => {
-    const shared = {
-      courseRunId: payload.courseRunId,
-      role: payload.role,
-      status: payload.status,
-    };
-    const results = await Promise.allSettled(
-      payload.userIds.map((userId) =>
-        apiPost<EnrollmentResponse>('/api/v1/admin/enrollments/manual', {
-          ...shared,
-          userId,
-        }),
-      ),
-    );
-
-    const failures: ManualEnrollmentBulkResponse['failures'] = [];
-    let successCount = 0;
-
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
-        successCount += 1;
-        return;
-      }
-
-      failures.push({
-        userId: payload.userIds[index] ?? null,
-        email: null,
-        displayName: null,
-        reason: getApiErrorMessage(result.reason),
-      });
-    });
-
-    const totalCount = payload.userIds.length;
-    const failedCount = totalCount - successCount;
-
-    return {
-      totalCount,
-      successCount,
-      skippedCount: 0,
-      failedCount,
-      failures,
-    } satisfies ManualEnrollmentBulkResponse;
-  },
+  /** Bulk manual enrollment — backed by the server-side `/manual/bulk` endpoint. */
+  manualEnrollMany: (payload: BulkManualEnrollmentRequest) =>
+    apiPost<ManualEnrollmentBulkResponse>(
+      '/api/v1/admin/enrollments/manual/bulk',
+      payload,
+    ),
   update: (enrollmentId: string, payload: EnrollmentUpdateRequest) =>
     apiPut<EnrollmentResponse>(
       `/api/v1/admin/enrollments/${enrollmentId}`,

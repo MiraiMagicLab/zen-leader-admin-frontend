@@ -2,14 +2,15 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
-import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
@@ -28,13 +29,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -102,8 +96,6 @@ export function ProgramsListPage() {
     code: false,
     title: false,
   });
-  const [search, setSearch] = useState('');
-  const [publishedFilter, setPublishedFilter] = useState('all');
 
   const initialForm: FormState = editing
     ? {
@@ -229,13 +221,12 @@ export function ProgramsListPage() {
           <TableRowActions>
             <Button
               variant="outline"
-              className="border-sky-600 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
               size="sm"
               onClick={() => navigate(ROUTES.programCourses(row.original.id))}
             >
               Course
             </Button>
-            <Button variant="outline" className="border-violet-600 text-violet-600 hover:bg-violet-50 hover:text-violet-700" size="sm" onClick={() => openEditDialog(row.original)}>
+            <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
               Edit
             </Button>
             <Button
@@ -253,73 +244,47 @@ export function ProgramsListPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Programs"
-        description="Manage training programs and related courses."
-        actions={
-          <Button
-            onClick={() => {
-              setEditing(null);
-              setForm(emptyForm);
-              setFieldErrors({});
-              setTouched({ code: false, title: false });
-              setDialogOpen(true);
-            }}
-          >
-            <Plus className="mr-2 size-4" />
-            Add program
-          </Button>
-        }
-      />
+    <AdminPageShell
+      title="Programs"
+      description="Manage training programs and related courses."
+      actions={
+        <Button
+          onClick={() => {
+            setEditing(null);
+            setForm(emptyForm);
+            setFieldErrors({});
+            setTouched({ code: false, title: false });
+            setDialogOpen(true);
+          }}
+        >
+          <Plus className="mr-2 size-4" />
+          Add program
+        </Button>
+      }
+    >
+      {programsQuery.isError ? (
+        <AdminQueryError
+          message={getApiErrorMessage(programsQuery.error)}
+          onRetry={() => void programsQuery.refetch()}
+        />
+      ) : (
+        <div className="space-y-4">
+          <DataTable
+            columns={columns}
+            data={programsQuery.data?.data ?? []}
+            isLoading={programsQuery.isLoading}
+            showRowIndex
+            pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+            showPagination={false}
+          />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Search by code or title"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          <ServerPagination
+            page={page}
+            totalPages={programsQuery.data?.totalPages ?? 1}
+            onPageChange={setPage}
           />
         </div>
-        <Select value={publishedFilter} onValueChange={setPublishedFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={programsQuery.data?.data?.filter((p) => {
-          if (publishedFilter === 'published' && !p.isPublished) return false;
-          if (publishedFilter === 'draft' && p.isPublished) return false;
-          if (search.trim()) {
-            const q = search.toLowerCase();
-            return (
-              p.code.toLowerCase().includes(q) ||
-              p.title.toLowerCase().includes(q)
-            );
-          }
-          return true;
-        }) ?? []}
-        isLoading={programsQuery.isLoading}
-        showRowIndex
-        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-        showPagination={false}
-      />
-
-      <ServerPagination
-        page={page}
-        totalPages={programsQuery.data?.totalPages ?? 1}
-        onPageChange={setPage}
-      />
+      )}
 
       <Sheet open={dialogOpen} onOpenChange={closeDialog}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
@@ -463,6 +428,6 @@ export function ProgramsListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

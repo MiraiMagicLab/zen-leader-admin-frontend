@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiPut } from '@/services/lib/api-request';
+import { apiDelete, apiGet, apiPost, apiPut } from '@/services/lib/api-request';
 import type {
   AdminBanUserRequest,
   AdminCreateUserRequest,
@@ -70,6 +70,11 @@ export async function updateUserRolesApi(
 export async function getUserByIdApi(userId: string): Promise<UserResponse> {
   const user = await apiGet<UserResponseRaw>(`/api/v1/admin/users/${userId}`);
   return normalizeUser(user);
+}
+
+/** Soft-deletes a user via admin API. */
+export async function deleteUserApi(userId: string): Promise<void> {
+  await apiDelete<void>(`/api/v1/admin/users/${userId}`);
 }
 
 export async function getUsersApi(params: {

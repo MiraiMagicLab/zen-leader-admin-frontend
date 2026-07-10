@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Copy, RefreshCw, Search } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Copy, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { PageHeader } from '@/components/admin/page-header';
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { AdminInspector, InspectorField } from '@/components/admin/admin-inspector';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -20,7 +24,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -33,6 +36,7 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
+import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { safetyApi } from '@/services/safety/safety-api';
 import type { UgcReportResponse } from '@/services/types/domain';
@@ -44,10 +48,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const CONTENT_TYPE_LABEL: Record<string, string> = {
-  comment: 'Comment',
-  post: 'Post',
-  event: 'Event',
-  user: 'User',
+  MESSAGE: 'Message',
+  COMMENT: 'Comment',
+  EVENT: 'Event',
+  USER: 'User',
 };
 
 const STATUS_OPTIONS = [
@@ -56,6 +60,22 @@ const STATUS_OPTIONS = [
   { value: 'RESOLVED', label: 'Resolved' },
   { value: 'DISMISSED', label: 'Dismissed' },
 ] as const;
+
+/**
+ * Resolves the best-effort navigable link for a reported content target.
+ * Events deep-link to their detail page; users and comments only have an ID
+ * to show since there is no dedicated deep link route for them yet.
+ */
+function targetContentLink(report: UgcReportResponse): string | null {
+  switch (report.targetContentType.toUpperCase()) {
+    case 'EVENT':
+      return ROUTES.eventDetail(report.targetContentId);
+    case 'USER':
+      return ROUTES.users;
+    default:
+      return null;
+  }
+}
 
 export function ModerationPage() {
   useAdminPageMeta(ADMIN_PAGE_META.moderation);
@@ -68,6 +88,7 @@ export function ModerationPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'RESOLVED' | 'DISMISSED' | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
+  const [inspectorReport, setInspectorReport] = useState<UgcReportResponse | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -104,6 +125,11 @@ export function ModerationPage() {
   const selectedPending = pendingRows.filter((report) => selectedIds.includes(report.id));
   const allPendingSelected =
     pendingRows.length > 0 && selectedPending.length === pendingRows.length;
+  const hasActiveFilters = statusFilter !== 'PENDING' || Boolean(search.trim());
+
+  const inspectorLiveReport =
+    (inspectorReport && rows.find((report) => report.id === inspectorReport.id)) ||
+    inspectorReport;
 
   const toggleRow = useCallback((reportId: string, checked: boolean) => {
     setSelectedIds((current) =>
@@ -158,11 +184,13 @@ export function ModerationPage() {
         ),
         cell: ({ row }) =>
           row.original.status === 'PENDING' ? (
-            <Checkbox
-              aria-label="Select report"
-              checked={selectedIds.includes(row.original.id)}
-              onCheckedChange={(checked) => toggleRow(row.original.id, checked === true)}
-            />
+            <div onClick={(event) => event.stopPropagation()}>
+              <Checkbox
+                aria-label="Select report"
+                checked={selectedIds.includes(row.original.id)}
+                onCheckedChange={(checked) => toggleRow(row.original.id, checked === true)}
+              />
+            </div>
           ) : null,
         enableSorting: false,
       },
@@ -176,7 +204,8 @@ export function ModerationPage() {
               type="button"
               className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
               title="Copy reported content ID"
-              onClick={() => {
+              onClick={(event) => {
+                event.stopPropagation();
                 void navigator.clipboard?.writeText(row.original.targetContentId);
                 toast.success('Content ID copied.');
               }}
@@ -223,7 +252,7 @@ export function ModerationPage() {
         header: '',
         cell: ({ row }) =>
           row.original.status === 'PENDING' ? (
-            <div className="flex gap-1">
+            <div className="flex gap-1" onClick={(event) => event.stopPropagation()}>
               <Button
                 variant="outline"
                 size="sm"
@@ -256,90 +285,189 @@ export function ModerationPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Moderation"
-        description="Review user reports and update their resolution."
-        actions={
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void reportsQuery.refetch()}
-            >
-              <RefreshCw className="mr-2 size-4" />
-              Refresh
-            </Button>
-          </div>
-        }
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Search by reason or reporter"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+    <AdminPageShell
+      title="Moderation"
+      description="Review user reports and update their resolution."
+      actions={
+        <Button variant="outline" size="sm" onClick={() => void reportsQuery.refetch()}>
+          <RefreshCw className="mr-2 size-4" />
+          Refresh
+        </Button>
+      }
+      toolbar={
+        <AdminFilterBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by reason or reporter"
+          showClear={hasActiveFilters}
+          clearLabel="Clear filters"
+          onClear={() => {
+            setSearch('');
+            setStatusFilter('PENDING');
+          }}
+        >
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </AdminFilterBar>
+      }
+    >
+      <div className="flex flex-col gap-6">
+        {reportsQuery.isError ? (
+          <AdminQueryError
+            message={getApiErrorMessage(reportsQuery.error)}
+            onRetry={() => void reportsQuery.refetch()}
           />
-        </div>
+        ) : null}
+
+        {selectedPending.length > 0 ? (
+          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
+            <span className="text-sm font-medium">{selectedPending.length} selected</span>
+            <div className="flex flex-1 flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkPending}
+                onClick={() => setBulkAction('RESOLVED')}
+              >
+                Resolve selected ({selectedPending.length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkPending}
+                onClick={() => setBulkAction('DISMISSED')}
+              >
+                Dismiss selected ({selectedPending.length})
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <DataTable
+          columns={columns}
+          data={rows}
+          isLoading={reportsQuery.isLoading}
+          emptyMessage="No reports found."
+          showRowIndex
+          pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+          showPagination={false}
+          onRowClick={setInspectorReport}
+        />
+
+        <ServerPagination
+          page={page}
+          totalPages={reportsQuery.data?.totalPages ?? 1}
+          onPageChange={setPage}
+        />
       </div>
 
-      {selectedPending.length > 0 ? (
-        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
-          <span className="text-sm font-medium">{selectedPending.length} selected</span>
-          <div className="flex flex-1 flex-wrap justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={bulkPending}
-              onClick={() => setBulkAction('RESOLVED')}
-            >
-              Resolve selected ({selectedPending.length})
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={bulkPending}
-              onClick={() => setBulkAction('DISMISSED')}
-            >
-              Dismiss selected ({selectedPending.length})
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-              Clear
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={rows}
-        isLoading={reportsQuery.isLoading}
-        emptyMessage="No reports found."
-        showRowIndex
-        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-        showPagination={false}
-      />
-
-      <ServerPagination
-        page={page}
-        totalPages={reportsQuery.data?.totalPages ?? 1}
-        onPageChange={setPage}
-      />
+      <AdminInspector
+        open={Boolean(inspectorLiveReport)}
+        onOpenChange={(open) => {
+          if (!open) setInspectorReport(null);
+        }}
+        title="Report detail"
+        description={inspectorLiveReport ? `Report ${inspectorLiveReport.id.slice(0, 8)}…` : undefined}
+        footer={
+          inspectorLiveReport?.status === 'PENDING' ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={updateStatusMutation.isPending}
+                onClick={() =>
+                  updateStatusMutation.mutate({
+                    reportId: inspectorLiveReport.id,
+                    status: 'DISMISSED',
+                  })
+                }
+              >
+                Dismiss
+              </Button>
+              <Button
+                size="sm"
+                disabled={updateStatusMutation.isPending}
+                onClick={() =>
+                  updateStatusMutation.mutate({
+                    reportId: inspectorLiveReport.id,
+                    status: 'RESOLVED',
+                  })
+                }
+              >
+                Resolve
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        {inspectorLiveReport ? (
+          <dl className="grid grid-cols-2 gap-4">
+            <InspectorField label="Report ID" value={inspectorLiveReport.id} mono className="col-span-2" />
+            <InspectorField
+              label="Status"
+              value={
+                <Badge variant="secondary">
+                  {STATUS_LABEL[inspectorLiveReport.status] ?? inspectorLiveReport.status}
+                </Badge>
+              }
+            />
+            <InspectorField label="Reason" value={inspectorLiveReport.reason} className="col-span-2" />
+            <InspectorField
+              label="Reporter"
+              value={
+                <div>
+                  <p>{inspectorLiveReport.reporterDisplayName}</p>
+                  <p className="text-muted-foreground text-xs">{inspectorLiveReport.reporterEmail}</p>
+                </div>
+              }
+              className="col-span-2"
+            />
+            <InspectorField
+              label="Reported user"
+              value={inspectorLiveReport.targetUserDisplayName}
+              className="col-span-2"
+            />
+            <InspectorField
+              label="Content type"
+              value={
+                CONTENT_TYPE_LABEL[inspectorLiveReport.targetContentType] ??
+                inspectorLiveReport.targetContentType
+              }
+            />
+            <InspectorField
+              label="Content ID"
+              value={
+                targetContentLink(inspectorLiveReport) ? (
+                  <Link
+                    className="text-primary font-mono text-xs hover:underline"
+                    to={targetContentLink(inspectorLiveReport)!}
+                  >
+                    {inspectorLiveReport.targetContentId}
+                  </Link>
+                ) : (
+                  inspectorLiveReport.targetContentId
+                )
+              }
+              mono={!targetContentLink(inspectorLiveReport)}
+            />
+            <InspectorField label="Reported at" value={formatDateTime(inspectorLiveReport.createdAt)} />
+            <InspectorField label="Updated at" value={formatDateTime(inspectorLiveReport.updatedAt)} />
+          </dl>
+        ) : null}
+      </AdminInspector>
 
       <AlertDialog
         open={bulkAction !== null}
@@ -376,6 +504,6 @@ export function ModerationPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

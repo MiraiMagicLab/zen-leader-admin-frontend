@@ -2,15 +2,21 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
+  ArrowLeft,
   BookOpen,
   CalendarDays,
+  ChevronRight,
   Image as ImageIcon,
   Info,
+  Pencil,
   Plus,
   ShoppingBag,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
@@ -41,12 +47,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { SyllabusEditor } from '@/features/courses/components/syllabus-editor';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
-import { CourseProgressHeader } from '@/features/courses/components/course-progress-header';
-import { CourseChecklist } from '@/features/courses/components/course-checklist';
 import { CourseRunCard } from '@/features/courses/components/course-run-card';
 import { WorkspaceSection } from '@/features/courses/components/workspace-section';
 import {
@@ -64,12 +67,19 @@ import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
+import { cn } from '@/lib/utils';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
 import { coursesApi } from '@/services/courses/courses-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { CourseRunResponse } from '@/services/types/domain';
+
+const WORKSPACE_SECTIONS: Array<{ id: CompletionAnchor; label: string }> = [
+  { id: 'info', label: 'Information' },
+  { id: 'syllabus', label: 'Syllabus' },
+  { id: 'runs', label: 'Classes' },
+];
 
 type RunForm = {
   code: string;
@@ -166,7 +176,9 @@ export function CourseDetailPage() {
 
     if (shouldScroll) {
       setTimeout(() => {
-        tabsContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        document
+          .getElementById(`section-${tab}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     }
   };
@@ -425,40 +437,95 @@ export function CourseDetailPage() {
     return null;
   }
 
+  const isReady = completion.status === 'ready';
+
   return (
-    <div className="space-y-6">
-      {course ? (
-        <>
-          <CourseProgressHeader
-            course={course}
-            completion={completion}
-            onEdit={() => setEditCourseOpen(true)}
-            onDelete={confirmDeleteCourse}
-            onSelect={(anchor) => selectTab(anchor, true)}
-          />
-
-          {completion.firstIncomplete ? (
-            <CourseChecklist completion={completion} onSelect={(anchor) => selectTab(anchor, true)} />
-          ) : null}
-
-          <div ref={tabsContainerRef} className="scroll-mt-6">
-            <Tabs
-              value={activeTab}
-              onValueChange={(value) => selectTab(value as CompletionAnchor)}
+    <AdminPageShell
+      title={course?.title ?? 'Course'}
+      description="Manage information, syllabus, and classes for this course."
+      toolbar={
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="ghost" size="sm" className="-ml-2" asChild>
+            <Link to={ROUTES.courses}>
+              <ArrowLeft className="mr-2 size-4" />
+              Back to courses
+            </Link>
+          </Button>
+          <nav className="text-muted-foreground flex flex-wrap items-center gap-1 text-sm">
+            <Link to={ROUTES.programs} className="hover:text-foreground">
+              Programs
+            </Link>
+            <ChevronRight className="size-3.5" />
+            {course?.programId ? (
+              <Link to={ROUTES.programCourses(course.programId)} className="hover:text-foreground">
+                {programDisplayName}
+              </Link>
+            ) : (
+              <span>{programDisplayName}</span>
+            )}
+            <ChevronRight className="size-3.5" />
+            <span className="text-foreground">{course?.title ?? '...'}</span>
+          </nav>
+        </div>
+      }
+      actions={
+        course ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                'inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium',
+                isReady
+                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+              )}
             >
-            <TabsList className="grid h-10 w-full max-w-xl grid-cols-3">
-              <TabsTrigger value="info" className="h-full">
-                Information
-              </TabsTrigger>
-              <TabsTrigger value="syllabus" className="h-full">
-                Syllabus ({totalSyllabusItems})
-              </TabsTrigger>
-              <TabsTrigger value="runs" className="h-full">
-                Classes ({courseRuns.length})
-              </TabsTrigger>
-            </TabsList>
+              {isReady ? 'Ready' : 'Draft'}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
+              <Pencil className="mr-2 size-4" />
+              Edit info
+            </Button>
+            <Button variant="outline" size="sm" onClick={confirmDeleteCourse}>
+              <Trash2 className="mr-2 size-4" />
+              Delete
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
+      {courseQuery.isError ? (
+        <AdminQueryError
+          message={getApiErrorMessage(courseQuery.error)}
+          onRetry={() => void courseQuery.refetch()}
+        />
+      ) : null}
 
-            <TabsContent value="info" className="mt-4">
+      {course ? (
+        <div className="space-y-6">
+          <div ref={tabsContainerRef} className="flex flex-wrap gap-2">
+            {WORKSPACE_SECTIONS.map((section) => {
+              const count =
+                section.id === 'syllabus'
+                  ? totalSyllabusItems
+                  : section.id === 'runs'
+                    ? courseRuns.length
+                    : null;
+              return (
+                <Button
+                  key={section.id}
+                  type="button"
+                  size="sm"
+                  variant={activeTab === section.id ? 'default' : 'outline'}
+                  onClick={() => selectTab(section.id, true)}
+                >
+                  {section.label}
+                  {count != null ? ` (${count})` : ''}
+                </Button>
+              );
+            })}
+          </div>
+
+          <div className="space-y-6">
               <WorkspaceSection
                 id="info"
                 icon={<Info className="size-4" />}
@@ -539,9 +606,7 @@ export function CourseDetailPage() {
               </div>
             </div>
               </WorkspaceSection>
-            </TabsContent>
 
-            <TabsContent value="syllabus" className="mt-4">
               <WorkspaceSection
                 id="syllabus"
                 icon={<BookOpen className="size-4" />}
@@ -554,55 +619,49 @@ export function CourseDetailPage() {
                   onInitialItemHandled={clearDeepLinkItem}
                 />
               </WorkspaceSection>
-            </TabsContent>
 
-            <TabsContent value="runs" className="mt-4">
               <WorkspaceSection
                 id="runs"
-            icon={<CalendarDays className="size-4" />}
-            title="Classes"
-            action={
-              <Button size="sm" onClick={() => setCreateRunOpen(true)}>
-                <Plus className="mr-2 size-4" />
-                Open a class
-              </Button>
-            }
-          >
-            {courseRuns.length ? (
-              <div className="space-y-3">
-                {courseRuns.map((run) => (
-                  <CourseRunCard
-                    key={run.id}
-                    run={run}
-                    onEdit={() => openEditRun(run)}
-                    onDelete={() => confirmDeleteRun(run)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-dashed p-8 text-center">
-                <p className="text-sm font-medium">
-                  Open a class to schedule sessions and let students enroll
-                </p>
-                <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-                  Each class has its own schedule, sessions, and enrollment. The syllabus is shared.
-                </p>
-                <Button className="mt-4" size="sm" onClick={() => setCreateRunOpen(true)}>
-                  <Plus className="mr-2 size-4" />
-                  Open a class
-                </Button>
-              </div>
-            )}
+                icon={<CalendarDays className="size-4" />}
+                title="Classes"
+                action={
+                  <Button size="sm" onClick={() => setCreateRunOpen(true)}>
+                    <Plus className="mr-2 size-4" />
+                    Open a class
+                  </Button>
+                }
+              >
+                {courseRuns.length ? (
+                  <div className="space-y-3">
+                    {courseRuns.map((run) => (
+                      <CourseRunCard
+                        key={run.id}
+                        run={run}
+                        onEdit={() => openEditRun(run)}
+                        onDelete={() => confirmDeleteRun(run)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed p-8 text-center">
+                    <p className="text-sm font-medium">
+                      Open a class to schedule sessions and let students enroll
+                    </p>
+                    <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
+                      Each class has its own schedule, sessions, and enrollment. The syllabus is shared.
+                    </p>
+                    <Button className="mt-4" size="sm" onClick={() => setCreateRunOpen(true)}>
+                      <Plus className="mr-2 size-4" />
+                      Open a class
+                    </Button>
+                  </div>
+                )}
               </WorkspaceSection>
-            </TabsContent>
-          </Tabs>
           </div>
-        </>
-      ) : (
-        <div className="bg-card text-muted-foreground rounded-xl border p-6 text-sm shadow-sm">
-          Loading course…
         </div>
-      )}
+      ) : courseQuery.isLoading ? (
+        <AdminDetailSkeleton />
+      ) : null}
 
       <CreateCourseRunSheet
         open={createRunOpen}
@@ -847,6 +906,6 @@ export function CourseDetailPage() {
         onConfirm={() => pendingConfirm?.action()}
         pending={deleteCourseMutation.isPending || deleteRunMutation.isPending}
       />
-    </div>
+    </AdminPageShell>
   );
 }

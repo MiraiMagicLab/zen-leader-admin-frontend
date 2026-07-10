@@ -10,8 +10,8 @@ export function AdminLayout() {
       <AdminSidebar />
       <SidebarInset className="min-w-0">
         <DashboardHeader />
-        <div className="admin-shell flex w-full min-w-0 flex-col p-4 pt-0 md:p-6">
-          <div className="mx-auto w-full max-w-7xl pb-2">
+        <div className="admin-shell flex w-full min-w-0 flex-col px-4 pt-4 pb-8 md:px-6 md:pt-5">
+          <div className="mx-auto w-full max-w-7xl">
             <Outlet />
           </div>
         </div>

@@ -64,26 +64,37 @@ export function LoginPage() {
   const isSubmitting = loginMutation.isPending;
 
   return (
-    <div className="bg-background grid min-h-svh w-full lg:grid-cols-2">
-      <aside className="bg-muted/30 hidden flex-col justify-between border-r p-10 lg:flex xl:p-14">
-        <div>
+    <div className="relative grid min-h-svh w-full lg:grid-cols-2">
+      <aside className="from-primary/8 via-muted/40 to-background relative hidden flex-col justify-between overflow-hidden border-r bg-gradient-to-br p-10 lg:flex xl:p-14">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.35]"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 20% 20%, oklch(0.72 0.12 150 / 0.25), transparent 45%), radial-gradient(circle at 80% 80%, oklch(0.6 0.08 180 / 0.2), transparent 40%)',
+          }}
+        />
+        <div className="relative">
           <BrandLogo
-            className="mb-8 flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-white ring-1 ring-black/5"
+            className="mb-8 flex size-14 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5"
             imageClassName="h-10 w-10 object-contain"
             alt={`${BRAND.adminTitle} logo`}
           />
+          <p className="text-primary mb-2 text-xs font-semibold tracking-[0.14em] uppercase">
+            {BRAND.adminSubtitle}
+          </p>
           <h1 className="text-3xl font-semibold tracking-tight">{BRAND.adminTitle}</h1>
           <p className="text-muted-foreground mt-3 max-w-md text-base leading-relaxed">
             {BRAND.tagline}
           </p>
         </div>
 
-        <ul className="space-y-5">
+        <ul className="relative space-y-5">
           {highlights.map((item) => {
             const Icon = item.icon;
             return (
               <li key={item.title} className="flex gap-4">
-                <div className="bg-background flex size-10 shrink-0 items-center justify-center rounded-xl border">
+                <div className="bg-background/80 flex size-10 shrink-0 items-center justify-center rounded-xl border shadow-xs backdrop-blur-sm">
                   <Icon className="text-primary size-5" />
                 </div>
                 <div>
@@ -95,16 +106,16 @@ export function LoginPage() {
           })}
         </ul>
 
-        <p className="text-muted-foreground text-xs">
+        <p className="text-muted-foreground relative text-xs">
           © {new Date().getFullYear()} {BRAND.copyright}. {BRAND.adminSubtitle} {BRAND.version}
         </p>
       </aside>
 
-      <div className="flex items-center justify-center p-6 sm:p-10">
+      <div className="bg-background flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-[420px]">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
             <BrandLogo
-              className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-black/5"
+              className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5"
               imageClassName="h-9 w-9 object-contain"
               alt={`${BRAND.adminTitle} logo`}
             />
@@ -114,7 +125,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <Card>
+          <Card className="border shadow-xs">
             <CardHeader className="space-y-1 pb-2">
               <CardTitle className="text-2xl font-semibold tracking-tight">
                 Sign in
@@ -125,7 +136,7 @@ export function LoginPage() {
             </CardHeader>
 
             <CardContent>
-              <form className="space-y-5" onSubmit={handleSubmit}>
+              <form className="space-y-5" onSubmit={handleSubmit} noValidate>
                 {error ? (
                   <Alert variant="destructive">
                     <AlertDescription>{error}</AlertDescription>
@@ -139,9 +150,10 @@ export function LoginPage() {
                     <Input
                       id="email"
                       name="email"
-                      type="text"
+                      type="email"
                       placeholder="name@zenleader.global"
                       autoComplete="username"
+                      autoFocus
                       required
                       disabled={isSubmitting}
                       className="h-11 pl-10"

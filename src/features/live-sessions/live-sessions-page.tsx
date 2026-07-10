@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { RefreshCw, Video } from 'lucide-react';
+import { KeyRound, RefreshCw, Video } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { PageHeader } from '@/components/admin/page-header';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -19,15 +20,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
@@ -36,6 +30,8 @@ import { liveSessionsApi } from '@/services/live-sessions/live-sessions-api';
 import { meetingsApi } from '@/services/meetings/meetings-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { LiveSessionResponse } from '@/services/types/domain';
+
+const PAGE_SIZE = 20;
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: 'Live',
@@ -63,9 +59,11 @@ export function LiveSessionsPage() {
     queryFn: () =>
       liveSessionsApi.list(
         page,
-        20,
+        PAGE_SIZE,
         statusFilter === 'all' ? undefined : statusFilter,
       ),
+    // Monitoring view: keep session status fresh without a manual refresh.
+    refetchInterval: 15_000,
   });
 
   const endMutation = useMutation({
@@ -90,7 +88,7 @@ export function LiveSessionsPage() {
     mutationFn: (roomCode: string) => meetingsApi.getJoinToken(roomCode),
     onSuccess: async (data) => {
       await navigator.clipboard.writeText(data.token);
-      toast.success('Join link copied.');
+      toast.success('Join token copied.');
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
@@ -166,7 +164,11 @@ export function LiveSessionsPage() {
         ),
         enableSorting: false,
       },
-      { accessorKey: 'roomCode', header: 'Room' },
+      {
+        accessorKey: 'roomCode',
+        header: 'Room',
+        cell: ({ row }) => <span className="font-mono text-xs">{row.original.roomCode}</span>,
+      },
       {
         accessorKey: 'type',
         header: 'Type',
@@ -177,7 +179,16 @@ export function LiveSessionsPage() {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => (
-          <Badge variant="secondary">
+          <Badge
+            variant={row.original.status === 'ACTIVE' ? 'default' : 'secondary'}
+            className={cn(
+              row.original.status === 'ACTIVE' &&
+                'bg-emerald-600 text-white hover:bg-emerald-600',
+            )}
+          >
+            {row.original.status === 'ACTIVE' ? (
+              <span className="mr-1 inline-block size-1.5 animate-pulse rounded-full bg-white" />
+            ) : null}
             {STATUS_LABEL[row.original.status] ?? row.original.status}
           </Badge>
         ),
@@ -202,15 +213,17 @@ export function LiveSessionsPage() {
             <Button
               variant="outline"
               size="sm"
+              disabled={joinMutation.isPending}
               onClick={() => joinMutation.mutate(row.original.roomCode)}
             >
-              <Video className="mr-1 size-4" />
-              Copy link
+              <KeyRound className="mr-1 size-4" />
+              Copy join token
             </Button>
             {row.original.status !== 'ENDED' ? (
               <Button
                 variant="outline"
                 size="sm"
+                disabled={endMutation.isPending}
                 onClick={() => endMutation.mutate(row.original.id)}
               >
                 End
@@ -220,6 +233,7 @@ export function LiveSessionsPage() {
               variant="ghost"
               size="sm"
               className="text-destructive"
+              disabled={deleteMutation.isPending}
               onClick={() => deleteMutation.mutate(row.original.id)}
             >
               Delete
@@ -241,98 +255,94 @@ export function LiveSessionsPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Live sessions"
-        description="View meeting rooms and live session status."
-        actions={
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-36">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button variant="outline" size="sm" onClick={() => void sessionsQuery.refetch()}>
-              <RefreshCw className="mr-2 size-4" />
-              Refresh
-            </Button>
-          </div>
-        }
-      />
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Sessions on page</p>
-            <p className="mt-2 text-2xl font-semibold">{sessionsQuery.data?.data?.length ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Live now</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {sessionsQuery.data?.data?.filter((session) => session.status === 'ACTIVE').length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Linked to event</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {sessionsQuery.data?.data?.filter((session) => Boolean(session.eventId)).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {selectedRows.length > 0 ? (
-        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
-          <span className="text-sm font-medium">{selectedRows.length} selected</span>
-          <div className="flex flex-1 flex-wrap justify-end gap-2">
+    <AdminPageShell
+      title="Live sessions"
+      description="Monitor meeting rooms and live session status in real time."
+      density="compact"
+      actions={
+        <Button variant="outline" size="sm" onClick={() => void sessionsQuery.refetch()}>
+          <RefreshCw className="mr-2 size-4" />
+          Refresh
+        </Button>
+      }
+      toolbar={
+        <div className="flex flex-wrap items-center gap-2">
+          {STATUS_OPTIONS.map((option) => (
             <Button
-              variant="outline"
+              key={option.value}
+              type="button"
               size="sm"
-              disabled={bulkPending || selectedActiveRows.length === 0}
-              onClick={() => setBulkAction('end')}
+              variant={statusFilter === option.value ? 'default' : 'outline'}
+              onClick={() => {
+                setPage(0);
+                setStatusFilter(option.value);
+              }}
+              className={cn(
+                option.value === 'ACTIVE' &&
+                  statusFilter === option.value &&
+                  'bg-emerald-600 hover:bg-emerald-600/90',
+              )}
             >
-              End selected ({selectedActiveRows.length})
+              {option.value === 'ACTIVE' ? (
+                <Video className="mr-1.5 size-3.5" />
+              ) : null}
+              {option.label}
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-destructive"
-              disabled={bulkPending}
-              onClick={() => setBulkAction('delete')}
-            >
-              Delete selected ({selectedRows.length})
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-              Clear
-            </Button>
-          </div>
+          ))}
         </div>
-      ) : null}
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {sessionsQuery.isError ? (
+          <AdminQueryError
+            message={getApiErrorMessage(sessionsQuery.error)}
+            onRetry={() => void sessionsQuery.refetch()}
+          />
+        ) : null}
 
-      <DataTable
-        columns={columns}
-        data={rows}
-        isLoading={sessionsQuery.isLoading}
-        emptyMessage="No live sessions yet."
-        showPagination={false}
-      />
+        {selectedRows.length > 0 ? (
+          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
+            <span className="text-sm font-medium">{selectedRows.length} selected</span>
+            <div className="flex flex-1 flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkPending || selectedActiveRows.length === 0}
+                onClick={() => setBulkAction('end')}
+              >
+                End selected ({selectedActiveRows.length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive"
+                disabled={bulkPending}
+                onClick={() => setBulkAction('delete')}
+              >
+                Delete selected ({selectedRows.length})
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
-      <ServerPagination
-        page={page}
-        totalPages={sessionsQuery.data?.totalPages ?? 1}
-        onPageChange={setPage}
-      />
+        <DataTable
+          columns={columns}
+          data={rows}
+          isLoading={sessionsQuery.isLoading}
+          emptyMessage="No live sessions yet."
+          density="compact"
+          showPagination={false}
+        />
+
+        <ServerPagination
+          page={page}
+          totalPages={sessionsQuery.data?.totalPages ?? 1}
+          onPageChange={setPage}
+        />
+      </div>
 
       <AlertDialog
         open={bulkAction !== null}
@@ -373,6 +383,6 @@ export function LiveSessionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

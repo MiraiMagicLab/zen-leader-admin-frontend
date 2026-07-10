@@ -550,3 +550,35 @@ export type PresignedUploadResponse = {
   downloadUrl: string;
   publicId: string;
 };
+
+export type CourseReviewUserResponse = {
+  id: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isActive: boolean;
+};
+
+export type CourseReviewCourseRunResponse = {
+  id: string;
+  code: string;
+  courseId: string;
+};
+
+export type CourseReviewResponse = {
+  id: string;
+  courseId: string;
+  score: number;
+  user: CourseReviewUserResponse;
+  courseRun: CourseReviewCourseRunResponse | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CourseReviewFilterRequest = {
+  courseId?: string;
+  courseRunId?: string;
+  userId?: string;
+  score?: 1 | 2 | 3 | 4 | 5;
+  page?: number;
+  pageSize?: number;
+};

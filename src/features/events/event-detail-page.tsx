@@ -6,9 +6,10 @@ import { toast } from 'sonner';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
-import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import {
   AlertDialog,
@@ -346,44 +347,52 @@ export function EventDetailPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <Button variant="ghost" size="sm" asChild>
-        <Link to={ROUTES.events}>
-          <ArrowLeft className="mr-2 size-4" />
-          Back to events
-        </Link>
-      </Button>
+    <AdminPageShell
+      title={event?.title ?? 'Event'}
+      description={event?.description ?? undefined}
+      toolbar={
+        <Button variant="ghost" size="sm" className="-ml-2 self-start" asChild>
+          <Link to={ROUTES.events}>
+            <ArrowLeft className="mr-2 size-4" />
+            Back to events
+          </Link>
+        </Button>
+      }
+      actions={
+        event ? (
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
+            {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
+            <Button variant="outline" size="sm" onClick={openEditSheet}>
+              <Pencil className="mr-2 size-4" />
+              Edit
+            </Button>
+            {normalizeEventStatus(event.status) !== 'PUBLISHED' ? (
+              <Button variant="outline" size="sm" onClick={() => openEventActionDialog('publish')}>
+                Publish
+              </Button>
+            ) : null}
+            {normalizeEventStatus(event.status) !== 'DRAFT' ? (
+              <Button variant="outline" size="sm" onClick={() => openEventActionDialog('unpublish')}>
+                Move to draft
+              </Button>
+            ) : null}
+            <Button variant="destructive" size="sm" onClick={() => openEventActionDialog('delete')}>
+              <Trash2 className="mr-2 size-4" />
+              Delete
+            </Button>
+          </div>
+        ) : undefined
+      }
+    >
+      {eventQuery.isError ? (
+        <AdminQueryError
+          message={getApiErrorMessage(eventQuery.error)}
+          onRetry={() => void eventQuery.refetch()}
+        />
+      ) : null}
 
-      <PageHeader
-        title={event?.title ?? 'Event'}
-        description={event?.description ?? undefined}
-        actions={
-          event ? (
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
-              {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
-              <Button variant="outline" size="sm" onClick={openEditSheet}>
-                <Pencil className="mr-2 size-4" />
-                Edit
-              </Button>
-              {normalizeEventStatus(event.status) !== 'PUBLISHED' ? (
-                <Button variant="outline" size="sm" onClick={() => openEventActionDialog('publish')}>
-                  Publish
-                </Button>
-              ) : null}
-              {normalizeEventStatus(event.status) !== 'DRAFT' ? (
-                <Button variant="outline" size="sm" onClick={() => openEventActionDialog('unpublish')}>
-                  Move to draft
-                </Button>
-              ) : null}
-              <Button variant="destructive" size="sm" onClick={() => openEventActionDialog('delete')}>
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </Button>
-            </div>
-          ) : undefined
-        }
-      />
+      {!event && eventQuery.isLoading ? <AdminDetailSkeleton /> : null}
 
       {event ? (
         <Card>
@@ -741,6 +750,6 @@ export function EventDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

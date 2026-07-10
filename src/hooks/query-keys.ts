@@ -35,6 +35,8 @@ export const queryKeys = {
     all: ['syllabus-sections'] as const,
     list: (courseId: string) =>
       [...queryKeys.syllabusSections.all, 'list', courseId] as const,
+    detail: (id: string) =>
+      [...queryKeys.syllabusSections.all, 'detail', id] as const,
   },
   syllabusItems: {
     all: ['syllabus-items'] as const,
@@ -96,25 +98,6 @@ export const queryKeys = {
     all: ['notifications'] as const,
     byUser: (userId: string) =>
       [...queryKeys.notifications.all, 'user', userId] as const,
-  },
-  streaks: {
-    all: ['streaks'] as const,
-    summary: (userId: string) =>
-      [...queryKeys.streaks.all, 'summary', userId] as const,
-  },
-  relationships: {
-    all: ['relationships'] as const,
-    friends: (userId: string) =>
-      [...queryKeys.relationships.all, 'friends', userId] as const,
-    requests: (userId: string) =>
-      [...queryKeys.relationships.all, 'requests', userId] as const,
-  },
-  messaging: {
-    all: ['messaging'] as const,
-    conversation: (courseRunId: string) =>
-      [...queryKeys.messaging.all, 'conversation', courseRunId] as const,
-    messages: (conversationId: string, page: number) =>
-      [...queryKeys.messaging.all, 'messages', conversationId, page] as const,
   },
   auditLogs: {
     all: ['audit-logs'] as const,

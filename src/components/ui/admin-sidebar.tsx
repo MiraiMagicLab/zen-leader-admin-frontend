@@ -22,6 +22,7 @@ import {
   GraduationCap,
   Layers,
   LayoutDashboard,
+  Radio,
   ScrollText,
   Settings,
   ShieldAlert,
@@ -60,7 +61,10 @@ const menuGroups: MenuGroup[] = [
   },
   {
     label: 'Community',
-    items: [{ title: 'Events', icon: CalendarDays, to: ROUTES.events }],
+    items: [
+      { title: 'Events', icon: CalendarDays, to: ROUTES.events },
+      { title: 'Live Sessions', icon: Radio, to: ROUTES.liveSessions },
+    ],
   },
   {
     label: 'Operations',

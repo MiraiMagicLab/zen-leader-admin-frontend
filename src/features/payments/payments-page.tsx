@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { Copy, RefreshCw, Search } from 'lucide-react';
+import { Copy, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { PageHeader } from '@/components/admin/page-header';
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { AdminInspector, InspectorField } from '@/components/admin/admin-inspector';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -20,9 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -77,6 +78,7 @@ export function PaymentsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
+  const [inspectorOrder, setInspectorOrder] = useState<AdminPaymentOrderResponse | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -112,6 +114,12 @@ export function PaymentsPage() {
   const selectedRetryable = retryableRows.filter((order) => selectedIds.includes(order.orderId));
   const allRetryableSelected =
     retryableRows.length > 0 && selectedRetryable.length === retryableRows.length;
+  const hasActiveFilters = statusFilter !== 'all' || Boolean(search.trim());
+
+  // Keep the inspector snapshot in sync after a retry mutation invalidates the list.
+  const inspectorLiveOrder =
+    (inspectorOrder && rows.find((order) => order.orderId === inspectorOrder.orderId)) ||
+    inspectorOrder;
 
   const toggleRow = useCallback((orderId: string, checked: boolean) => {
     setSelectedIds((current) =>
@@ -163,11 +171,13 @@ export function PaymentsPage() {
         ),
         cell: ({ row }) =>
           canRetryEnrollment(row.original) ? (
-            <Checkbox
-              aria-label="Select order"
-              checked={selectedIds.includes(row.original.orderId)}
-              onCheckedChange={(checked) => toggleRow(row.original.orderId, checked === true)}
-            />
+            <div onClick={(event) => event.stopPropagation()}>
+              <Checkbox
+                aria-label="Select order"
+                checked={selectedIds.includes(row.original.orderId)}
+                onCheckedChange={(checked) => toggleRow(row.original.orderId, checked === true)}
+              />
+            </div>
           ) : null,
         enableSorting: false,
       },
@@ -179,7 +189,8 @@ export function PaymentsPage() {
             type="button"
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-mono text-xs"
             title="Copy full order code"
-            onClick={() => {
+            onClick={(event) => {
+              event.stopPropagation();
               void navigator.clipboard?.writeText(row.original.orderId);
               toast.success('Order code copied.');
             }}
@@ -203,7 +214,12 @@ export function PaymentsPage() {
         accessorKey: 'courseRunCode',
         header: 'Course run',
         cell: ({ row }) => (
-          <Button variant="link" className="h-auto p-0" asChild>
+          <Button
+            variant="link"
+            className="h-auto p-0"
+            asChild
+            onClick={(event) => event.stopPropagation()}
+          >
             <Link to={ROUTES.courseRunDetail(row.original.courseRunId)}>
               {row.original.courseRunCode}
             </Link>
@@ -252,12 +268,14 @@ export function PaymentsPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex flex-wrap justify-end gap-2">
+          <div
+            className="flex flex-wrap justify-end gap-2"
+            onClick={(event) => event.stopPropagation()}
+          >
             <Button variant="outline" size="sm" asChild>
               <Link to={ROUTES.courseRunDetail(row.original.courseRunId)}>Open run</Link>
             </Button>
-            {row.original.status === 'ENROLL_FAILED' ||
-            (row.original.status === 'PAID' && !row.original.enrollmentActive) ? (
+            {canRetryEnrollment(row.original) ? (
               <Button
                 variant="outline"
                 size="sm"
@@ -275,112 +293,176 @@ export function PaymentsPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Payments"
-        description="Review payment orders and resolve pending enrollments."
-        actions={
-          <div className="flex items-center gap-2">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void ordersQuery.refetch()}
-            >
-              <RefreshCw className="mr-2 size-4" />
-              Refresh
-            </Button>
-          </div>
-        }
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Search by name, email, or order code"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+    <AdminPageShell
+      title="Payments"
+      description="Review payment orders and resolve pending enrollments."
+      actions={
+        <Button variant="outline" size="sm" onClick={() => void ordersQuery.refetch()}>
+          <RefreshCw className="mr-2 size-4" />
+          Refresh
+        </Button>
+      }
+      toolbar={
+        <AdminFilterBar
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search by name, email, or order code"
+          showClear={hasActiveFilters}
+          clearLabel="Clear filters"
+          onClear={() => {
+            setSearch('');
+            setStatusFilter('all');
+          }}
+        >
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </AdminFilterBar>
+      }
+    >
+      <div className="flex flex-col gap-6">
+        {ordersQuery.isError ? (
+          <AdminQueryError
+            message={getApiErrorMessage(ordersQuery.error)}
+            onRetry={() => void ordersQuery.refetch()}
           />
-        </div>
+        ) : null}
+
+        {selectedRetryable.length > 0 ? (
+          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
+            <span className="text-sm font-medium">{selectedRetryable.length} selected</span>
+            <div className="flex flex-1 flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkPending}
+                onClick={() => setBulkOpen(true)}
+              >
+                <RefreshCw className="mr-2 size-4" />
+                Retry enrollment ({selectedRetryable.length})
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <DataTable
+          columns={columns}
+          data={rows}
+          isLoading={ordersQuery.isLoading}
+          emptyMessage="No payment orders yet."
+          showRowIndex
+          pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+          showPagination={false}
+          onRowClick={setInspectorOrder}
+        />
+
+        <ServerPagination
+          page={page}
+          totalPages={ordersQuery.data?.totalPages ?? 1}
+          onPageChange={setPage}
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Orders on page</p>
-            <p className="mt-2 text-2xl font-semibold">{ordersQuery.data?.data?.length ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Awaiting payment</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {ordersQuery.data?.data?.filter((order) => order.status === 'PENDING').length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Enrollment issues</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {ordersQuery.data?.data?.filter(
-                (order) =>
-                  order.status === 'ENROLL_FAILED' ||
-                  (order.status === 'PAID' && !order.enrollmentActive),
-              ).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {selectedRetryable.length > 0 ? (
-        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
-          <span className="text-sm font-medium">{selectedRetryable.length} selected</span>
-          <div className="flex flex-1 flex-wrap justify-end gap-2">
+      <AdminInspector
+        open={Boolean(inspectorLiveOrder)}
+        onOpenChange={(open) => {
+          if (!open) setInspectorOrder(null);
+        }}
+        title="Order detail"
+        description={inspectorLiveOrder ? `Order ${inspectorLiveOrder.orderId.slice(0, 8)}…` : undefined}
+        footer={
+          inspectorLiveOrder && canRetryEnrollment(inspectorLiveOrder) ? (
             <Button
-              variant="outline"
               size="sm"
-              disabled={bulkPending}
-              onClick={() => setBulkOpen(true)}
+              disabled={retryMutation.isPending}
+              onClick={() => retryMutation.mutate(inspectorLiveOrder.orderId)}
             >
               <RefreshCw className="mr-2 size-4" />
-              Retry enrollment ({selectedRetryable.length})
+              Retry enrollment
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-              Clear
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={rows}
-        isLoading={ordersQuery.isLoading}
-        emptyMessage="No payment orders yet."
-        showRowIndex
-        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-        showPagination={false}
-      />
-
-      <ServerPagination
-        page={page}
-        totalPages={ordersQuery.data?.totalPages ?? 1}
-        onPageChange={setPage}
-      />
+          ) : undefined
+        }
+      >
+        {inspectorLiveOrder ? (
+          <dl className="grid grid-cols-2 gap-4">
+            <InspectorField label="Order ID" value={inspectorLiveOrder.orderId} mono className="col-span-2" />
+            <InspectorField
+              label="Status"
+              value={<Badge variant="secondary">{paymentStatusLabel(inspectorLiveOrder.status)}</Badge>}
+            />
+            <InspectorField
+              label="Provider"
+              value={inspectorLiveOrder.provider}
+            />
+            <InspectorField
+              label="User"
+              value={
+                <div>
+                  <p>{inspectorLiveOrder.userDisplayName}</p>
+                  <p className="text-muted-foreground text-xs">{inspectorLiveOrder.userEmail}</p>
+                </div>
+              }
+              className="col-span-2"
+            />
+            <InspectorField
+              label="Course run"
+              value={
+                <Link
+                  className="text-primary hover:underline"
+                  to={ROUTES.courseRunDetail(inspectorLiveOrder.courseRunId)}
+                >
+                  {inspectorLiveOrder.courseRunCode}
+                </Link>
+              }
+              className="col-span-2"
+            />
+            <InspectorField
+              label="Amount"
+              value={`${inspectorLiveOrder.amount.toLocaleString()} ${inspectorLiveOrder.currency}`}
+            />
+            <InspectorField label="Created" value={formatDateTime(inspectorLiveOrder.createdAt)} />
+            <InspectorField label="Expires at" value={formatDateTime(inspectorLiveOrder.expiresAt)} />
+            <InspectorField label="Paid at" value={formatDateTime(inspectorLiveOrder.paidAt)} />
+            <InspectorField
+              label="Enrollment active"
+              value={
+                inspectorLiveOrder.enrollmentActive == null
+                  ? '—'
+                  : inspectorLiveOrder.enrollmentActive
+                    ? 'Yes'
+                    : 'No'
+              }
+            />
+            <InspectorField
+              label="Enrollment retry count"
+              value={inspectorLiveOrder.enrollmentRetryCount}
+            />
+            <InspectorField
+              label="Enrollment failure code"
+              value={inspectorLiveOrder.enrollmentFailureCode}
+              mono
+              className="col-span-2"
+            />
+            <InspectorField
+              label="Enrollment failure message"
+              value={inspectorLiveOrder.enrollmentFailureMessage}
+              className="col-span-2"
+            />
+          </dl>
+        ) : null}
+      </AdminInspector>
 
       <AlertDialog
         open={bulkOpen}
@@ -412,6 +494,6 @@ export function PaymentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

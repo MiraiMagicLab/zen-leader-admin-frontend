@@ -2,10 +2,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { PageHeader } from '@/components/admin/page-header';
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
@@ -23,7 +25,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -36,7 +37,6 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatCourseRunPricingSummary, hasCourseRunPricing } from '@/lib/course-run-pricing';
 import {
-  COURSE_RUN_STATUS_OPTIONS,
   courseRunStatusClasses,
   courseRunStatusLabel,
 } from '@/lib/course-run-status';
@@ -49,16 +49,13 @@ import { coursesApi } from '@/services/courses/courses-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { CourseRunResponse } from '@/services/types/domain';
 
-const STATUS_OPTIONS = ['all', ...COURSE_RUN_STATUS_OPTIONS];
-
 export function CourseRunsListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.courseRuns);
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [courseFilter, setCourseFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CourseRunResponse | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -66,41 +63,30 @@ export function CourseRunsListPage() {
   const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const runsQuery = useQuery({
-    queryKey: [...queryKeys.courseRuns.list(), page],
-    queryFn: () => courseRunsApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
+    queryKey: [...queryKeys.courseRuns.list(), page, courseFilter],
+    queryFn: () =>
+      courseRunsApi.getPage(
+        page,
+        ADMIN_LIST_PAGE_SIZE,
+        courseFilter === 'all' ? undefined : courseFilter,
+      ),
   });
 
   const coursesQuery = useQuery({
     queryKey: queryKeys.courses.list(),
-    queryFn: () => coursesApi.getPage(0, 200),
+    queryFn: () => coursesApi.getAll(),
+    staleTime: 60_000,
   });
 
   const courseTitleById = useMemo(() => {
     const map = new Map<string, string>();
-    for (const course of coursesQuery.data?.data ?? []) {
+    for (const course of coursesQuery.data ?? []) {
       map.set(course.id, `${course.code} — ${course.title}`);
     }
     return map;
   }, [coursesQuery.data]);
 
-  const filteredData = useMemo(() => {
-    const data = runsQuery.data?.data ?? [];
-    return data.filter((run) => {
-      if (statusFilter !== 'all' && run.status !== statusFilter) {
-        return false;
-      }
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const courseLabel = courseTitleById.get(run.courseId) ?? run.courseId;
-        return (
-          run.code.toLowerCase().includes(q) ||
-          run.courseId.toLowerCase().includes(q) ||
-          courseLabel.toLowerCase().includes(q)
-        );
-      }
-      return true;
-    });
-  }, [courseTitleById, runsQuery.data, search, statusFilter]);
+  const tableData = runsQuery.data?.data ?? [];
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => courseRunsApi.remove(id),
@@ -113,8 +99,8 @@ export function CourseRunsListPage() {
   });
 
   const visibleIds = useMemo(
-    () => filteredData.map((run) => run.id),
-    [filteredData],
+    () => tableData.map((run) => run.id),
+    [tableData],
   );
 
   const selectedVisibleCount = useMemo(
@@ -261,7 +247,6 @@ export function CourseRunsListPage() {
           <TableRowActions>
             <Button
               variant="outline"
-              className="border-sky-600 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
               size="sm"
               onClick={() => navigate(ROUTES.courseRunDetail(row.original.id))}
             >
@@ -284,68 +269,81 @@ export function CourseRunsListPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Course runs"
-        description="Manage course runs: schedule, pricing, and enrollment windows."
-        actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2 size-4" />
-            Add course run
-          </Button>
-        }
-      />
+    <AdminPageShell
+      title="Course runs"
+      description="Manage course runs: schedule, pricing, and enrollment windows."
+      actions={
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-2 size-4" />
+          Add course run
+        </Button>
+      }
+      toolbar={
+        <AdminFilterBar
+          trailing={
+            selectedVisibleCount > 0 ? (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setBulkDeleteOpen(true)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete selected ({selectedVisibleCount})
+              </Button>
+            ) : null
+          }
+          showClear={courseFilter !== 'all'}
+          onClear={() => {
+            setCourseFilter('all');
+            setPage(0);
+          }}
+        >
+          <Select
+            value={courseFilter}
+            onValueChange={(value) => {
+              setCourseFilter(value);
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Filter by course" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All courses</SelectItem>
+              {(coursesQuery.data ?? []).map((course) => (
+                <SelectItem key={course.id} value={course.id}>
+                  {course.code} — {course.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </AdminFilterBar>
+      }
+    >
+      {runsQuery.isError ? (
+        <AdminQueryError
+          message={getApiErrorMessage(runsQuery.error)}
+          onRetry={() => void runsQuery.refetch()}
+        />
+      ) : (
+        <div className="space-y-4">
+          <DataTable
+            columns={columns}
+            data={tableData}
+            isLoading={runsQuery.isLoading}
+            showRowIndex
+            pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+            emptyMessage='No course runs yet. Click "Add course run" to create one.'
+            showPagination={false}
+          />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Search by class code or course"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          <ServerPagination
+            page={page}
+            totalPages={runsQuery.data?.totalPages ?? 1}
+            onPageChange={setPage}
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUS_OPTIONS.map((status) => (
-              <SelectItem key={status} value={status}>
-                {status === 'all' ? 'All statuses' : courseRunStatusLabel(status)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {selectedVisibleCount > 0 ? (
-          <Button
-            variant="destructive"
-            size="sm"
-            className="ml-auto"
-            onClick={() => setBulkDeleteOpen(true)}
-          >
-            <Trash2 className="mr-2 size-4" />
-            Delete selected ({selectedVisibleCount})
-          </Button>
-        ) : null}
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={filteredData}
-        isLoading={runsQuery.isLoading}
-        showRowIndex
-        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-        emptyMessage='No course runs yet. Click "Add course run" to create one.'
-        showPagination={false}
-      />
-
-      <ServerPagination
-        page={page}
-        totalPages={runsQuery.data?.totalPages ?? 1}
-        onPageChange={setPage}
-      />
+      )}
 
       <CreateCourseRunSheet
         open={createOpen}
@@ -404,6 +402,6 @@ export function CourseRunsListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

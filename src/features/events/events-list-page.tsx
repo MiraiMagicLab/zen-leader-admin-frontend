@@ -2,14 +2,16 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { Plus, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
-import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -24,7 +26,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -319,157 +320,114 @@ export function EventsListPage() {
     [deleteMutation, publishMutation, unpublishMutation],
   );
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Events"
-        description="Manage public events, schedule, and publishing status."
-        actions={
-          <Button
-            onClick={() => {
-              setForm(emptyForm);
-              setTouched({ title: false, startTime: false, endTime: false });
-              setSheetOpen(true);
-            }}
-          >
-            <Plus className="mr-2 size-4" />
-            Add event
-          </Button>
-        }
-      />
+  const hasActiveFilters =
+    Boolean(keyword) || Boolean(authorKeyword) || status !== 'all' || typeFilter !== 'all';
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <div className="relative">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
+  const clearFilters = () => {
+    setKeyword('');
+    setAuthorKeyword('');
+    setStatus('all');
+    setTypeFilter('all');
+    setPage(0);
+  };
+
+  return (
+    <AdminPageShell
+      title="Events"
+      description="Manage public events, schedule, and publishing status."
+      actions={
+        <Button
+          onClick={() => {
+            setForm(emptyForm);
+            setTouched({ title: false, startTime: false, endTime: false });
+            setSheetOpen(true);
+          }}
+        >
+          <Plus className="mr-2 size-4" />
+          Add event
+        </Button>
+      }
+      toolbar={
+        <AdminFilterBar
+          searchValue={keyword}
+          onSearchChange={(value) => {
+            setKeyword(value);
+            setPage(0);
+          }}
+          searchPlaceholder="Search by title or description"
+          showClear={hasActiveFilters}
+          onClear={clearFilters}
+          clearLabel="Clear filters"
+        >
           <Input
-            className="pl-9"
-            placeholder="Search by title or description"
-            value={keyword}
+            className="w-56"
+            placeholder="Filter by creator name or email"
+            value={authorKeyword}
             onChange={(event) => {
-              setKeyword(event.target.value);
+              setAuthorKeyword(event.target.value);
               setPage(0);
             }}
           />
-        </div>
-        <Input
-          placeholder="Filter by creator name or email"
-          value={authorKeyword}
-          onChange={(event) => {
-            setAuthorKeyword(event.target.value);
-            setPage(0);
-          }}
-        />
-        <Select
-          value={status}
-          onValueChange={(value) => {
-            setStatus(value);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="DRAFT">Draft</SelectItem>
-            <SelectItem value="PUBLISHED">Published</SelectItem>
-            <SelectItem value="COMPLETED">Completed</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={typeFilter}
-          onValueChange={(value: EventTypeFilter) => {
-            setTypeFilter(value);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="official">System event</SelectItem>
-            <SelectItem value="community">User event</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {keyword || authorKeyword || status !== 'all' || typeFilter !== 'all' ? (
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Filtering:</span>
-          {keyword ? (
-            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">Keyword: {keyword}</span>
-          ) : null}
-          {authorKeyword ? (
-            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">Creator: {authorKeyword}</span>
-          ) : null}
-          {status !== 'all' ? (
-            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">Status: {status}</span>
-          ) : null}
-          {typeFilter !== 'all' ? (
-            <span className="bg-muted rounded-md px-2 py-0.5 text-xs">
-              Type: {typeFilter === 'official' ? 'System' : 'User'}
-            </span>
-          ) : null}
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7"
-            onClick={() => {
-              setKeyword('');
-              setAuthorKeyword('');
-              setStatus('all');
-              setTypeFilter('all');
+          <Select
+            value={status}
+            onValueChange={(value) => {
+              setStatus(value);
               setPage(0);
             }}
           >
-            Clear filters
-          </Button>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="DRAFT">Draft</SelectItem>
+              <SelectItem value="PUBLISHED">Published</SelectItem>
+              <SelectItem value="COMPLETED">Completed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={typeFilter}
+            onValueChange={(value: EventTypeFilter) => {
+              setTypeFilter(value);
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="official">System event</SelectItem>
+              <SelectItem value="community">User event</SelectItem>
+            </SelectContent>
+          </Select>
+        </AdminFilterBar>
+      }
+    >
+      {eventsQuery.isError ? (
+        <AdminQueryError
+          message={getApiErrorMessage(eventsQuery.error)}
+          onRetry={() => void eventsQuery.refetch()}
+        />
+      ) : (
+        <div className="space-y-4">
+          <DataTable
+            columns={columns}
+            data={eventsQuery.data?.data ?? []}
+            isLoading={eventsQuery.isLoading}
+            showRowIndex
+            pageOffset={(eventsQuery.data?.currentPage ?? page) * ADMIN_LIST_PAGE_SIZE}
+            showPagination={false}
+            emptyMessage="No events yet."
+          />
+
+          <ServerPagination
+            page={eventsQuery.data?.currentPage ?? page}
+            totalPages={eventsQuery.data?.totalPages ?? 1}
+            onPageChange={setPage}
+          />
         </div>
-      ) : null}
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Events on page</p>
-            <p className="mt-2 text-2xl font-semibold">{eventsQuery.data?.data?.length ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Published</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {eventsQuery.data?.data?.filter(
-                (event) => normalizeEventStatus(event.status) === 'PUBLISHED',
-              ).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">System events</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {eventsQuery.data?.data?.filter((event) => event.isOfficial).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={eventsQuery.data?.data ?? []}
-        isLoading={eventsQuery.isLoading}
-        showRowIndex
-        pageOffset={(eventsQuery.data?.currentPage ?? page) * ADMIN_LIST_PAGE_SIZE}
-        showPagination={false}
-        emptyMessage="No events yet."
-      />
-
-      <ServerPagination
-        page={eventsQuery.data?.currentPage ?? page}
-        totalPages={eventsQuery.data?.totalPages ?? 1}
-        onPageChange={setPage}
-      />
+      )}
 
       <Sheet open={sheetOpen} onOpenChange={closeSheet}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
@@ -657,6 +615,6 @@ export function EventsListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Search } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
-import { PageHeader } from '@/components/admin/page-header';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
@@ -44,7 +45,6 @@ import {
 } from '@/components/ui/select';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
-import { stripHtml } from '@/lib/html';
 import { queryKeys } from '@/hooks/query-keys';
 import { hasCourseRunPricing } from '@/lib/course-run-pricing';
 import { useAdminPageMeta } from '@/lib/page-meta';
@@ -93,7 +93,6 @@ export function CoursesListPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<CourseResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [search, setSearch] = useState('');
 
   const programQuery = useQuery({
     queryKey: queryKeys.programs.detail(programId ?? ''),
@@ -295,13 +294,12 @@ export function CoursesListPage() {
         <TableRowActions>
           <Button
             variant="outline"
-            className="border-sky-600 text-sky-600 hover:bg-sky-50 hover:text-sky-700"
             size="sm"
             onClick={() => navigate(ROUTES.courseDetail(row.original.id))}
           >
             Detail
           </Button>
-          <Button variant="outline" className="border-teal-600 text-teal-600 hover:bg-teal-50 hover:text-teal-700" size="sm" onClick={() => openEditDialog(row.original)}>
+          <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
             Edit
           </Button>
           <Button
@@ -319,76 +317,58 @@ export function CoursesListPage() {
   }, [isProgramScope, navigate]);
 
   return (
-    <div className="space-y-6">
-      {isProgramScope ? (
-        <Button variant="ghost" size="sm" asChild>
-          <Link to={ROUTES.programs}>
-            <ArrowLeft className="mr-2 size-4" />
-            Back to programs
-          </Link>
+    <AdminPageShell
+      title={
+        isProgramScope
+          ? `Courses — ${programQuery.data?.title ?? '...'}`
+          : 'Courses'
+      }
+      description={
+        isProgramScope
+          ? `Manage courses for program ${programQuery.data?.code ?? ''}.`
+          : 'All courses. Open a course to manage syllabus, course runs, pricing, and learning operations.'
+      }
+      actions={
+        <Button onClick={openCreateDialog} disabled={saveMutation.isPending}>
+          <Plus className="mr-2 size-4" />
+          Add course
         </Button>
-      ) : null}
-
-      <PageHeader
-        title={
-          isProgramScope
-            ? `Courses — ${programQuery.data?.title ?? '...'}`
-            : 'Courses'
-        }
-        description={
-          isProgramScope
-            ? `Manage courses for program ${programQuery.data?.code ?? ''}.`
-            : 'All courses. Open a course to manage syllabus, course runs, pricing, and learning operations.'
-        }
-        actions={
-          <Button onClick={openCreateDialog} disabled={saveMutation.isPending}>
-            <Plus className="mr-2 size-4" />
-            Add course
+      }
+      toolbar={
+        isProgramScope ? (
+          <Button variant="ghost" size="sm" className="self-start" asChild>
+            <Link to={ROUTES.programs}>
+              <ArrowLeft className="mr-2 size-4" />
+              Back to programs
+            </Link>
           </Button>
-        }
-      />
+        ) : null
+      }
+    >
+      {coursesQuery.isError ? (
+        <AdminQueryError
+          message={getApiErrorMessage(coursesQuery.error)}
+          onRetry={() => void coursesQuery.refetch()}
+        />
+      ) : (
+        <div className="space-y-4">
+          <DataTable
+            columns={columns}
+            data={coursesQuery.data?.data ?? []}
+            isLoading={coursesQuery.isLoading}
+            showRowIndex
+            pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+            emptyMessage='No courses yet. Click "Add course" to create one.'
+            showPagination={false}
+          />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Search by code or title"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+          <ServerPagination
+            page={page}
+            totalPages={coursesQuery.data?.totalPages ?? 1}
+            onPageChange={setPage}
           />
         </div>
-      </div>
-
-      <DataTable
-        columns={columns}
-        data={coursesQuery.data?.data?.filter((c) => {
-          if (search.trim()) {
-            const q = search.toLowerCase();
-            return (
-              c.code.toLowerCase().includes(q) ||
-              c.title.toLowerCase().includes(q) ||
-              stripHtml(c.description).toLowerCase().includes(q)
-            );
-          }
-          return true;
-        }) ?? []}
-        isLoading={coursesQuery.isLoading}
-        showRowIndex
-        pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-        emptyMessage={
-          isProgramScope
-            ? 'No courses yet. Click "Add course" to create one.'
-            : 'No courses yet. Click "Add course" to create one.'
-        }
-        showPagination={false}
-      />
-
-      <ServerPagination
-        page={page}
-        totalPages={coursesQuery.data?.totalPages ?? 1}
-        onPageChange={setPage}
-      />
+      )}
 
       <Sheet open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
@@ -578,6 +558,6 @@ export function CoursesListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminPageShell>
   );
 }

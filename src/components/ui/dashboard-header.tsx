@@ -2,17 +2,10 @@
 
 import { memo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useTheme } from '@/providers/theme-provider';
+import { ChevronDown, LogOut, Monitor, Moon, Sun } from 'lucide-react';
+
+import { AdminCommandPalette } from '@/components/admin/admin-command-palette';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { SidebarTrigger } from '@/components/ui/sidebar';
-import { Separator } from '@/components/ui/separator';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -21,12 +14,21 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useLogoutMutation } from '@/hooks/use-auth-mutations';
 import { getRouteLabel } from '@/lib/route-labels';
+import { useTheme } from '@/providers/theme-provider';
 import { ROUTES } from '@/routes/paths';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
-import { Moon, Sun, Monitor, LogOut, ChevronDown } from 'lucide-react';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -65,7 +67,7 @@ export const DashboardHeader = memo(() => {
         'group-has-data-[collapsible=icon]/sidebar-wrapper:h-12',
       )}
     >
-      <div className="flex items-center gap-2 px-4">
+      <div className="flex min-w-0 items-center gap-2 px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
         <Breadcrumb>
@@ -88,6 +90,7 @@ export const DashboardHeader = memo(() => {
       </div>
 
       <div className="ml-auto flex items-center gap-2 px-4">
+        <AdminCommandPalette />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

@@ -1,10 +1,12 @@
 import { useState, useId } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { PageHeader } from '@/components/admin/page-header';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { UserPicker } from '@/components/admin/user-picker';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -26,7 +28,9 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
+import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { notificationsApi } from '@/services/notifications/notifications-api';
@@ -53,6 +57,7 @@ export function NotificationsPage() {
   const [recipientType, setRecipientType] = useState<'all' | 'specific'>('all');
   const [selectedUsers, setSelectedUsers] = useState<UserResponse[]>([]);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [historyUser, setHistoryUser] = useState<UserResponse | null>(null);
 
   const titleInputId = useId();
   const messageInputId = useId();
@@ -77,13 +82,20 @@ export function NotificationsPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
-  return (
-    <div className="space-y-4">
-      <PageHeader
-        title="Notifications"
-        description="Send a notification to selected users, or to all users."
-      />
+  const historyQuery = useQuery({
+    queryKey: queryKeys.notifications.byUser(historyUser?.id ?? ''),
+    queryFn: () => notificationsApi.getByUser(historyUser!.id),
+    enabled: Boolean(historyUser),
+  });
 
+  const historyNotifications = historyQuery.data ?? [];
+
+  return (
+    <AdminPageShell
+      title="Notifications"
+      description="Send a notification to selected users, or to all users, and review a user's history."
+    >
+      <div className="space-y-6">
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
         <Card className="shadow-xs lg:col-span-2 pb-0 flex flex-col">
           <CardHeader>
@@ -192,6 +204,66 @@ export function NotificationsPage() {
         </Card>
       </div>
 
+      <Card className="shadow-xs">
+        <CardHeader>
+          <CardTitle>Notification history</CardTitle>
+          <CardDescription>
+            Pick a user to review the notifications they have received.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-1">
+            <UserPicker
+              selectedUsers={historyUser ? [historyUser] : []}
+              onSelectedUsersChange={(users) => setHistoryUser(users[users.length - 1] ?? null)}
+              label="Pick a user"
+            />
+          </div>
+          <div className="lg:col-span-2 space-y-3">
+            {!historyUser ? (
+              <p className="text-muted-foreground text-sm">
+                Select a user on the left to view their notification history.
+              </p>
+            ) : historyQuery.isError ? (
+              <AdminQueryError
+                message={getApiErrorMessage(historyQuery.error)}
+                onRetry={() => void historyQuery.refetch()}
+              />
+            ) : historyQuery.isLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <div key={index} className="h-16 animate-pulse rounded-md border bg-muted/30" />
+                ))}
+              </div>
+            ) : historyNotifications.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                {historyUser.displayName} has no notifications yet.
+              </p>
+            ) : (
+              <ul className="max-h-[28rem] space-y-2 overflow-y-auto">
+                {historyNotifications.map((notification) => (
+                  <li key={notification.id} className="rounded-md border p-3 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-medium">{notification.title}</p>
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline">{typeLabel(notification.type)}</Badge>
+                        {!notification.isRead ? <Badge>Unread</Badge> : null}
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
+                      {notification.message}
+                    </p>
+                    <p className="text-muted-foreground mt-2 text-xs">
+                      {formatDateTime(notification.createdAt)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
@@ -231,6 +303,7 @@ export function NotificationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AdminPageShell>
   );
 }

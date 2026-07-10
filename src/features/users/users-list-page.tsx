@@ -6,13 +6,19 @@ import {
   MoreVertical,
   Plus,
   RefreshCw,
-  Search,
   ShieldAlert,
+  Trash2,
   Unlock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { PageHeader } from '@/components/admin/page-header';
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import {
+  AdminInspector,
+  InspectorField,
+} from '@/components/admin/admin-inspector';
+import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -27,7 +33,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
@@ -49,6 +54,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { queryKeys } from '@/hooks/query-keys';
@@ -56,12 +62,14 @@ import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
+import { formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { UserResponse } from '@/services/types/domain';
 import {
   banUserApi,
   createUserApi,
+  deleteUserApi,
   getUsersApi,
   updateUserRolesApi,
   updateUserStatusApi,
@@ -126,6 +134,8 @@ export function UsersListPage() {
   const [banConfirmOpen, setBanConfirmOpen] = useState(false);
   const [unbanConfirmOpen, setUnbanConfirmOpen] = useState(false);
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
 
   const createDirty =
     createForm.email.trim() !== '' ||
@@ -211,6 +221,18 @@ export function UsersListPage() {
     onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (userId: string) => deleteUserApi(userId),
+    onSuccess: () => {
+      toast.success('User soft-deleted.');
+      setDeleteConfirmOpen(false);
+      setInspectorOpen(false);
+      setSelectedUser(null);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+    },
+    onError: (error) => toast.error(getApiErrorMessage(error)),
+  });
+
   const openBanDialog = (user: UserResponse) => {
     setSelectedUser(user);
     setBanPermanent(false);
@@ -222,6 +244,11 @@ export function UsersListPage() {
     setSelectedUser(user);
     setSelectedRoles(getDisplayRoles(user));
     setRolesDialogOpen(true);
+  };
+
+  const openInspector = (user: UserResponse) => {
+    setSelectedUser(user);
+    setInspectorOpen(true);
   };
 
   const rows = usersQuery.data?.data ?? [];
@@ -279,6 +306,27 @@ export function UsersListPage() {
       ? new Date('2099-12-31T23:59:59Z').toISOString()
       : new Date(`${banDate}T23:59:59Z`).toISOString();
     banMutation.mutate({ userId: selectedUser.id, bannedUntil });
+  };
+
+  const hasActiveFilters =
+    Boolean(keyword.trim()) || roleFilter !== 'all' || statusFilter !== 'all';
+
+  const handleRoleFilterChange = (value: string) => {
+    setPage(1);
+    setRoleFilter(value);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setPage(1);
+    setStatusFilter(value);
+  };
+
+  const handleClearFilters = () => {
+    setPage(1);
+    setKeyword('');
+    setSearch('');
+    setRoleFilter('all');
+    setStatusFilter('all');
   };
 
   const columns = useMemo<ColumnDef<UserResponse>[]>(
@@ -345,7 +393,10 @@ export function UsersListPage() {
         id: 'actions',
         header: '',
         cell: ({ row }) => (
-          <div className="flex justify-end gap-2 items-center">
+          <div
+            className="flex items-center justify-end gap-2"
+            onClick={(event) => event.stopPropagation()}
+          >
             <Button
               variant="outline"
               size="sm"
@@ -360,7 +411,7 @@ export function UsersListPage() {
                   <span className="sr-only">User actions</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-36">
+              <DropdownMenuContent align="end" className="w-40">
                 {!isDeletedUser(row.original) && (
                   row.original.isActive ? (
                     <DropdownMenuItem
@@ -411,6 +462,21 @@ export function UsersListPage() {
                     </DropdownMenuItem>
                   )
                 )}
+                {!isDeletedUser(row.original) ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      onClick={() => {
+                        setSelectedUser(row.original);
+                        setDeleteConfirmOpen(true);
+                      }}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Soft delete
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -418,7 +484,6 @@ export function UsersListPage() {
       },
     ],
     [
-      banMutation,
       statusMutation,
       selectedIds,
       allSelectableSelected,
@@ -429,135 +494,197 @@ export function UsersListPage() {
   );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Users"
-        description="Manage account access, roles, verification status, and moderation actions."
-        actions={
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="mr-2 size-4" />
-              Add user
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => void usersQuery.refetch()}>
-              <RefreshCw className="mr-2 size-4" />
-              Refresh
-            </Button>
-          </div>
-        }
-      />
+    <AdminPageShell
+      title="Users"
+      description="Manage account access, roles, verification status, and moderation actions."
+      density="compact"
+      actions={
+        <div className="flex gap-2">
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="mr-2 size-4" />
+            Add user
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => void usersQuery.refetch()}>
+            <RefreshCw className="mr-2 size-4" />
+            Refresh
+          </Button>
+        </div>
+      }
+      toolbar={
+        <AdminFilterBar
+          searchValue={keyword}
+          onSearchChange={setKeyword}
+          searchPlaceholder="Search by name or email"
+          showClear={hasActiveFilters}
+          clearLabel="Clear filters"
+          onClear={handleClearFilters}
+        >
+          <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All roles</SelectItem>
+              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="user">User</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Locked</SelectItem>
+              <SelectItem value="banned">Banned</SelectItem>
+              <SelectItem value="deleted">Deleted</SelectItem>
+            </SelectContent>
+          </Select>
+        </AdminFilterBar>
+      }
+    >
+      <div className="flex flex-col gap-6">
+        {usersQuery.isError ? (
+          <AdminQueryError
+            message={getApiErrorMessage(usersQuery.error)}
+            onRetry={() => void usersQuery.refetch()}
+          />
+        ) : null}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1">
-          <Search className="text-muted-foreground absolute top-1/2 left-3 size-4 -translate-y-1/2" />
-          <Input
-            className="pl-9"
-            placeholder="Search by name or email"
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
+        {selectedRowsOnPage.length > 0 ? (
+          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
+            <span className="text-sm font-medium">
+              {selectedRowsOnPage.length} selected
+            </span>
+            <div className="flex flex-1 flex-wrap justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkPending}
+                onClick={() => setBulkAction('lock')}
+              >
+                <Lock className="mr-2 size-4" />
+                Lock selected ({selectedRowsOnPage.length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={bulkPending}
+                onClick={() => setBulkAction('unlock')}
+              >
+                <Unlock className="mr-2 size-4" />
+                Unlock selected ({selectedRowsOnPage.length})
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                Clear
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <DataTable
+          columns={columns}
+          data={rows}
+          isLoading={usersQuery.isLoading}
+          emptyMessage="No users found."
+          showRowIndex
+          pageOffset={(page - 1) * ADMIN_LIST_PAGE_SIZE}
+          showPagination={false}
+          onRowClick={openInspector}
+        />
+
+        <div className="flex items-center justify-between">
+          <p className="text-muted-foreground text-sm">
+            Total: {usersQuery.data?.totalElement ?? 0} users
+          </p>
+          <ServerPagination
+            page={page}
+            totalPages={usersQuery.data?.totalPages ?? 1}
+            onPageChange={setPage}
+            pageBase={1}
           />
         </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All roles</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="user">User</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Locked</SelectItem>
-            <SelectItem value="banned">Banned</SelectItem>
-            <SelectItem value="deleted">Deleted</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Users on page</p>
-            <p className="mt-2 text-2xl font-semibold">{usersQuery.data?.data?.length ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Active</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {usersQuery.data?.data?.filter((user) => user.isActive && !isDeletedUser(user)).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-sm">Banned or locked</p>
-            <p className="mt-2 text-2xl font-semibold">
-              {usersQuery.data?.data?.filter((user) => !user.isActive || Boolean(user.bannedUntil)).length ?? 0}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {selectedRowsOnPage.length > 0 ? (
-        <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
-          <span className="text-sm font-medium">
-            {selectedRowsOnPage.length} selected
-          </span>
-          <div className="flex flex-1 flex-wrap justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={bulkPending}
-              onClick={() => setBulkAction('lock')}
-            >
-              <Lock className="mr-2 size-4" />
-              Lock selected ({selectedRowsOnPage.length})
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={bulkPending}
-              onClick={() => setBulkAction('unlock')}
-            >
-              <Unlock className="mr-2 size-4" />
-              Unlock selected ({selectedRowsOnPage.length})
-            </Button>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-              Clear
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <DataTable
-        columns={columns}
-        data={rows}
-        isLoading={usersQuery.isLoading}
-        emptyMessage="No users found."
-        showRowIndex
-        pageOffset={(page - 1) * ADMIN_LIST_PAGE_SIZE}
-        showPagination={false}
-      />
-
-      <div className="flex items-center justify-between">
-        <p className="text-muted-foreground text-sm">
-          Total: {usersQuery.data?.totalElement ?? 0} users
-        </p>
-        <ServerPagination
-          page={page}
-          totalPages={usersQuery.data?.totalPages ?? 1}
-          onPageChange={setPage}
-          pageBase={1}
-        />
-      </div>
+      <AdminInspector
+        open={inspectorOpen}
+        onOpenChange={(open) => {
+          setInspectorOpen(open);
+          if (!open) {
+            setSelectedUser(null);
+          }
+        }}
+        title="User detail"
+        description={
+          selectedUser ? `${selectedUser.displayName} (${selectedUser.email})` : undefined
+        }
+        footer={
+          selectedUser ? (
+            <>
+              <Button variant="outline" size="sm" onClick={() => openRolesDialog(selectedUser)}>
+                Edit role
+              </Button>
+              {!isDeletedUser(selectedUser) ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Soft delete
+                </Button>
+              ) : null}
+            </>
+          ) : undefined
+        }
+      >
+        {selectedUser ? (
+          <dl className="grid grid-cols-2 gap-4">
+              <InspectorField
+                label="User ID"
+                value={selectedUser.id}
+                mono
+                className="col-span-2"
+              />
+              <InspectorField label="Display name" value={selectedUser.displayName} />
+              <InspectorField label="Email" value={selectedUser.email} />
+              <InspectorField
+                label="Roles"
+                value={
+                  <div className="flex flex-wrap gap-1">
+                    {getDisplayRoles(selectedUser).map((role) => (
+                      <Badge key={role} variant="secondary">
+                        {role}
+                      </Badge>
+                    ))}
+                  </div>
+                }
+                className="col-span-2"
+              />
+              <InspectorField
+                label="Status"
+                value={
+                  <Badge variant={renderStatus(selectedUser).variant}>
+                    {renderStatus(selectedUser).label}
+                  </Badge>
+                }
+              />
+              <InspectorField label="Verified" value={selectedUser.isVerified ? 'Yes' : 'No'} />
+              <InspectorField
+                label="Banned until"
+                value={formatDateTime(selectedUser.bannedUntil)}
+              />
+              <InspectorField
+                label="Deleted at"
+                value={formatDateTime(selectedUser.deletedAt)}
+              />
+              <InspectorField label="Created at" value={formatDateTime(selectedUser.createdAt)} />
+              <InspectorField label="Updated at" value={formatDateTime(selectedUser.updatedAt)} />
+          </dl>
+        ) : null}
+      </AdminInspector>
 
       <Dialog
         open={createDialogOpen}
@@ -895,6 +1022,41 @@ export function UsersListPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+
+      <AlertDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) {
+            setDeleteConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Soft delete this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser
+                ? `"${selectedUser.displayName}" will be marked as deleted and lose access to the platform. This can be reversed by an administrator.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={deleteMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (selectedUser) {
+                  deleteMutation.mutate(selectedUser.id);
+                }
+              }}
+            >
+              {deleteMutation.isPending ? 'Deleting…' : 'Soft delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AdminPageShell>
   );
 }

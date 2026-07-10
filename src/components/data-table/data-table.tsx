@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Spinner } from '@/components/ui/spinner';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   TABLE_ACTIONS_COLUMN_ID,
   TABLE_ACTIONS_COLUMN_WIDTH,
@@ -50,15 +50,19 @@ type DataTableProps<TData, TValue> = {
   data: TData[];
   isLoading?: boolean;
   emptyMessage?: string;
+  emptyTitle?: string;
   pageSize?: number;
   showRowIndex?: boolean;
   pageOffset?: number;
   /** Client pagination inside the table. Set false when the page handles server paging. */
   showPagination?: boolean;
   onRowClick?: (row: TData) => void;
+  /** Compact row height for dense admin lists. */
+  density?: 'default' | 'compact';
+  className?: string;
 };
 
-function rowIndexColumn<TData>(): ColumnDef<TData, unknown> {
+function rowIndexColumn<TData>(pageOffset: number): ColumnDef<TData, unknown> {
   return {
     id: '__stt',
     header: '#',
@@ -69,27 +73,33 @@ function rowIndexColumn<TData>(): ColumnDef<TData, unknown> {
     enableHiding: false,
     cell: ({ row }) => (
       <span className="text-muted-foreground text-sm tabular-nums">
-        {row.index + 1}
+        {pageOffset + row.index + 1}
       </span>
     ),
   };
 }
 
+/**
+ * Enterprise data table with sticky header, skeleton loading, and density control.
+ */
 export function DataTable<TData, TValue>({
   columns,
   data,
   isLoading = false,
   emptyMessage = 'No data.',
+  emptyTitle = 'No results',
   pageSize = 10,
   showRowIndex = false,
   pageOffset = 0,
   showPagination = true,
   onRowClick,
+  density = 'compact',
+  className,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const allColumns = showRowIndex
-    ? [rowIndexColumn<TData>(), ...columns]
+    ? [rowIndexColumn<TData>(pageOffset), ...columns]
     : columns;
 
   const table = useReactTable({
@@ -100,107 +110,116 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     onSortingChange: setSorting,
     state: { sorting },
-    initialState: { pagination: { pageSize: showPagination ? pageSize : data.length || pageSize } },
+    initialState: {
+      pagination: { pageSize: showPagination ? pageSize : data.length || pageSize },
+    },
   });
 
+  const cellPad = density === 'compact' ? 'py-2' : 'py-3';
+
   return (
-    <div className="space-y-4">
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className={cn(
-                      header.column.columnDef.meta?.className,
-                      header.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
-                    )}
-                    style={
-                      header.column.id === '__stt'
-                        ? { width: 48, minWidth: 48, textAlign: 'center' }
-                        : header.column.id === TABLE_ACTIONS_COLUMN_ID
-                          ? {
-                              width: TABLE_ACTIONS_COLUMN_WIDTH,
-                              minWidth: TABLE_ACTIONS_COLUMN_WIDTH,
-                            }
-                          : undefined
-                    }
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={allColumns.length} className="h-32">
-                  <div className="flex flex-col items-center justify-center gap-3 text-center">
-                    <Spinner className="mx-auto" />
-                    <p className="text-muted-foreground text-sm">Loading results…</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className={
-                    onRowClick ? 'hover:bg-muted/40 cursor-pointer' : 'hover:bg-muted/40'
-                  }
-                  onClick={onRowClick ? () => onRowClick(row.original) : undefined}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
+    <div className={cn('space-y-4', className)}>
+      <div className="overflow-hidden rounded-xl border bg-card shadow-xs">
+        <div className="relative max-h-[min(70vh,720px)] overflow-auto">
+          <Table>
+            <TableHeader className="bg-card sticky top-0 z-10 border-b">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-0">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
                       className={cn(
-                        cell.column.columnDef.meta?.className,
-                        cell.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
+                        'bg-muted/50',
+                        header.column.columnDef.meta?.className,
+                        header.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
                       )}
                       style={
-                        cell.column.id === '__stt'
-                          ? { textAlign: 'center' }
-                          : cell.column.id === TABLE_ACTIONS_COLUMN_ID
+                        header.column.id === '__stt'
+                          ? { width: 48, minWidth: 48, textAlign: 'center' }
+                          : header.column.id === TABLE_ACTIONS_COLUMN_ID
                             ? {
                                 width: TABLE_ACTIONS_COLUMN_WIDTH,
                                 minWidth: TABLE_ACTIONS_COLUMN_WIDTH,
-                                whiteSpace: 'nowrap',
                               }
                             : undefined
                       }
                     >
-                      {cell.column.id === '__stt'
-                        ? pageOffset + (cell.row.index as number) + 1
-                        : flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={allColumns.length} className="p-6">
-                  <Empty className="border-0 p-6">
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <Inbox className="size-5" />
-                      </EmptyMedia>
-                      <EmptyTitle>No results</EmptyTitle>
-                      <EmptyDescription>{emptyMessage}</EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: Math.min(pageSize, 8) }).map((_, rowIndex) => (
+                  <TableRow key={`skeleton-${rowIndex}`} className="hover:bg-transparent">
+                    {allColumns.map((_, colIndex) => (
+                      <TableCell key={`skeleton-${rowIndex}-${colIndex}`} className={cellPad}>
+                        <Skeleton className="h-4 w-full max-w-[12rem]" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : table.getRowModel().rows.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className={cn(
+                      'hover:bg-muted/40',
+                      onRowClick && 'cursor-pointer',
+                    )}
+                    onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                    data-state={row.getIsSelected() ? 'selected' : undefined}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className={cn(
+                          cellPad,
+                          cell.column.columnDef.meta?.className,
+                          cell.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
+                        )}
+                        style={
+                          cell.column.id === '__stt'
+                            ? { textAlign: 'center' }
+                            : cell.column.id === TABLE_ACTIONS_COLUMN_ID
+                              ? {
+                                  width: TABLE_ACTIONS_COLUMN_WIDTH,
+                                  minWidth: TABLE_ACTIONS_COLUMN_WIDTH,
+                                  whiteSpace: 'nowrap',
+                                }
+                              : undefined
+                        }
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell colSpan={allColumns.length} className="p-6">
+                    <Empty className="border-0 p-6">
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Inbox className="size-5" />
+                        </EmptyMedia>
+                        <EmptyTitle>{emptyTitle}</EmptyTitle>
+                        <EmptyDescription>{emptyMessage}</EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
       {showPagination ? (
         <div className="flex items-center justify-end gap-2">
@@ -212,7 +231,7 @@ export function DataTable<TData, TValue>({
           >
             Previous
           </Button>
-          <span className="text-muted-foreground text-sm">
+          <span className="text-muted-foreground text-sm tabular-nums">
             Page {table.getState().pagination.pageIndex + 1} /{' '}
             {table.getPageCount() || 1}
           </span>
