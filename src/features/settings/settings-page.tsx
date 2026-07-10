@@ -76,7 +76,7 @@ export function SettingsPage() {
             {user ? (
               <div className="flex items-center gap-4">
                 <Avatar size="lg">
-                  <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  <AvatarFallback className="bg-muted text-foreground font-semibold">
                     {user.name.slice(0, 1).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>

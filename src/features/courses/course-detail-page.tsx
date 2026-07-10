@@ -8,7 +8,6 @@ import {
   ChevronRight,
   Image as ImageIcon,
   Info,
-  Pencil,
   Plus,
   ShoppingBag,
   Trash2,
@@ -20,6 +19,7 @@ import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-q
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
+import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { RichTextPreview } from '@/components/rich-text-preview';
 import { Button } from '@/components/ui/button';
@@ -481,14 +481,18 @@ export function CourseDetailPage() {
             >
               {isReady ? 'Ready' : 'Draft'}
             </span>
-            <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
-              <Pencil className="mr-2 size-4" />
-              Edit info
-            </Button>
-            <Button variant="outline" size="sm" onClick={confirmDeleteCourse}>
-              <Trash2 className="mr-2 size-4" />
-              Delete
-            </Button>
+            <TableRowActionMenu
+              primaryLabel="Edit info"
+              onPrimary={() => setEditCourseOpen(true)}
+              items={[
+                {
+                  label: 'Delete',
+                  icon: Trash2,
+                  destructive: true,
+                  onClick: confirmDeleteCourse,
+                },
+              ]}
+            />
           </div>
         ) : undefined
       }

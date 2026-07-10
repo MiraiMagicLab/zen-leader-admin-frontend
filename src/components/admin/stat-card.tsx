@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
 
-import { Skeleton } from '@/components/ui/skeleton';
+import { AdminSkeletonBar } from '@/components/admin/admin-loading';
 import { cn } from '@/lib/utils';
 
 type StatCardProps = {
@@ -27,7 +27,7 @@ export function StatCard({ title, value, icon: Icon, href, isLoading }: StatCard
       <div className="min-w-0 flex-1">
         <p className="text-muted-foreground text-sm">{title}</p>
         {isLoading ? (
-          <Skeleton className="mt-1 h-7 w-16" />
+          <AdminSkeletonBar className="mt-1 h-7 w-16" />
         ) : (
           <p className="text-2xl font-semibold tabular-nums">{value ?? 0}</p>
         )}

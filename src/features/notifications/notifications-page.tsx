@@ -4,6 +4,7 @@ import { Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminPanelSkeleton } from '@/components/admin/admin-loading';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { UserPicker } from '@/components/admin/user-picker';
 import { Badge } from '@/components/ui/badge';
@@ -230,11 +231,7 @@ export function NotificationsPage() {
                 onRetry={() => void historyQuery.refetch()}
               />
             ) : historyQuery.isLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div key={index} className="h-16 animate-pulse rounded-md border bg-muted/30" />
-                ))}
-              </div>
+              <AdminPanelSkeleton lines={3} />
             ) : historyNotifications.length === 0 ? (
               <p className="text-muted-foreground text-sm">
                 {historyUser.displayName} has no notifications yet.

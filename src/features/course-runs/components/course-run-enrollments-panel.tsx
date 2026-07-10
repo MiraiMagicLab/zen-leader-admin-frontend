@@ -5,12 +5,12 @@ import { Eye, FileSpreadsheet, Plus, Trash2, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
+import { AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -22,7 +22,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetFooter,
   SheetHeader,
   SheetTitle,
@@ -356,9 +355,9 @@ export function CourseRunEnrollmentsPanel({
 
   return (
     <>
-      <Card className="border-0 shadow-none">
-        <CardHeader className="flex flex-row items-center justify-between gap-3 px-0 pb-3">
-          <CardTitle className="text-base">Enrollment</CardTitle>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-base font-semibold">Enrollment</h3>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => setEnrollOpen(true)}>
               <Plus className="mr-2 size-4" />
@@ -369,41 +368,39 @@ export function CourseRunEnrollmentsPanel({
               Import Excel
             </Button>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-3 px-0 pt-0">
-          <DataTable
-            columns={enrollmentColumns}
-            data={enrollments}
-            isLoading={isLoading}
-            emptyMessage="No enrollments yet."
-            showRowIndex
-            pageOffset={(enrollmentPage - 1) * ADMIN_LIST_PAGE_SIZE}
-            showPagination={false}
-            onRowClick={onOpenProgress}
-          />
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={enrollmentPage <= 1}
-              onClick={() => onEnrollmentPageChange(enrollmentPage - 1)}
-            >
-              Previous
-            </Button>
-            <span className="text-muted-foreground self-center text-sm">
-              Page {enrollmentPage} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={enrollmentPage >= totalPages}
-              onClick={() => onEnrollmentPageChange(enrollmentPage + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        <DataTable
+          columns={enrollmentColumns}
+          data={enrollments}
+          isLoading={isLoading}
+          emptyMessage="No enrollments yet."
+          showRowIndex
+          pageOffset={(enrollmentPage - 1) * ADMIN_LIST_PAGE_SIZE}
+          showPagination={false}
+          onRowClick={onOpenProgress}
+        />
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={enrollmentPage <= 1}
+            onClick={() => onEnrollmentPageChange(enrollmentPage - 1)}
+          >
+            Previous
+          </Button>
+          <span className="text-muted-foreground self-center text-sm">
+            Page {enrollmentPage} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={enrollmentPage >= totalPages}
+            onClick={() => onEnrollmentPageChange(enrollmentPage + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </section>
 
       <Dialog
         open={enrollOpen}
@@ -557,7 +554,7 @@ export function CourseRunEnrollmentsPanel({
               {importFile ? (
                 <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
+                    <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
                       <FileSpreadsheet className="size-5" />
                     </div>
                     <div className="min-w-0">
@@ -598,24 +595,25 @@ export function CourseRunEnrollmentsPanel({
               )}
             </div>
             {importPreview ? (
-              <Card>
-                <CardContent className="space-y-2 p-4 text-sm">
-                  <p>
-                    Preview: {importPreview.successCount} OK, {importPreview.failedCount} failed,{' '}
-                    {importPreview.skippedCount} skipped / {importPreview.totalRows} rows
-                  </p>
-                  {importPreview.failures.length > 0 ? (
-                    <div className="space-y-2">
-                      {importPreview.failures.slice(0, 10).map((failure) => (
-                        <div key={`${failure.rowNumber}-${failure.email ?? 'unknown'}`} className="rounded-md border p-3">
-                          <p className="font-medium">Row {failure.rowNumber}</p>
-                          <p className="text-muted-foreground">{failure.reason}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
+              <div className="space-y-2 rounded-lg border p-4 text-sm">
+                <p>
+                  Preview: {importPreview.successCount} OK, {importPreview.failedCount} failed,{' '}
+                  {importPreview.skippedCount} skipped / {importPreview.totalRows} rows
+                </p>
+                {importPreview.failures.length > 0 ? (
+                  <div className="space-y-2">
+                    {importPreview.failures.slice(0, 10).map((failure) => (
+                      <div
+                        key={`${failure.rowNumber}-${failure.email ?? 'unknown'}`}
+                        className="rounded-md border p-3"
+                      >
+                        <p className="font-medium">Row {failure.rowNumber}</p>
+                        <p className="text-muted-foreground">{failure.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             ) : null}
           </div>
           <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
@@ -648,27 +646,23 @@ export function CourseRunEnrollmentsPanel({
         </SheetContent>
       </Sheet>
 
-      <Sheet open={Boolean(viewEnrollment)} onOpenChange={() => setViewEnrollment(null)}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[520px] sm:max-w-[520px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>
-              {viewEnrollment?.userDisplayName ??
-                viewEnrollment?.userEmail ??
-                'Enrollment details'}
-            </SheetTitle>
-            {viewEnrollment?.userEmail ? (
-              <SheetDescription>{viewEnrollment.userEmail}</SheetDescription>
-            ) : null}
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            {viewEnrollment ? <EnrollmentMetaTable enrollment={viewEnrollment} /> : null}
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end sm:gap-2">
-            <Button variant="outline" onClick={() => setViewEnrollment(null)}>
-              Close
-            </Button>
-            {viewEnrollment ? (
+      <AdminDockPanel
+        open={Boolean(viewEnrollment)}
+        onClose={() => setViewEnrollment(null)}
+        title={
+          viewEnrollment?.userDisplayName ??
+          viewEnrollment?.userEmail ??
+          'Enrollment details'
+        }
+        description={viewEnrollment?.userEmail ?? undefined}
+        footer={
+          viewEnrollment ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setViewEnrollment(null)}>
+                Close
+              </Button>
               <Button
+                size="sm"
                 onClick={() => {
                   openEditEnrollment(viewEnrollment);
                   setViewEnrollment(null);
@@ -676,10 +670,12 @@ export function CourseRunEnrollmentsPanel({
               >
                 Edit
               </Button>
-            ) : null}
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+            </>
+          ) : null
+        }
+      >
+        {viewEnrollment ? <EnrollmentMetaTable enrollment={viewEnrollment} /> : null}
+      </AdminDockPanel>
 
       <Dialog
         open={Boolean(editEnrollment)}

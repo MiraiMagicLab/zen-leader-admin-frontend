@@ -10,7 +10,6 @@ import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -259,24 +258,22 @@ export function CourseRunSessionsPanel({
 
   return (
     <>
-      <Card className="border-0 shadow-none">
-        <CardHeader className="flex flex-row items-center justify-between gap-3 px-0 pb-3">
-          <CardTitle className="text-base">Online sessions</CardTitle>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-base font-semibold">Online sessions</h3>
           <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
             <Plus className="mr-2 size-4" />
             Add session
           </Button>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <DataTable
-            columns={sessionColumns}
-            data={sessions}
-            isLoading={isLoading}
-            emptyMessage="No sessions yet."
-            showPagination={false}
-          />
-        </CardContent>
-      </Card>
+        </div>
+        <DataTable
+          columns={sessionColumns}
+          data={sessions}
+          isLoading={isLoading}
+          emptyMessage="No sessions yet."
+          showPagination={false}
+        />
+      </section>
 
       <Sheet
         open={createSessionOpen}

@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Settings2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
+import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { courseRunStatusLabel } from '@/lib/course-run-status';
 import { queryKeys } from '@/hooks/query-keys';
@@ -130,37 +130,36 @@ export function CourseRunDetailPage() {
         actions={
           run ? (
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={openRunSettings}>
-                <Settings2 className="mr-2 size-4" />
-                Run settings
-              </Button>
-              <Button
-                variant="destructive"
-                disabled={deleteRunMutation.isPending}
-                onClick={() =>
-                  setPendingConfirm({
-                    title: 'Delete course run?',
-                    description: (
-                      <>
-                        Delete course run &quot;{run.code}&quot; along with its sessions. This
-                        cannot be undone.
-                      </>
-                    ),
-                    action: () => deleteRunMutation.mutate(),
-                  })
-                }
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </Button>
+            <TableRowActionMenu
+              primaryLabel="Run settings"
+              onPrimary={openRunSettings}
+              items={[
+                {
+                  label: 'Delete',
+                  icon: Trash2,
+                  destructive: true,
+                  disabled: deleteRunMutation.isPending,
+                  onClick: () =>
+                    setPendingConfirm({
+                      title: 'Delete course run?',
+                      description: (
+                        <>
+                          Delete course run &quot;{run.code}&quot; along with its sessions. This
+                          cannot be undone.
+                        </>
+                      ),
+                      action: () => deleteRunMutation.mutate(),
+                    }),
+                },
+              ]}
+            />
             </div>
           ) : undefined
         }
       >
         {run ? (
           <div className="space-y-6">
-            <Card>
-              <CardContent className="p-0">
+            <section className="overflow-hidden rounded-lg border">
                 <div className="grid lg:grid-cols-2 lg:divide-x">
                   <dl className="divide-y text-sm">
                     <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
@@ -235,8 +234,7 @@ export function CourseRunDetailPage() {
                     </div>
                   </dl>
                 </div>
-              </CardContent>
-            </Card>
+            </section>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid h-10 w-full max-w-md grid-cols-2">
