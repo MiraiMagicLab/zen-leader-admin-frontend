@@ -83,6 +83,11 @@ export const syllabusItemsApi = {
       form,
     );
   },
+  attachStorageObject: (syllabusItemId: string, storageObjectId: string) =>
+    apiPost<SyllabusItemFileUploadResponse>(
+      `/api/v1/syllabus-items/${syllabusItemId}/storage-files`,
+      { storageObjectId },
+    ),
 };
 
 export const sessionsApi = {

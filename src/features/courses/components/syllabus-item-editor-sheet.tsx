@@ -25,6 +25,11 @@ import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import {
+  shouldUseMultipartUpload,
+  uploadFileMultipart,
+  type MultipartUploadProgress,
+} from '@/lib/multipart-upload';
 import { cn } from '@/lib/utils';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { syllabusItemsApi, syllabusSectionsApi } from '@/services/lms/lms-api';
@@ -109,6 +114,7 @@ export function SyllabusItemEditorSheet({
   const [isOptional, setIsOptional] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [uploadProgress, setUploadProgress] = useState<MultipartUploadProgress | null>(null);
 
   const syncedKeyRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -214,15 +220,26 @@ export function SyllabusItemEditorSheet({
       }
 
       if (itemType === 'VIDEO' && videoFile) {
-        await syllabusItemsApi.uploadFile(savedId, videoFile);
+        if (shouldUseMultipartUpload(videoFile)) {
+          const completed = await uploadFileMultipart(videoFile, {
+            onProgress: setUploadProgress,
+          });
+          await syllabusItemsApi.attachStorageObject(savedId, completed.storageObjectId);
+        } else {
+          await syllabusItemsApi.uploadFile(savedId, videoFile);
+        }
       }
     },
     onSuccess: async () => {
+      setUploadProgress(null);
       toast.success(isEdit ? 'Lesson saved.' : 'Lesson created.');
       await invalidate();
       onOpenChange(false);
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => {
+      setUploadProgress(null);
+      toast.error(getApiErrorMessage(error));
+    },
   });
 
   const itemType = type.toUpperCase();
@@ -437,6 +454,33 @@ export function SyllabusItemEditorSheet({
                 )}
                 {videoError ? (
                   <p className="text-destructive text-sm">{videoError}</p>
+                ) : null}
+                {uploadProgress ? (
+                  <div className="space-y-2 rounded-lg border bg-muted/20 p-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium">Uploading video to Cloudflare R2…</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        {uploadProgress.uploadedParts}/{uploadProgress.totalParts} parts
+                      </span>
+                    </div>
+                    <div className="bg-muted h-2 overflow-hidden rounded-full">
+                      <div
+                        className="bg-primary h-full transition-all duration-300"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            Math.round(
+                              (uploadProgress.uploadedBytes / uploadProgress.totalBytes) * 100,
+                            ),
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                    <p className="text-muted-foreground text-xs tabular-nums">
+                      {Math.round((uploadProgress.uploadedBytes / 1024 / 1024) * 10) / 10} /{' '}
+                      {Math.round((uploadProgress.totalBytes / 1024 / 1024) * 10) / 10} MB
+                    </p>
+                  </div>
                 ) : null}
               </div>
             </div>
