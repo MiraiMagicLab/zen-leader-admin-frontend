@@ -228,8 +228,7 @@ export function UsersListPage() {
     onSuccess: () => {
       toast.success('User soft-deleted.');
       setDeleteConfirmOpen(false);
-      setInspectorOpen(false);
-      setSelectedUser(null);
+      clearSelectedUser();
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -250,7 +249,12 @@ export function UsersListPage() {
 
   const openInspector = (user: UserResponse) => {
     setSelectedUser(user);
-    setInspectorOpen(true);
+    setDockOpen(true);
+  };
+
+  const clearSelectedUser = () => {
+    setSelectedUser(null);
+    setDockOpen(false);
   };
 
   const rows = usersQuery.data?.data ?? [];
@@ -500,7 +504,7 @@ export function UsersListPage() {
       variant="list"
       density="compact"
       title="Users"
-      description="Manage account access, roles, verification status, and moderation actions."
+      description="Manage account access, roles, and moderation. Select a row to inspect in the dock."
       actions={
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
@@ -547,7 +551,89 @@ export function UsersListPage() {
         </AdminFilterBar>
       }
     >
-      <div className="flex flex-col gap-6">
+      <AdminDockLayout
+        dock={
+          <AdminDockPanel
+            open={Boolean(selectedUser)}
+            mobileOpen={dockOpen && Boolean(selectedUser)}
+            onMobileClose={() => setDockOpen(false)}
+            showPlaceholder
+            placeholderTitle="User inspector"
+            placeholderDescription="Select a user row to review roles, status, and account metadata."
+            onClose={clearSelectedUser}
+            title="User detail"
+            description={
+              selectedUser ? `${selectedUser.displayName} (${selectedUser.email})` : undefined
+            }
+            footer={
+              selectedUser ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => openRolesDialog(selectedUser)}>
+                    Edit role
+                  </Button>
+                  {!isDeletedUser(selectedUser) ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={deleteMutation.isPending}
+                      onClick={() => setDeleteConfirmOpen(true)}
+                    >
+                      <Trash2 className="mr-2 size-4" />
+                      Soft delete
+                    </Button>
+                  ) : null}
+                </>
+              ) : null
+            }
+          >
+            {selectedUser ? (
+              <dl className="grid grid-cols-2 gap-4">
+                <InspectorField
+                  label="User ID"
+                  value={selectedUser.id}
+                  mono
+                  className="col-span-2"
+                />
+                <InspectorField label="Display name" value={selectedUser.displayName} />
+                <InspectorField label="Email" value={selectedUser.email} />
+                <InspectorField
+                  label="Roles"
+                  value={
+                    <div className="flex flex-wrap gap-1">
+                      {getDisplayRoles(selectedUser).map((role) => (
+                        <Badge key={role} variant="secondary">
+                          {role}
+                        </Badge>
+                      ))}
+                    </div>
+                  }
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Status"
+                  value={
+                    <Badge variant={renderStatus(selectedUser).variant}>
+                      {renderStatus(selectedUser).label}
+                    </Badge>
+                  }
+                />
+                <InspectorField label="Verified" value={selectedUser.isVerified ? 'Yes' : 'No'} />
+                <InspectorField
+                  label="Banned until"
+                  value={formatDateTime(selectedUser.bannedUntil)}
+                />
+                <InspectorField
+                  label="Deleted at"
+                  value={formatDateTime(selectedUser.deletedAt)}
+                />
+                <InspectorField label="Created at" value={formatDateTime(selectedUser.createdAt)} />
+                <InspectorField label="Updated at" value={formatDateTime(selectedUser.updatedAt)} />
+              </dl>
+            ) : null}
+          </AdminDockPanel>
+        }
+      >
+      <div className="flex flex-col gap-4">
         {usersQuery.isError ? (
           <AdminQueryError
             message={getApiErrorMessage(usersQuery.error)}
@@ -586,6 +672,28 @@ export function UsersListPage() {
           </div>
         ) : null}
 
+        {selectedUser ? (
+          <AdminDockIndicatorStrip
+            className="lg:hidden"
+            onOpen={() => setDockOpen(true)}
+            items={[
+              {
+                label: 'Status',
+                value: renderStatus(selectedUser).label,
+                active: true,
+              },
+              {
+                label: 'Roles',
+                value: getDisplayRoles(selectedUser).join(', '),
+              },
+              {
+                label: 'Verified',
+                value: selectedUser.isVerified ? 'Yes' : 'No',
+              },
+            ]}
+          />
+        ) : null}
+
         <DataTable
           columns={columns}
           data={rows}
@@ -594,6 +702,8 @@ export function UsersListPage() {
           showRowIndex
           pageOffset={(page - 1) * ADMIN_LIST_PAGE_SIZE}
           showPagination={false}
+          activeRowId={selectedUser?.id ?? null}
+          getRowId={(row) => row.id}
           onRowClick={openInspector}
         />
 
@@ -604,90 +714,15 @@ export function UsersListPage() {
           <ServerPagination
             page={page}
             totalPages={usersQuery.data?.totalPages ?? 1}
-            onPageChange={setPage}
+            onPageChange={(nextPage) => {
+              setPage(nextPage);
+              clearSelectedUser();
+            }}
             pageBase={1}
           />
         </div>
       </div>
-
-      <AdminInspector
-        open={inspectorOpen}
-        onOpenChange={(open) => {
-          setInspectorOpen(open);
-          if (!open) {
-            setSelectedUser(null);
-          }
-        }}
-        title="User detail"
-        description={
-          selectedUser ? `${selectedUser.displayName} (${selectedUser.email})` : undefined
-        }
-        footer={
-          selectedUser ? (
-            <>
-              <Button variant="outline" size="sm" onClick={() => openRolesDialog(selectedUser)}>
-                Edit role
-              </Button>
-              {!isDeletedUser(selectedUser) ? (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={deleteMutation.isPending}
-                  onClick={() => setDeleteConfirmOpen(true)}
-                >
-                  <Trash2 className="mr-2 size-4" />
-                  Soft delete
-                </Button>
-              ) : null}
-            </>
-          ) : undefined
-        }
-      >
-        {selectedUser ? (
-          <dl className="grid grid-cols-2 gap-4">
-              <InspectorField
-                label="User ID"
-                value={selectedUser.id}
-                mono
-                className="col-span-2"
-              />
-              <InspectorField label="Display name" value={selectedUser.displayName} />
-              <InspectorField label="Email" value={selectedUser.email} />
-              <InspectorField
-                label="Roles"
-                value={
-                  <div className="flex flex-wrap gap-1">
-                    {getDisplayRoles(selectedUser).map((role) => (
-                      <Badge key={role} variant="secondary">
-                        {role}
-                      </Badge>
-                    ))}
-                  </div>
-                }
-                className="col-span-2"
-              />
-              <InspectorField
-                label="Status"
-                value={
-                  <Badge variant={renderStatus(selectedUser).variant}>
-                    {renderStatus(selectedUser).label}
-                  </Badge>
-                }
-              />
-              <InspectorField label="Verified" value={selectedUser.isVerified ? 'Yes' : 'No'} />
-              <InspectorField
-                label="Banned until"
-                value={formatDateTime(selectedUser.bannedUntil)}
-              />
-              <InspectorField
-                label="Deleted at"
-                value={formatDateTime(selectedUser.deletedAt)}
-              />
-              <InspectorField label="Created at" value={formatDateTime(selectedUser.createdAt)} />
-              <InspectorField label="Updated at" value={formatDateTime(selectedUser.updatedAt)} />
-          </dl>
-        ) : null}
-      </AdminInspector>
+      </AdminDockLayout>
 
       <Dialog
         open={createDialogOpen}
