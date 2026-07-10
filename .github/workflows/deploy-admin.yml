@@ -55,7 +55,9 @@ jobs:
           username: ${{ secrets.VPS_SSH_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: admin-dist.tgz
-          target: /tmp
+          target: /tmp/zenleader-ci
+          overwrite: true
+          rm: true
 
       - name: Extract on VPS
         uses: appleboy/ssh-action@v1.2.0
@@ -69,4 +71,10 @@ jobs:
             if [ -z "$DEPLOY_PATH" ]; then
               DEPLOY_PATH="/home/dev/zen-leader"
             fi
-            sudo "$DEPLOY_PATH/scripts/ci-deploy-admin.sh" /tmp/admin-dist.tgz
+            ARTIFACT="/tmp/zenleader-ci/admin-dist.tgz"
+            if [ ! -f "$ARTIFACT" ]; then
+              # appleboy may place file directly under target
+              ARTIFACT="/tmp/zenleader-ci/admin-dist.tgz"
+              ls -la /tmp/zenleader-ci || ls -la /tmp
+            fi
+            sudo "$DEPLOY_PATH/scripts/ci-deploy-admin.sh" "$ARTIFACT"
