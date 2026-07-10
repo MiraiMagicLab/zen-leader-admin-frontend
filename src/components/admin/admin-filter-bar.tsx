@@ -38,7 +38,7 @@ export function AdminFilterBar({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 rounded-lg border bg-muted/30 px-3 py-3 sm:flex-row sm:flex-wrap sm:items-center',
+        'flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center',
         className,
       )}
     >

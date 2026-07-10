@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -10,7 +10,7 @@ import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
+import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -291,25 +291,22 @@ export function CoursesListPage() {
     base.push({
       ...tableActionsColumn<CourseResponse>(),
       cell: ({ row }) => (
-        <TableRowActions>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(ROUTES.courseDetail(row.original.id))}
-          >
-            Detail
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
-            Edit
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => setDeleteTarget(row.original)}
-          >
-            Delete
-          </Button>
-        </TableRowActions>
+        <TableRowActionMenu
+          primaryLabel="Open"
+          onPrimary={() => navigate(ROUTES.courseDetail(row.original.id))}
+          items={[
+            {
+              label: 'Edit',
+              onClick: () => openEditDialog(row.original),
+            },
+            {
+              label: 'Delete',
+              icon: Trash2,
+              destructive: true,
+              onClick: () => setDeleteTarget(row.original),
+            },
+          ]}
+        />
       ),
     });
 

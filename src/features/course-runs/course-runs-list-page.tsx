@@ -7,16 +7,15 @@ import { toast } from 'sonner';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import {
-  AdminDockCard,
-  AdminDockIndicatorStrip,
   AdminDockLayout,
   AdminDockPanel,
+  AdminDockStatRow,
 } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
+import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -69,16 +68,13 @@ export function CourseRunsListPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [selectedRun, setSelectedRun] = useState<CourseRunResponse | null>(null);
-  const [dockOpen, setDockOpen] = useState(false);
 
   const selectRun = useCallback((run: CourseRunResponse) => {
     setSelectedRun(run);
-    setDockOpen(true);
   }, []);
 
   const clearSelectedRun = useCallback(() => {
     setSelectedRun(null);
-    setDockOpen(false);
   }, []);
 
   const runsQuery = useQuery({
@@ -263,30 +259,18 @@ export function CourseRunsListPage() {
       {
         ...tableActionsColumn<CourseRunResponse>(),
         cell: ({ row }) => (
-          <TableRowActions>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(event) => {
-                event.stopPropagation();
-                navigate(ROUTES.courseRunDetail(row.original.id));
-              }}
-            >
-              Open
-            </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              className="text-destructive size-8"
-              aria-label="Delete course run"
-              onClick={(event) => {
-                event.stopPropagation();
-                setDeleteTarget(row.original);
-              }}
-            >
-              <Trash2 className="size-4" />
-            </Button>
-          </TableRowActions>
+          <TableRowActionMenu
+            primaryLabel="Open"
+            onPrimary={() => navigate(ROUTES.courseRunDetail(row.original.id))}
+            items={[
+              {
+                label: 'Delete',
+                icon: Trash2,
+                destructive: true,
+                onClick: () => setDeleteTarget(row.original),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -310,8 +294,9 @@ export function CourseRunsListPage() {
           trailing={
             selectedVisibleCount > 0 ? (
               <Button
-                variant="destructive"
+                variant="ghost"
                 size="sm"
+                className="text-destructive hover:text-destructive"
                 onClick={() => setBulkDeleteOpen(true)}
               >
                 <Trash2 className="mr-2 size-4" />
@@ -353,134 +338,99 @@ export function CourseRunsListPage() {
           onRetry={() => void runsQuery.refetch()}
         />
       ) : (
-        <AdminDockLayout
-          dock={
-            <AdminDockPanel
-              open={Boolean(selectedRun)}
-              mobileOpen={dockOpen && Boolean(selectedRun)}
-              onMobileClose={() => setDockOpen(false)}
-              showPlaceholder
-              placeholderTitle="Course run inspector"
-              placeholderDescription="Select a row in the table to preview status, pricing, and schedule."
-              onClose={clearSelectedRun}
-              title={selectedRun?.code ?? 'Course run'}
-              description={
-                selectedRun
-                  ? courseTitleById.get(selectedRun.courseId) ?? 'Course run details'
-                  : undefined
-              }
-              footer={
-                selectedRun ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={clearSelectedRun}>
-                      Close
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => navigate(ROUTES.courseRunDetail(selectedRun.id))}
-                    >
-                      Open workspace
-                    </Button>
-                  </>
-                ) : null
-              }
-            >
-              {selectedRun ? (
-                <div className="space-y-4">
-                  <div className="grid gap-2">
-                    <AdminDockCard
-                      label="Status"
-                      value={courseRunStatusLabel(selectedRun.status)}
-                      active
-                    />
-                    <AdminDockCard
-                      label="Pricing"
-                      value={
-                        hasCourseRunPricing(selectedRun.metadata)
-                          ? formatCourseRunPricingSummary(selectedRun.metadata) || 'Paid'
-                          : 'Free'
-                      }
-                    />
-                    <AdminDockCard
-                      label="Schedule"
-                      value={formatDateTime(selectedRun.startsAt)}
-                      hint={
-                        selectedRun.endsAt
-                          ? `Ends ${formatDateTime(selectedRun.endsAt)}`
-                          : undefined
-                      }
-                    />
-                  </div>
-                  <dl className="grid grid-cols-1 gap-3 border-t pt-4">
-                    <InspectorField label="Course run ID" value={selectedRun.id} mono />
-                    <InspectorField label="Course ID" value={selectedRun.courseId} mono />
-                    <InspectorField
-                      label="Enrollment window"
-                      value={`${formatDateTime(selectedRun.enrollmentStartDate)} → ${formatDateTime(selectedRun.enrollmentEndDate)}`}
-                    />
-                  </dl>
-                </div>
+        <>
+          <AdminDockLayout dockOpen={Boolean(selectedRun)}>
+            <div className="space-y-3">
+              {!selectedRun && tableData.length > 0 ? (
+                <p className="text-muted-foreground text-xs">
+                  Click a row to preview details in the floating panel.
+                </p>
               ) : null}
-            </AdminDockPanel>
-          }
-        >
-          <div className="space-y-4">
-            {!selectedRun && tableData.length > 0 ? (
-              <p className="text-muted-foreground text-xs">
-                Tip: click a row to open the dock panel without leaving this page.
-              </p>
-            ) : null}
 
-            {selectedRun ? (
-              <AdminDockIndicatorStrip
-                className="lg:hidden"
-                onOpen={() => setDockOpen(true)}
-                items={[
-                  {
-                    label: 'Status',
-                    value: courseRunStatusLabel(selectedRun.status),
-                    active: true,
-                  },
-                  {
-                    label: 'Pricing',
-                    value: hasCourseRunPricing(selectedRun.metadata)
-                      ? formatCourseRunPricingSummary(selectedRun.metadata) || 'Paid'
-                      : 'Free',
-                  },
-                  {
-                    label: 'Schedule',
-                    value: formatDateTime(selectedRun.startsAt),
-                    hint: selectedRun.endsAt
-                      ? `Ends ${formatDateTime(selectedRun.endsAt)}`
-                      : undefined,
-                  },
-                ]}
+              <DataTable
+                columns={columns}
+                data={tableData}
+                isLoading={runsQuery.isLoading}
+                showRowIndex
+                pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+                emptyMessage='No course runs yet. Click "Add course run" to create one.'
+                showPagination={false}
+                activeRowId={selectedRun?.id ?? null}
+                getRowId={(row) => row.id}
+                onRowClick={selectRun}
               />
+
+              <ServerPagination
+                page={page}
+                totalPages={runsQuery.data?.totalPages ?? 1}
+                onPageChange={(nextPage) => {
+                  setPage(nextPage);
+                  clearSelectedRun();
+                }}
+              />
+            </div>
+          </AdminDockLayout>
+
+          <AdminDockPanel
+            open={Boolean(selectedRun)}
+            onClose={clearSelectedRun}
+            title={selectedRun?.code ?? 'Course run'}
+            description={
+              selectedRun
+                ? courseTitleById.get(selectedRun.courseId) ?? 'Course run details'
+                : undefined
+            }
+            footer={
+              selectedRun ? (
+                <>
+                  <Button variant="ghost" size="sm" onClick={clearSelectedRun}>
+                    Close
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(ROUTES.courseRunDetail(selectedRun.id))}
+                  >
+                    Open workspace
+                  </Button>
+                </>
+              ) : null
+            }
+          >
+            {selectedRun ? (
+              <div className="space-y-1 divide-y">
+                <AdminDockStatRow
+                  label="Status"
+                  value={courseRunStatusLabel(selectedRun.status)}
+                />
+                <AdminDockStatRow
+                  label="Pricing"
+                  value={
+                    hasCourseRunPricing(selectedRun.metadata)
+                      ? formatCourseRunPricingSummary(selectedRun.metadata) || 'Paid'
+                      : 'Free'
+                  }
+                />
+                <AdminDockStatRow
+                  label="Schedule"
+                  value={formatDateTime(selectedRun.startsAt)}
+                  hint={
+                    selectedRun.endsAt
+                      ? `Ends ${formatDateTime(selectedRun.endsAt)}`
+                      : undefined
+                  }
+                />
+                <div className="space-y-3 pt-3">
+                  <InspectorField label="Course run ID" value={selectedRun.id} mono />
+                  <InspectorField label="Course ID" value={selectedRun.courseId} mono />
+                  <InspectorField
+                    label="Enrollment window"
+                    value={`${formatDateTime(selectedRun.enrollmentStartDate)} → ${formatDateTime(selectedRun.enrollmentEndDate)}`}
+                  />
+                </div>
+              </div>
             ) : null}
-
-            <DataTable
-              columns={columns}
-              data={tableData}
-              isLoading={runsQuery.isLoading}
-              showRowIndex
-              pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-              emptyMessage='No course runs yet. Click "Add course run" to create one.'
-              showPagination={false}
-              activeRowId={selectedRun?.id ?? null}
-              getRowId={(row) => row.id}
-              onRowClick={selectRun}
-            />
-
-            <ServerPagination
-              page={page}
-              totalPages={runsQuery.data?.totalPages ?? 1}
-              onPageChange={(nextPage) => {
-                setPage(nextPage);
-                clearSelectedRun();
-              }}
-            />
-          </div>
-        </AdminDockLayout>
+          </AdminDockPanel>
+        </>
       )}
 
       <CreateCourseRunSheet

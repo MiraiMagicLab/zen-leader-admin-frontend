@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -13,6 +13,7 @@ import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
+import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -92,6 +93,7 @@ export function EventsListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.events);
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [page, setPage] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [form, setForm] = useState<EventForm>(emptyForm);
@@ -278,46 +280,48 @@ export function EventsListPage() {
       {
         id: 'actions',
         header: '',
-        cell: ({ row }) => (
-          <div className="flex justify-end gap-1.5 overflow-x-auto">
-            <Button variant="outline" size="sm" asChild>
-              <Link to={ROUTES.eventDetail(row.original.id)}>Details</Link>
-            </Button>
-            {normalizeEventStatus(row.original.status) !== 'PUBLISHED' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  openActionDialog(row.original.id, row.original.title, 'publish')
+        cell: ({ row }) => {
+          const status = normalizeEventStatus(row.original.status);
+          const items = [
+            status !== 'PUBLISHED'
+              ? {
+                  label: 'Publish',
+                  onClick: () =>
+                    openActionDialog(row.original.id, row.original.title, 'publish'),
                 }
-              >
-                Publish
-              </Button>
-            ) : null}
-            {normalizeEventStatus(row.original.status) !== 'DRAFT' ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  openActionDialog(row.original.id, row.original.title, 'unpublish')
+              : null,
+            status !== 'DRAFT'
+              ? {
+                  label: 'Move to draft',
+                  onClick: () =>
+                    openActionDialog(row.original.id, row.original.title, 'unpublish'),
                 }
-              >
-                Draft
-              </Button>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive"
-              onClick={() => openActionDialog(row.original.id, row.original.title, 'delete')}
-            >
-              Delete
-            </Button>
-          </div>
-        ),
+              : null,
+            {
+              label: 'Delete',
+              icon: Trash2,
+              destructive: true,
+              onClick: () =>
+                openActionDialog(row.original.id, row.original.title, 'delete'),
+            },
+          ].filter(Boolean) as Array<{
+            label: string;
+            icon?: typeof Trash2;
+            destructive?: boolean;
+            onClick: () => void;
+          }>;
+
+          return (
+            <TableRowActionMenu
+              primaryLabel="Open"
+              onPrimary={() => navigate(ROUTES.eventDetail(row.original.id))}
+              items={items}
+            />
+          );
+        },
       },
     ],
-    [deleteMutation, publishMutation, unpublishMutation],
+    [deleteMutation, navigate, publishMutation, unpublishMutation],
   );
 
   const hasActiveFilters =

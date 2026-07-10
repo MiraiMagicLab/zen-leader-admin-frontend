@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   Lock,
-  MoreVertical,
   Plus,
   RefreshCw,
   ShieldAlert,
@@ -13,15 +12,12 @@ import {
 import { toast } from 'sonner';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
-import {
-  AdminDockIndicatorStrip,
-  AdminDockLayout,
-  AdminDockPanel,
-} from '@/components/admin/admin-dock-panel';
+import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
+import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -52,13 +48,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { queryKeys } from '@/hooks/query-keys';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
@@ -137,7 +126,6 @@ export function UsersListPage() {
   const [unbanConfirmOpen, setUnbanConfirmOpen] = useState(false);
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [dockOpen, setDockOpen] = useState(false);
 
   const createDirty =
     createForm.email.trim() !== '' ||
@@ -249,12 +237,10 @@ export function UsersListPage() {
 
   const openInspector = (user: UserResponse) => {
     setSelectedUser(user);
-    setDockOpen(true);
   };
 
   const clearSelectedUser = () => {
     setSelectedUser(null);
-    setDockOpen(false);
   };
 
   const rows = usersQuery.data?.data ?? [];
@@ -396,97 +382,71 @@ export function UsersListPage() {
         },
       },
       {
-        id: 'actions',
-        header: '',
-        cell: ({ row }) => (
-          <div
-            className="flex items-center justify-end gap-2"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openRolesDialog(row.original)}
-            >
-              Edit role
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="size-8">
-                  <MoreVertical className="size-4" />
-                  <span className="sr-only">User actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                {!isDeletedUser(row.original) && (
-                  row.original.isActive ? (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setSelectedUser(row.original);
-                        setLockConfirmOpen(true);
-                      }}
-                    >
-                      <Lock className="mr-2 size-4" />
-                      Lock
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      onClick={() =>
-                        statusMutation.mutate({
-                          userId: row.original.id,
-                          isActive: true,
-                        })
-                      }
-                    >
-                      <Unlock className="mr-2 size-4" />
-                      Unlock
-                    </DropdownMenuItem>
-                  )
-                )}
-                {!isDeletedUser(row.original) && (
-                  row.original.bannedUntil ? (
-                    <DropdownMenuItem
-                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                      onClick={() => {
-                        setSelectedUser(row.original);
-                        setUnbanConfirmOpen(true);
-                      }}
-                    >
-                      <ShieldAlert className="mr-2 size-4" />
-                      Unban
-                    </DropdownMenuItem>
-                  ) : (
-                    <DropdownMenuItem
-                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                      onClick={() => {
-                        setSelectedUser(row.original);
-                        setBanConfirmOpen(true);
-                      }}
-                    >
-                      <ShieldAlert className="mr-2 size-4" />
-                      Ban
-                    </DropdownMenuItem>
-                  )
-                )}
-                {!isDeletedUser(row.original) ? (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                      onClick={() => {
-                        setSelectedUser(row.original);
-                        setDeleteConfirmOpen(true);
-                      }}
-                    >
-                      <Trash2 className="mr-2 size-4" />
-                      Soft delete
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ),
+        ...tableActionsColumn<UserResponse>(),
+        cell: ({ row }) => {
+          const user = row.original;
+          const deleted = isDeletedUser(user);
+          const items = [];
+
+          if (!deleted) {
+            items.push({
+              label: 'Edit role',
+              onClick: () => openRolesDialog(user),
+            });
+            if (user.isActive) {
+              items.push({
+                label: 'Lock',
+                icon: Lock,
+                onClick: () => {
+                  setSelectedUser(user);
+                  setLockConfirmOpen(true);
+                },
+              });
+            } else {
+              items.push({
+                label: 'Unlock',
+                icon: Unlock,
+                onClick: () =>
+                  statusMutation.mutate({ userId: user.id, isActive: true }),
+              });
+            }
+            if (user.bannedUntil) {
+              items.push({
+                label: 'Unban',
+                icon: ShieldAlert,
+                onClick: () => {
+                  setSelectedUser(user);
+                  setUnbanConfirmOpen(true);
+                },
+              });
+            } else {
+              items.push({
+                label: 'Ban',
+                icon: ShieldAlert,
+                onClick: () => {
+                  setSelectedUser(user);
+                  setBanConfirmOpen(true);
+                },
+              });
+            }
+            items.push({
+              label: 'Soft delete',
+              icon: Trash2,
+              destructive: true,
+              onClick: () => {
+                setSelectedUser(user);
+                setDeleteConfirmOpen(true);
+              },
+            });
+          }
+
+          return (
+            <TableRowActionMenu
+              menuLabel={`Actions for ${user.displayName}`}
+              items={items}
+            />
+          );
+        },
       },
     ],
     [
@@ -551,178 +511,138 @@ export function UsersListPage() {
         </AdminFilterBar>
       }
     >
-      <AdminDockLayout
-        dock={
-          <AdminDockPanel
-            open={Boolean(selectedUser)}
-            mobileOpen={dockOpen && Boolean(selectedUser)}
-            onMobileClose={() => setDockOpen(false)}
-            showPlaceholder
-            placeholderTitle="User inspector"
-            placeholderDescription="Select a user row to review roles, status, and account metadata."
-            onClose={clearSelectedUser}
-            title="User detail"
-            description={
-              selectedUser ? `${selectedUser.displayName} (${selectedUser.email})` : undefined
-            }
-            footer={
-              selectedUser ? (
-                <>
-                  <Button variant="outline" size="sm" onClick={() => openRolesDialog(selectedUser)}>
-                    Edit role
-                  </Button>
-                  {!isDeletedUser(selectedUser) ? (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={deleteMutation.isPending}
-                      onClick={() => setDeleteConfirmOpen(true)}
-                    >
-                      <Trash2 className="mr-2 size-4" />
-                      Soft delete
-                    </Button>
-                  ) : null}
-                </>
-              ) : null
-            }
-          >
-            {selectedUser ? (
-              <dl className="grid grid-cols-2 gap-4">
-                <InspectorField
-                  label="User ID"
-                  value={selectedUser.id}
-                  mono
-                  className="col-span-2"
-                />
-                <InspectorField label="Display name" value={selectedUser.displayName} />
-                <InspectorField label="Email" value={selectedUser.email} />
-                <InspectorField
-                  label="Roles"
-                  value={
-                    <div className="flex flex-wrap gap-1">
-                      {getDisplayRoles(selectedUser).map((role) => (
-                        <Badge key={role} variant="secondary">
-                          {role}
-                        </Badge>
-                      ))}
-                    </div>
-                  }
-                  className="col-span-2"
-                />
-                <InspectorField
-                  label="Status"
-                  value={
-                    <Badge variant={renderStatus(selectedUser).variant}>
-                      {renderStatus(selectedUser).label}
-                    </Badge>
-                  }
-                />
-                <InspectorField label="Verified" value={selectedUser.isVerified ? 'Yes' : 'No'} />
-                <InspectorField
-                  label="Banned until"
-                  value={formatDateTime(selectedUser.bannedUntil)}
-                />
-                <InspectorField
-                  label="Deleted at"
-                  value={formatDateTime(selectedUser.deletedAt)}
-                />
-                <InspectorField label="Created at" value={formatDateTime(selectedUser.createdAt)} />
-                <InspectorField label="Updated at" value={formatDateTime(selectedUser.updatedAt)} />
-              </dl>
+      <>
+        <AdminDockLayout dockOpen={Boolean(selectedUser)}>
+          <div className="flex flex-col gap-3">
+            {usersQuery.isError ? (
+              <AdminQueryError
+                message={getApiErrorMessage(usersQuery.error)}
+                onRetry={() => void usersQuery.refetch()}
+              />
             ) : null}
-          </AdminDockPanel>
-        }
-      >
-      <div className="flex flex-col gap-4">
-        {usersQuery.isError ? (
-          <AdminQueryError
-            message={getApiErrorMessage(usersQuery.error)}
-            onRetry={() => void usersQuery.refetch()}
-          />
-        ) : null}
 
-        {selectedRowsOnPage.length > 0 ? (
-          <div className="bg-muted/40 flex flex-wrap items-center gap-2 rounded-lg border p-3">
-            <span className="text-sm font-medium">
-              {selectedRowsOnPage.length} selected
-            </span>
-            <div className="flex flex-1 flex-wrap justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={bulkPending}
-                onClick={() => setBulkAction('lock')}
-              >
-                <Lock className="mr-2 size-4" />
-                Lock selected ({selectedRowsOnPage.length})
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={bulkPending}
-                onClick={() => setBulkAction('unlock')}
-              >
-                <Unlock className="mr-2 size-4" />
-                Unlock selected ({selectedRowsOnPage.length})
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-                Clear
-              </Button>
+            {selectedRowsOnPage.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 py-1">
+                <span className="text-muted-foreground text-sm">
+                  {selectedRowsOnPage.length} selected
+                </span>
+                <div className="ml-auto flex flex-wrap gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={bulkPending}
+                    onClick={() => setBulkAction('lock')}
+                  >
+                    <Lock className="mr-2 size-4" />
+                    Lock
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={bulkPending}
+                    onClick={() => setBulkAction('unlock')}
+                  >
+                    <Unlock className="mr-2 size-4" />
+                    Unlock
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <DataTable
+              columns={columns}
+              data={rows}
+              isLoading={usersQuery.isLoading}
+              emptyMessage="No users found."
+              showRowIndex
+              pageOffset={(page - 1) * ADMIN_LIST_PAGE_SIZE}
+              showPagination={false}
+              activeRowId={selectedUser?.id ?? null}
+              getRowId={(row) => row.id}
+              onRowClick={openInspector}
+            />
+
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-sm">
+                Total: {usersQuery.data?.totalElement ?? 0} users
+              </p>
+              <ServerPagination
+                page={page}
+                totalPages={usersQuery.data?.totalPages ?? 1}
+                onPageChange={(nextPage) => {
+                  setPage(nextPage);
+                  clearSelectedUser();
+                }}
+                pageBase={1}
+              />
             </div>
           </div>
-        ) : null}
+        </AdminDockLayout>
 
-        {selectedUser ? (
-          <AdminDockIndicatorStrip
-            className="lg:hidden"
-            onOpen={() => setDockOpen(true)}
-            items={[
-              {
-                label: 'Status',
-                value: renderStatus(selectedUser).label,
-                active: true,
-              },
-              {
-                label: 'Roles',
-                value: getDisplayRoles(selectedUser).join(', '),
-              },
-              {
-                label: 'Verified',
-                value: selectedUser.isVerified ? 'Yes' : 'No',
-              },
-            ]}
-          />
-        ) : null}
-
-        <DataTable
-          columns={columns}
-          data={rows}
-          isLoading={usersQuery.isLoading}
-          emptyMessage="No users found."
-          showRowIndex
-          pageOffset={(page - 1) * ADMIN_LIST_PAGE_SIZE}
-          showPagination={false}
-          activeRowId={selectedUser?.id ?? null}
-          getRowId={(row) => row.id}
-          onRowClick={openInspector}
-        />
-
-        <div className="flex items-center justify-between">
-          <p className="text-muted-foreground text-sm">
-            Total: {usersQuery.data?.totalElement ?? 0} users
-          </p>
-          <ServerPagination
-            page={page}
-            totalPages={usersQuery.data?.totalPages ?? 1}
-            onPageChange={(nextPage) => {
-              setPage(nextPage);
-              clearSelectedUser();
-            }}
-            pageBase={1}
-          />
-        </div>
-      </div>
-      </AdminDockLayout>
+        <AdminDockPanel
+          open={Boolean(selectedUser)}
+          onClose={clearSelectedUser}
+          title="User detail"
+          description={
+            selectedUser ? `${selectedUser.displayName} (${selectedUser.email})` : undefined
+          }
+          footer={
+            selectedUser && !isDeletedUser(selectedUser) ? (
+              <Button variant="ghost" size="sm" onClick={() => openRolesDialog(selectedUser)}>
+                Edit role
+              </Button>
+            ) : null
+          }
+        >
+          {selectedUser ? (
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+              <InspectorField
+                label="User ID"
+                value={selectedUser.id}
+                mono
+                className="col-span-2"
+              />
+              <InspectorField label="Display name" value={selectedUser.displayName} />
+              <InspectorField label="Email" value={selectedUser.email} />
+              <InspectorField
+                label="Roles"
+                value={
+                  <div className="flex flex-wrap gap-1">
+                    {getDisplayRoles(selectedUser).map((role) => (
+                      <Badge key={role} variant="secondary">
+                        {role}
+                      </Badge>
+                    ))}
+                  </div>
+                }
+                className="col-span-2"
+              />
+              <InspectorField
+                label="Status"
+                value={
+                  <Badge variant={renderStatus(selectedUser).variant}>
+                    {renderStatus(selectedUser).label}
+                  </Badge>
+                }
+              />
+              <InspectorField label="Verified" value={selectedUser.isVerified ? 'Yes' : 'No'} />
+              <InspectorField
+                label="Banned until"
+                value={formatDateTime(selectedUser.bannedUntil)}
+              />
+              <InspectorField
+                label="Deleted at"
+                value={formatDateTime(selectedUser.deletedAt)}
+              />
+              <InspectorField label="Created at" value={formatDateTime(selectedUser.createdAt)} />
+              <InspectorField label="Updated at" value={formatDateTime(selectedUser.updatedAt)} />
+            </dl>
+          ) : null}
+        </AdminDockPanel>
+      </>
 
       <Dialog
         open={createDialogOpen}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -12,7 +12,7 @@ import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActions, tableActionsColumn } from '@/components/admin/table-row-actions';
+import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -218,25 +218,22 @@ export function ProgramsListPage() {
       {
         ...tableActionsColumn<ProgramResponse>(),
         cell: ({ row }) => (
-          <TableRowActions>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate(ROUTES.programCourses(row.original.id))}
-            >
-              Course
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => openEditDialog(row.original)}>
-              Edit
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setDeleteTarget(row.original)}
-            >
-              Delete
-            </Button>
-          </TableRowActions>
+          <TableRowActionMenu
+            primaryLabel="Courses"
+            onPrimary={() => navigate(ROUTES.programCourses(row.original.id))}
+            items={[
+              {
+                label: 'Edit',
+                onClick: () => openEditDialog(row.original),
+              },
+              {
+                label: 'Delete',
+                icon: Trash2,
+                destructive: true,
+                onClick: () => setDeleteTarget(row.original),
+              },
+            ]}
+          />
         ),
       },
     ],

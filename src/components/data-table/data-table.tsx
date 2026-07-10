@@ -123,11 +123,11 @@ export function DataTable<TData, TValue>({
   const cellPad = density === 'compact' ? 'py-2' : 'py-3';
 
   return (
-    <div className={cn('space-y-4', className)}>
-      <div className="overflow-hidden rounded-xl border bg-card">
+    <div className={cn('space-y-3', className)}>
+      <div className="overflow-hidden rounded-lg border">
         <div className="relative max-h-[min(70vh,720px)] overflow-auto">
           <Table>
-            <TableHeader className="bg-card sticky top-0 z-10 border-b">
+            <TableHeader className="bg-muted/30 sticky top-0 z-10 border-b">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-0">
                   {headerGroup.headers.map((header) => (
