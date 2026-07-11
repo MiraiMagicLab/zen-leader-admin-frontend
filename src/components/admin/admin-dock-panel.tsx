@@ -168,7 +168,7 @@ export function AdminDockPanel({
       role="complementary"
       aria-label={title}
       className={cn(
-        'bg-card fixed z-40 flex flex-col overflow-hidden rounded-2xl border shadow-xl',
+        'bg-card fixed z-40 flex flex-col overflow-hidden rounded-lg border shadow-xl',
         'max-sm:inset-x-3 max-sm:top-[4.5rem] max-sm:bottom-3',
         'sm:right-4 sm:bottom-4 sm:top-[4.5rem] sm:w-80',
         'xl:w-[22rem]',

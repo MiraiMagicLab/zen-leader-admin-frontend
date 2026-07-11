@@ -33,7 +33,7 @@ export function AdminTableSkeleton({
   const widthPattern = ['w-full', 'w-4/5', 'w-3/5', 'w-2/3', 'w-1/2'];
 
   return (
-    <div className={cn('divide-y rounded-xl border bg-card', className)}>
+    <div className={cn('divide-y rounded-md border bg-card', className)}>
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <div key={rowIndex} className="flex items-center gap-4 px-4 py-3">
           {Array.from({ length: columns }).map((__, colIndex) => (

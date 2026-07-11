@@ -97,7 +97,7 @@ function AttentionQueue<T>({
           {items.map((item) => (
             <li
               key={keyExtractor(item)}
-              className="border-border/60 hover:border-border hover:bg-muted/30 rounded-xl border px-3 py-2 transition-colors"
+              className="border-border/60 hover:border-border hover:bg-muted/30 rounded-md border px-3 py-2 transition-colors"
             >
               <p className="truncate text-sm font-medium">{renderPrimary(item)}</p>
               <p className="text-muted-foreground truncate text-xs">

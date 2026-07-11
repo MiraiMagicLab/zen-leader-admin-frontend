@@ -49,7 +49,7 @@ export function AdminFilterBar({
             value={searchValue ?? ''}
             onChange={(event) => onSearchChange?.(event.target.value)}
             placeholder={searchPlaceholder}
-            className="h-9 rounded-xl border-border/70 pl-9"
+            className="h-9 rounded-md border-border/70 pl-9"
             aria-label={searchPlaceholder}
           />
         </div>

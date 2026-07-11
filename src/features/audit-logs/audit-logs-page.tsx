@@ -7,6 +7,7 @@ import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
+import { TechnicalDetails } from '@/components/admin/technical-details';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -98,14 +99,15 @@ export function AuditLogsPage() {
       },
       {
         accessorKey: 'entityType',
-        header: 'Entity type',
+        header: 'Target',
         cell: ({ row }) => auditEntityTypeLabel(row.original.entityType),
       },
-      { accessorKey: 'entityId', header: 'Entity ID' },
       {
         accessorKey: 'actorDisplay',
         header: 'Actor',
-        cell: ({ row }) => row.original.actorDisplay ?? row.original.actorUserId ?? '—',
+        cell: ({ row }) =>
+          row.original.actorDisplay ??
+          (row.original.actorUserId ? 'System user' : 'System'),
       },
     ],
     [],
@@ -116,7 +118,7 @@ export function AuditLogsPage() {
       variant="list"
       density="compact"
       title="Audit log"
-      description="Review administrative actions across the platform. Select a row to inspect."
+      description="Review who changed what across the platform. Select a row for more context."
       actions={
         <Button variant="outline" size="sm" onClick={() => void auditQuery.refetch()}>
           <RefreshCw className="mr-2 size-4" />
@@ -127,7 +129,7 @@ export function AuditLogsPage() {
         <AdminFilterBar
           searchValue={actorUserIdInput}
           onSearchChange={setActorUserIdInput}
-          searchPlaceholder="Filter by actor user ID"
+          searchPlaceholder="Filter by actor reference (advanced)"
           showClear={hasActiveFilters}
           clearLabel="Clear filters"
           onClear={resetFilters}
@@ -201,36 +203,49 @@ export function AuditLogsPage() {
         <AdminDockPanel
           open={Boolean(selectedLog)}
           onClose={clearSelectedLog}
-          title="Audit log detail"
-          description={selectedLog ? `Log ${selectedLog.id.slice(0, 8)}…` : undefined}
+          title={selectedLog ? auditActionLabel(selectedLog.action) : 'Audit detail'}
+          description={
+            selectedLog
+              ? `${auditEntityTypeLabel(selectedLog.entityType)} · ${formatDateTime(selectedLog.createdAt)}`
+              : undefined
+          }
         >
           {selectedLog ? (
             <div className="space-y-4">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <InspectorField label="Action" value={auditActionLabel(selectedLog.action)} />
-                <InspectorField label="Entity type" value={auditEntityTypeLabel(selectedLog.entityType)} />
-                <InspectorField label="Entity ID" value={selectedLog.entityId} mono className="col-span-2" />
+                <InspectorField
+                  label="Target type"
+                  value={auditEntityTypeLabel(selectedLog.entityType)}
+                />
                 <InspectorField
                   label="Actor"
-                  value={selectedLog.actorDisplay ?? selectedLog.actorUserId}
-                />
-                <InspectorField label="Actor type" value={auditActorTypeLabel(selectedLog.actorType)} />
-                <InspectorField label="Actor user ID" value={selectedLog.actorUserId} mono />
-                <InspectorField label="Request ID" value={selectedLog.requestId} mono />
-                <InspectorField label="IP address" value={selectedLog.ipAddress} mono />
-                <InspectorField
-                  label="User agent"
-                  value={selectedLog.userAgent}
+                  value={selectedLog.actorDisplay ?? 'System'}
                   className="col-span-2"
                 />
-                <InspectorField label="Timestamp" value={formatDateTime(selectedLog.createdAt)} />
+                <InspectorField
+                  label="Actor type"
+                  value={auditActorTypeLabel(selectedLog.actorType)}
+                />
+                <InspectorField label="When" value={formatDateTime(selectedLog.createdAt)} />
               </dl>
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-xs font-medium">Metadata</p>
-                <pre className="bg-muted/40 max-h-96 overflow-auto rounded-lg border p-3 text-xs whitespace-pre-wrap break-words">
-                  {selectedLog.metadata ? JSON.stringify(selectedLog.metadata, null, 2) : '—'}
-                </pre>
-              </div>
+              <TechnicalDetails>
+                <dl className="grid grid-cols-1 gap-3">
+                  <InspectorField label="Target reference" value={selectedLog.entityId ?? '—'} mono />
+                  <InspectorField label="Actor reference" value={selectedLog.actorUserId ?? '—'} mono />
+                  <InspectorField label="Request reference" value={selectedLog.requestId ?? '—'} mono />
+                  <InspectorField label="IP address" value={selectedLog.ipAddress ?? '—'} mono />
+                  <InspectorField label="User agent" value={selectedLog.userAgent ?? '—'} />
+                </dl>
+              </TechnicalDetails>
+              {selectedLog.metadata ? (
+                <div className="space-y-1">
+                  <p className="text-muted-foreground text-xs font-medium">Metadata</p>
+                  <pre className="bg-muted/40 max-h-64 overflow-auto rounded-md border p-3 text-xs whitespace-pre-wrap break-words">
+                    {JSON.stringify(selectedLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </AdminDockPanel>

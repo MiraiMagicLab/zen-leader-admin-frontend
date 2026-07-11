@@ -16,6 +16,7 @@ import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
+import { TechnicalDetails } from '@/components/admin/technical-details';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -590,10 +591,8 @@ export function UsersListPage() {
         <AdminDockPanel
           open={Boolean(selectedUser)}
           onClose={clearSelectedUser}
-          title="User detail"
-          description={
-            selectedUser ? `${selectedUser.displayName} (${selectedUser.email})` : undefined
-          }
+          title={selectedUser?.displayName ?? 'User detail'}
+          description={selectedUser?.email}
           footer={
             selectedUser && !isDeletedUser(selectedUser) ? (
               <Button variant="ghost" size="sm" onClick={() => openRolesDialog(selectedUser)}>
@@ -603,48 +602,63 @@ export function UsersListPage() {
           }
         >
           {selectedUser ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-              <InspectorField
-                label="User ID"
-                value={selectedUser.id}
-                mono
-                className="col-span-2"
-              />
-              <InspectorField label="Display name" value={selectedUser.displayName} />
-              <InspectorField label="Email" value={selectedUser.email} />
-              <InspectorField
-                label="Roles"
-                value={
-                  <div className="flex flex-wrap gap-1">
-                    {getDisplayRoles(selectedUser).map((role) => (
-                      <Badge key={role} variant="secondary">
-                        {ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role}
-                      </Badge>
-                    ))}
-                  </div>
-                }
-                className="col-span-2"
-              />
-              <InspectorField
-                label="Status"
-                value={
-                  <Badge variant={renderStatus(selectedUser).variant}>
-                    {renderStatus(selectedUser).label}
-                  </Badge>
-                }
-              />
-              <InspectorField label="Verified" value={selectedUser.isVerified ? 'Yes' : 'No'} />
-              <InspectorField
-                label="Banned until"
-                value={formatDateTime(selectedUser.bannedUntil)}
-              />
-              <InspectorField
-                label="Deleted at"
-                value={formatDateTime(selectedUser.deletedAt)}
-              />
-              <InspectorField label="Created at" value={formatDateTime(selectedUser.createdAt)} />
-              <InspectorField label="Updated at" value={formatDateTime(selectedUser.updatedAt)} />
-            </dl>
+            <div className="space-y-4">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <InspectorField label="Display name" value={selectedUser.displayName} />
+                <InspectorField label="Email" value={selectedUser.email} />
+                <InspectorField
+                  label="Roles"
+                  value={
+                    <div className="flex flex-wrap gap-1">
+                      {getDisplayRoles(selectedUser).map((role) => (
+                        <Badge key={role} variant="secondary">
+                          {ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role}
+                        </Badge>
+                      ))}
+                    </div>
+                  }
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Status"
+                  value={
+                    <Badge variant={renderStatus(selectedUser).variant}>
+                      {renderStatus(selectedUser).label}
+                    </Badge>
+                  }
+                />
+                <InspectorField
+                  label="Verified"
+                  value={selectedUser.isVerified ? 'Yes' : 'No'}
+                />
+                {selectedUser.bannedUntil ? (
+                  <InspectorField
+                    label="Banned until"
+                    value={formatDateTime(selectedUser.bannedUntil)}
+                    className="col-span-2"
+                  />
+                ) : null}
+                <InspectorField
+                  label="Joined"
+                  value={formatDateTime(selectedUser.createdAt)}
+                />
+                {selectedUser.deletedAt ? (
+                  <InspectorField
+                    label="Deleted"
+                    value={formatDateTime(selectedUser.deletedAt)}
+                  />
+                ) : null}
+              </dl>
+              <TechnicalDetails>
+                <dl className="grid grid-cols-1 gap-3">
+                  <InspectorField label="Account reference" value={selectedUser.id} mono />
+                  <InspectorField
+                    label="Last updated"
+                    value={formatDateTime(selectedUser.updatedAt)}
+                  />
+                </dl>
+              </TechnicalDetails>
+            </div>
           ) : null}
         </AdminDockPanel>
       </>

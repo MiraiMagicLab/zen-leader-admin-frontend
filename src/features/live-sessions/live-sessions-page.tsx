@@ -179,7 +179,9 @@ export function LiveSessionsPage() {
       {
         accessorKey: 'roomCode',
         header: 'Room',
-        cell: ({ row }) => <span className="font-mono text-xs">{row.original.roomCode}</span>,
+        cell: ({ row }) => (
+          <span className="font-medium">{row.original.roomCode}</span>
+        ),
       },
       {
         accessorKey: 'status',
@@ -200,14 +202,19 @@ export function LiveSessionsPage() {
         ),
       },
       {
-        accessorKey: 'eventId',
-        header: 'Event',
+        id: 'linked',
+        header: 'Linked to',
         meta: { className: 'hidden md:table-cell' },
-        cell: ({ row }) => row.original.eventId ?? '—',
+        cell: ({ row }) => {
+          if (row.original.eventId) return 'Event session';
+          if (row.original.courseId) return 'Course session';
+          if (row.original.programId) return 'Program session';
+          return 'Standalone';
+        },
       },
       {
         accessorKey: 'createdAt',
-        header: 'Created',
+        header: 'Started',
         meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
-import { Copy, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
@@ -11,6 +11,7 @@ import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-d
 import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
+import { TechnicalDetails } from '@/components/admin/technical-details';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -225,20 +226,9 @@ export function ModerationPage() {
         cell: ({ row }) => (
           <div className="max-w-xs space-y-1">
             <p className="font-medium">{row.original.reason}</p>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs"
-              title="Copy reported content ID"
-              onClick={(event) => {
-                event.stopPropagation();
-                void navigator.clipboard?.writeText(row.original.targetContentId);
-                toast.success('Content ID copied.');
-              }}
-            >
-              {contentTypeLabel(row.original.targetContentType)}{' '}
-              · {row.original.targetContentId.slice(0, 8)}…
-              <Copy className="size-3" />
-            </button>
+            <p className="text-muted-foreground text-xs">
+              {contentTypeLabel(row.original.targetContentType)}
+            </p>
           </div>
         ),
       },
@@ -412,9 +402,11 @@ export function ModerationPage() {
         <AdminDockPanel
           open={Boolean(selectedLiveReport)}
           onClose={clearSelectedReport}
-          title="Report detail"
+          title={selectedLiveReport?.reason ?? 'Report detail'}
           description={
-            selectedLiveReport ? `Report ${selectedLiveReport.id.slice(0, 8)}…` : undefined
+            selectedLiveReport
+              ? `${contentTypeLabel(selectedLiveReport.targetContentType)} · ${reportStatusLabel(selectedLiveReport.status)}`
+              : undefined
           }
           footer={
             selectedLiveReport?.status === 'PENDING' ? (
@@ -449,55 +441,71 @@ export function ModerationPage() {
           }
         >
           {selectedLiveReport ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-              <InspectorField label="Report ID" value={selectedLiveReport.id} mono className="col-span-2" />
-              <InspectorField
-                label="Status"
-                value={
-                  <Badge variant="secondary">
-                    {reportStatusLabel(selectedLiveReport.status)}
-                  </Badge>
-                }
-              />
-              <InspectorField label="Reason" value={selectedLiveReport.reason} className="col-span-2" />
-              <InspectorField
-                label="Reporter"
-                value={
-                  <div>
-                    <p>{selectedLiveReport.reporterDisplayName}</p>
-                    <p className="text-muted-foreground text-xs">{selectedLiveReport.reporterEmail}</p>
-                  </div>
-                }
-                className="col-span-2"
-              />
-              <InspectorField
-                label="Reported user"
-                value={selectedLiveReport.targetUserDisplayName}
-                className="col-span-2"
-              />
-              <InspectorField
-                label="Content type"
-                value={contentTypeLabel(selectedLiveReport.targetContentType)}
-              />
-              <InspectorField
-                label="Content ID"
-                value={
-                  targetContentLink(selectedLiveReport) ? (
-                    <Link
-                      className="text-primary font-mono text-xs hover:underline"
-                      to={targetContentLink(selectedLiveReport)!}
-                    >
-                      {selectedLiveReport.targetContentId}
-                    </Link>
-                  ) : (
-                    selectedLiveReport.targetContentId
-                  )
-                }
-                mono={!targetContentLink(selectedLiveReport)}
-              />
-              <InspectorField label="Reported at" value={formatDateTime(selectedLiveReport.createdAt)} />
-              <InspectorField label="Updated at" value={formatDateTime(selectedLiveReport.updatedAt)} />
-            </dl>
+            <div className="space-y-4">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <InspectorField
+                  label="Status"
+                  value={
+                    <Badge variant="secondary">
+                      {reportStatusLabel(selectedLiveReport.status)}
+                    </Badge>
+                  }
+                />
+                <InspectorField
+                  label="Content type"
+                  value={contentTypeLabel(selectedLiveReport.targetContentType)}
+                />
+                <InspectorField
+                  label="Reason"
+                  value={selectedLiveReport.reason}
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Reporter"
+                  value={
+                    <div>
+                      <p>{selectedLiveReport.reporterDisplayName}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {selectedLiveReport.reporterEmail}
+                      </p>
+                    </div>
+                  }
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Reported user"
+                  value={selectedLiveReport.targetUserDisplayName}
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Reported at"
+                  value={formatDateTime(selectedLiveReport.createdAt)}
+                />
+                <InspectorField
+                  label="Updated"
+                  value={formatDateTime(selectedLiveReport.updatedAt)}
+                />
+                {targetContentLink(selectedLiveReport) ? (
+                  <InspectorField
+                    label="Open content"
+                    value={
+                      <Link
+                        className="text-primary hover:underline"
+                        to={targetContentLink(selectedLiveReport)!}
+                      >
+                        View reported content
+                      </Link>
+                    }
+                    className="col-span-2"
+                  />
+                ) : null}
+              </dl>
+              <TechnicalDetails>
+                <dl className="grid grid-cols-1 gap-3">
+                  <InspectorField label="Content reference" value={selectedLiveReport.targetContentId} mono />
+                </dl>
+              </TechnicalDetails>
+            </div>
           ) : null}
         </AdminDockPanel>
       </>

@@ -11,6 +11,7 @@ import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-d
 import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
+import { TechnicalDetails } from '@/components/admin/technical-details';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -217,27 +218,8 @@ export function PaymentsPage() {
         enableSorting: false,
       },
       {
-        accessorKey: 'orderId',
-        header: 'Order code',
-        cell: ({ row }) => (
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-mono text-xs"
-            title="Copy full order code"
-            onClick={(event) => {
-              event.stopPropagation();
-              void navigator.clipboard?.writeText(row.original.orderId);
-              toast.success('Order code copied.');
-            }}
-          >
-            {row.original.orderId.slice(0, 8)}…
-            <Copy className="size-3" />
-          </button>
-        ),
-      },
-      {
         id: 'user',
-        header: 'User',
+        header: 'Learner',
         cell: ({ row }) => (
           <div>
             <p className="font-medium">{row.original.userDisplayName}</p>
@@ -264,7 +246,14 @@ export function PaymentsPage() {
       {
         accessorKey: 'amount',
         header: 'Amount',
-        cell: ({ row }) => `${row.original.amount.toLocaleString()} ${row.original.currency}`,
+        cell: ({ row }) =>
+          `${row.original.amount.toLocaleString('vi-VN')} ${row.original.currency}`,
+      },
+      {
+        accessorKey: 'provider',
+        header: 'Provider',
+        meta: { className: 'hidden lg:table-cell' },
+        cell: ({ row }) => paymentProviderLabel(row.original.provider),
       },
       {
         accessorKey: 'status',
@@ -305,8 +294,16 @@ export function PaymentsPage() {
           const order = row.original;
           const items = [
             {
-              label: 'Open',
+              label: 'Open course run',
               onClick: () => navigate(ROUTES.courseRunDetail(order.courseRunId)),
+            },
+            {
+              label: 'Copy order reference',
+              icon: Copy,
+              onClick: () => {
+                void navigator.clipboard?.writeText(order.orderId);
+                toast.success('Order reference copied.');
+              },
             },
             ...(canRetryEnrollment(order)
               ? [
@@ -316,7 +313,7 @@ export function PaymentsPage() {
                     onClick: () =>
                       setPendingConfirm({
                         title: 'Retry enrollment for this order?',
-                        description: `Order ${order.orderId.slice(0, 8)}… will be re-enrolled.`,
+                        description: `Re-enroll ${order.userDisplayName} into ${order.courseRunCode}.`,
                         confirmLabel: 'Retry enrollment',
                         variant: 'default' as const,
                         action: async () => {
@@ -328,7 +325,12 @@ export function PaymentsPage() {
               : []),
           ];
 
-          return <TableRowActionMenu items={items} />;
+          return (
+            <TableRowActionMenu
+              items={items}
+              menuLabel={`Actions for ${order.userDisplayName}`}
+            />
+          );
         },
       },
     ],
@@ -340,7 +342,7 @@ export function PaymentsPage() {
       variant="list"
       density="compact"
       title="Payments"
-      description="Review payment orders and resolve pending enrollments. Select a row to inspect."
+      description="Track checkouts, resolve enrollment failures, and open related course runs."
       actions={
         <Button variant="outline" size="sm" onClick={() => void ordersQuery.refetch()}>
           <RefreshCw className="mr-2 size-4" />
@@ -351,7 +353,7 @@ export function PaymentsPage() {
         <AdminFilterBar
           searchValue={search}
           onSearchChange={setSearch}
-          searchPlaceholder="Search by name, email, or order code"
+          searchPlaceholder="Search learner name, email, or course run"
           showClear={hasActiveFilters}
           clearLabel="Clear filters"
           onClear={() => {
@@ -423,9 +425,11 @@ export function PaymentsPage() {
         <AdminDockPanel
           open={Boolean(selectedLiveOrder)}
           onClose={clearSelectedOrder}
-          title="Order detail"
+          title={selectedLiveOrder?.userDisplayName ?? 'Order detail'}
           description={
-            selectedLiveOrder ? `Order ${selectedLiveOrder.orderId.slice(0, 8)}…` : undefined
+            selectedLiveOrder
+              ? `${selectedLiveOrder.courseRunCode} · ${paymentStatusLabel(selectedLiveOrder.status)}`
+              : undefined
           }
           footer={
             selectedLiveOrder && canRetryEnrollment(selectedLiveOrder) ? (
@@ -435,7 +439,7 @@ export function PaymentsPage() {
                 onClick={() =>
                   setPendingConfirm({
                     title: 'Retry enrollment for this order?',
-                    description: `Order ${selectedLiveOrder.orderId.slice(0, 8)}… will be re-enrolled.`,
+                    description: `Re-enroll ${selectedLiveOrder.userDisplayName} into ${selectedLiveOrder.courseRunCode}.`,
                     confirmLabel: 'Retry enrollment',
                     variant: 'default',
                     action: async () => {
@@ -451,67 +455,113 @@ export function PaymentsPage() {
           }
         >
           {selectedLiveOrder ? (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-              <InspectorField label="Order ID" value={selectedLiveOrder.orderId} mono className="col-span-2" />
-              <InspectorField
-                label="Status"
-                value={<Badge variant="secondary">{paymentStatusLabel(selectedLiveOrder.status)}</Badge>}
-              />
-              <InspectorField label="Provider" value={paymentProviderLabel(selectedLiveOrder.provider)} />
-              <InspectorField
-                label="User"
-                value={
-                  <div>
-                    <p>{selectedLiveOrder.userDisplayName}</p>
-                    <p className="text-muted-foreground text-xs">{selectedLiveOrder.userEmail}</p>
-                  </div>
-                }
-                className="col-span-2"
-              />
-              <InspectorField
-                label="Course run"
-                value={
-                  <Link
-                    className="text-primary hover:underline"
-                    to={ROUTES.courseRunDetail(selectedLiveOrder.courseRunId)}
-                  >
-                    {selectedLiveOrder.courseRunCode}
-                  </Link>
-                }
-                className="col-span-2"
-              />
-              <InspectorField
-                label="Amount"
-                value={`${selectedLiveOrder.amount.toLocaleString()} ${selectedLiveOrder.currency}`}
-              />
-              <InspectorField label="Created" value={formatDateTime(selectedLiveOrder.createdAt)} />
-              <InspectorField label="Expires at" value={formatDateTime(selectedLiveOrder.expiresAt)} />
-              <InspectorField label="Paid at" value={formatDateTime(selectedLiveOrder.paidAt)} />
-              <InspectorField
-                label="Enrollment active"
-                value={
-                  selectedLiveOrder.enrollmentActive == null
-                    ? '—'
-                    : selectedLiveOrder.enrollmentActive
-                      ? 'Yes'
-                      : 'No'
-                }
-              />
-              <InspectorField
-                label="Enrollment retry count"
-                value={selectedLiveOrder.enrollmentRetryCount}
-              />
-              <InspectorField
-                label="Enrollment failure code"
-                value={selectedLiveOrder.enrollmentFailureCode ? humanizeEnumValue(selectedLiveOrder.enrollmentFailureCode) : '—'}
-                className="col-span-2"
-              />
-              <InspectorField
-                label="Enrollment failure message"
-                value={selectedLiveOrder.enrollmentFailureMessage ?? '—'}
-                className="col-span-2"
-              />
-            </dl>
+            <div className="space-y-4">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <InspectorField
+                  label="Status"
+                  value={
+                    <Badge variant="secondary">
+                      {paymentStatusLabel(selectedLiveOrder.status)}
+                    </Badge>
+                  }
+                />
+                <InspectorField
+                  label="Provider"
+                  value={paymentProviderLabel(selectedLiveOrder.provider)}
+                />
+                <InspectorField
+                  label="Learner"
+                  value={
+                    <div>
+                      <p>{selectedLiveOrder.userDisplayName}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {selectedLiveOrder.userEmail}
+                      </p>
+                    </div>
+                  }
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Course run"
+                  value={
+                    <Link
+                      className="text-primary hover:underline"
+                      to={ROUTES.courseRunDetail(selectedLiveOrder.courseRunId)}
+                    >
+                      {selectedLiveOrder.courseRunCode}
+                    </Link>
+                  }
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Amount"
+                  value={`${selectedLiveOrder.amount.toLocaleString('vi-VN')} ${selectedLiveOrder.currency}`}
+                />
+                <InspectorField
+                  label="Paid at"
+                  value={formatDateTime(selectedLiveOrder.paidAt)}
+                />
+                <InspectorField
+                  label="Created"
+                  value={formatDateTime(selectedLiveOrder.createdAt)}
+                />
+                <InspectorField
+                  label="Expires"
+                  value={formatDateTime(selectedLiveOrder.expiresAt)}
+                />
+                <InspectorField
+                  label="Enrollment"
+                  value={
+                    selectedLiveOrder.enrollmentActive
+                      ? 'Active'
+                      : selectedLiveOrder.status === 'ENROLL_FAILED'
+                        ? 'Failed'
+                        : selectedLiveOrder.status === 'PAID'
+                          ? 'Awaiting'
+                          : '—'
+                  }
+                />
+                {selectedLiveOrder.enrollmentFailureMessage ? (
+                  <InspectorField
+                    label="Failure reason"
+                    value={selectedLiveOrder.enrollmentFailureMessage}
+                    className="col-span-2"
+                  />
+                ) : null}
+              </dl>
+              <TechnicalDetails>
+                <dl className="grid grid-cols-1 gap-3">
+                  <InspectorField
+                    label="Order reference"
+                    value={
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 font-mono text-xs"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(selectedLiveOrder.orderId);
+                          toast.success('Order reference copied.');
+                        }}
+                      >
+                        {selectedLiveOrder.orderId}
+                        <Copy className="size-3" />
+                      </button>
+                    }
+                  />
+                  <InspectorField
+                    label="Retry attempts"
+                    value={selectedLiveOrder.enrollmentRetryCount}
+                  />
+                  <InspectorField
+                    label="Failure code"
+                    value={
+                      selectedLiveOrder.enrollmentFailureCode
+                        ? humanizeEnumValue(selectedLiveOrder.enrollmentFailureCode)
+                        : '—'
+                    }
+                  />
+                </dl>
+              </TechnicalDetails>
+            </div>
           ) : null}
         </AdminDockPanel>
       </>

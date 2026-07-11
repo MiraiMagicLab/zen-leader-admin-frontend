@@ -49,7 +49,7 @@
 }
 
 :root {
-    --radius: 0.75rem;
+    --radius: 0.25rem;
     --background: oklch(0.992 0.002 106.5);
     --foreground: oklch(0.153 0.006 107.1);
     --card: oklch(1 0 0);
@@ -174,13 +174,13 @@
   }
 
   .admin-panel {
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-lg);
     border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
     background: var(--card);
   }
 
   .admin-metric-card {
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-lg);
     border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
     background: var(--card);
     transition: border-color 150ms ease, box-shadow 150ms ease;
@@ -192,13 +192,13 @@
   }
 
   .admin-subtle-panel {
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
     background: color-mix(in oklch, var(--muted) 35%, transparent);
   }
 
   .admin-segment {
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-md);
     border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
     background: color-mix(in oklch, var(--muted) 40%, transparent);
     padding: 0.25rem;

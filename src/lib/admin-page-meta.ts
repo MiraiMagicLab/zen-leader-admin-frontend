@@ -2,7 +2,7 @@ export const ADMIN_PAGE_META = {
   dashboard: {
     title: 'Zen Leader Admin | Overview',
     description:
-      'Overview of learners, programs, courses, events, and operations in the Zen Leader admin console.',
+      'Operational overview: live rooms, revenue, payment queues, moderation, and recent activity.',
   },
   users: {
     title: 'Zen Leader Admin | Users',

@@ -138,7 +138,7 @@ function OpsMetricCard({
         />
         <div
           className={cn(
-            'ml-1 flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/50',
+            'ml-1 flex size-10 shrink-0 items-center justify-center rounded-md border border-border/50',
             tone.well,
             tone.icon,
           )}

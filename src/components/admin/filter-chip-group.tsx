@@ -39,7 +39,7 @@ export function FilterChipGroup({
             size="sm"
             variant={active ? 'secondary' : 'ghost'}
             className={cn(
-              'h-8 rounded-lg px-3 text-xs font-medium',
+              'h-8 rounded-sm px-3 text-xs font-medium',
               active && 'border border-border/60 bg-background shadow-sm',
             )}
             aria-pressed={active}

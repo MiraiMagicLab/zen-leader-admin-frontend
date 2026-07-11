@@ -104,7 +104,7 @@ export const AdminSidebar = memo(() => {
             <SidebarMenuButton size="lg" asChild>
               <NavLink to={ROUTES.home}>
                 <BrandLogo
-                  className="flex size-10 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-black/5"
+                  className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5"
                   imageClassName="h-8 w-8 object-contain"
                   alt={`${BRAND.adminTitle} logo`}
                 />

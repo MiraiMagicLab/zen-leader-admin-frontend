@@ -69,7 +69,7 @@ export function AdminTabsList({
   return (
     <TabsList
       className={cn(
-        'grid h-10 w-full gap-1 rounded-xl border border-border/70 bg-muted/35 p-1',
+        'grid h-10 w-full gap-1 rounded-md border border-border/70 bg-muted/35 p-1',
         GRID_COLS[columns] ?? 'grid-cols-2',
         MAX_WIDTH[maxWidth],
         className,
@@ -87,7 +87,7 @@ export function AdminTabsTrigger({
 }: ComponentProps<typeof TabsTrigger>) {
   return (
     <TabsTrigger
-      className={cn('h-full rounded-lg px-3 text-sm', className)}
+      className={cn('h-full rounded-sm px-3 text-sm', className)}
       {...props}
     />
   );
