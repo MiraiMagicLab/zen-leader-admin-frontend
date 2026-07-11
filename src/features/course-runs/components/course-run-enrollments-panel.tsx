@@ -652,7 +652,6 @@ export function CourseRunEnrollmentsPanel({
       <AdminDockPanel
         open={Boolean(viewEnrollment)}
         onClose={() => setViewEnrollment(null)}
-        stacked={Boolean(editEnrollment)}
         title={
           viewEnrollment?.userDisplayName ??
           viewEnrollment?.userEmail ??
@@ -669,6 +668,7 @@ export function CourseRunEnrollmentsPanel({
                 size="sm"
                 onClick={() => {
                   openEditEnrollment(viewEnrollment);
+                  setViewEnrollment(null);
                 }}
               >
                 Edit
@@ -691,7 +691,7 @@ export function CourseRunEnrollmentsPanel({
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg lg:left-[calc(50%-9rem)]">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit enrollment</DialogTitle>
             {editEnrollment ? (

@@ -69,7 +69,7 @@ export function AdminCommandPalette() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-muted-foreground hover:bg-muted hover:text-foreground hidden h-8 items-center gap-2 rounded-lg border bg-card px-2.5 text-xs transition-colors md:inline-flex"
+        className="text-muted-foreground hover:bg-muted hover:text-foreground hidden h-8 items-center gap-2 rounded-md border bg-card px-2.5 text-xs transition-colors md:inline-flex"
         aria-label="Open command palette"
       >
         <Search className="size-3.5" />

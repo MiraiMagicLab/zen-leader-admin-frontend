@@ -292,8 +292,8 @@ export function LiveSessionsPage() {
       toolbar={
         <AdminFilterBar>
           <FilterSelect
-            ariaLabel="Session status"
-            placeholder="Status"
+            label="Status"
+            placeholder="All statuses"
             value={statusFilter}
             options={STATUS_OPTIONS}
             onChange={(value) => {

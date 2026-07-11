@@ -362,8 +362,8 @@ export function PaymentsPage() {
           }}
         >
           <FilterSelect
-            ariaLabel="Payment status"
-            placeholder="Status"
+            label="Status"
+            placeholder="All statuses"
             value={statusFilter}
             options={STATUS_OPTIONS}
             onChange={(value) => {
@@ -375,7 +375,7 @@ export function PaymentsPage() {
       }
     >
       <>
-        <AdminDockLayout dockOpen={Boolean(selectedLiveOrder)}>
+        <AdminDockLayout dockOpen={Boolean(selectedLiveOrder) && pendingConfirm === null && !bulkOpen}>
           <div className="space-y-3">
             {ordersQuery.isError ? (
               <AdminQueryError
@@ -424,9 +424,8 @@ export function PaymentsPage() {
         </AdminDockLayout>
 
         <AdminDockPanel
-          open={Boolean(selectedLiveOrder)}
+          open={Boolean(selectedLiveOrder) && pendingConfirm === null && !bulkOpen}
           onClose={clearSelectedOrder}
-          stacked={pendingConfirm !== null || bulkOpen}
           title={selectedLiveOrder?.userDisplayName ?? 'Order detail'}
           description={
             selectedLiveOrder

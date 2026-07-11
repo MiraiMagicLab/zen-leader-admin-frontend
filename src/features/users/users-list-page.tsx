@@ -275,6 +275,7 @@ export function UsersListPage() {
     lockConfirmOpen ||
     unlockConfirmOpen ||
     deleteConfirmOpen;
+  const dockOpen = Boolean(selectedLiveUser) && !dockModalOpen;
   // Only non-deleted users can be locked/unlocked.
   const selectableRows = rows.filter((user) => !isDeletedUser(user));
   const selectedRowsOnPage = selectableRows.filter((user) => selectedIds.includes(user.id));
@@ -520,15 +521,15 @@ export function UsersListPage() {
           onClear={handleClearFilters}
         >
           <FilterSelect
-            ariaLabel="User role"
-            placeholder="Role"
+            label="Role"
+            placeholder="All roles"
             value={roleFilter}
             options={ROLE_FILTER_OPTIONS}
             onChange={handleRoleFilterChange}
           />
           <FilterSelect
-            ariaLabel="User status"
-            placeholder="Status"
+            label="Status"
+            placeholder="All statuses"
             value={statusFilter}
             options={STATUS_FILTER_OPTIONS}
             onChange={handleStatusFilterChange}
@@ -537,7 +538,7 @@ export function UsersListPage() {
       }
     >
       <>
-        <AdminDockLayout dockOpen={Boolean(selectedLiveUser)}>
+        <AdminDockLayout dockOpen={dockOpen}>
           <div className="flex flex-col gap-3">
             {usersQuery.isError ? (
               <AdminQueryError
@@ -601,9 +602,8 @@ export function UsersListPage() {
         </AdminDockLayout>
 
         <AdminDockPanel
-          open={Boolean(selectedLiveUser)}
+          open={dockOpen}
           onClose={clearSelectedUser}
-          stacked={dockModalOpen}
           title={selectedLiveUser?.displayName ?? 'User detail'}
           description={selectedLiveUser?.email}
           footer={
@@ -816,7 +816,7 @@ export function UsersListPage() {
       </Dialog>
 
       <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
-        <DialogContent className="lg:left-[calc(50%-9rem)]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Update role</DialogTitle>
           </DialogHeader>
@@ -863,7 +863,7 @@ export function UsersListPage() {
       </Dialog>
 
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-        <DialogContent className="lg:left-[calc(50%-9rem)]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Ban user</DialogTitle>
           </DialogHeader>

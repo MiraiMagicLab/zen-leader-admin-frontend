@@ -1,4 +1,3 @@
-import type { FilterChipOption } from '@/components/admin/filter-chip-group';
 import {
   Select,
   SelectContent,
@@ -6,12 +5,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+
+export type FilterSelectOption = {
+  value: string;
+  label: string;
+};
 
 type FilterSelectProps = {
   value: string;
   onChange: (value: string) => void;
-  options: readonly FilterChipOption[];
+  options: readonly FilterSelectOption[];
+  /** Visible field label shown before the Select trigger. */
+  label: string;
   ariaLabel?: string;
   placeholder?: string;
   className?: string;
@@ -19,33 +26,41 @@ type FilterSelectProps = {
 };
 
 /**
- * Compact Select filter for admin list toolbars (status, role, type, etc.).
- * Prefer this over segmented chips for management dashboards.
+ * Toolbar filter using shadcn Select (dropdown), not segmented tabs/chips.
  */
 export function FilterSelect({
   value,
   onChange,
   options,
-  ariaLabel = 'Filter',
+  label,
+  ariaLabel,
   placeholder = 'Select…',
   className,
   triggerClassName,
 }: FilterSelectProps) {
+  const selectId = `filter-${label.toLowerCase().replace(/\s+/g, '-')}`;
+
   return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger
-        aria-label={ariaLabel}
-        className={cn('h-9 w-[10.5rem] rounded-md border-border/70', triggerClassName, className)}
-      >
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div className={cn('flex items-center gap-2', className)}>
+      <Label htmlFor={selectId} className="text-muted-foreground shrink-0 text-xs font-medium">
+        {label}
+      </Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger
+          id={selectId}
+          aria-label={ariaLabel ?? label}
+          className={cn('h-9 min-w-[9.5rem] rounded-md', triggerClassName)}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent position="popper" align="start">
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }

@@ -304,8 +304,8 @@ export function ProgramsListPage() {
           }}
         >
           <FilterSelect
-            ariaLabel="Program status"
-            placeholder="Status"
+            label="Status"
+            placeholder="All statuses"
             value={statusFilter}
             options={STATUS_FILTER_OPTIONS}
             onChange={setStatusFilter}

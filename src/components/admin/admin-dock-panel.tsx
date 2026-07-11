@@ -44,11 +44,6 @@ type AdminDockPanelProps = {
   children: ReactNode;
   footer?: ReactNode;
   isLoading?: boolean;
-  /**
-   * Raise above modal overlays so the floating card stays visible
-   * while a Dialog / AlertDialog is open (dialog content stays on top).
-   */
-  stacked?: boolean;
   className?: string;
 };
 
@@ -127,7 +122,6 @@ export function AdminDockPanel({
   children,
   footer,
   isLoading = false,
-  stacked = false,
   className,
 }: AdminDockPanelProps) {
   if (!open) {
@@ -173,10 +167,8 @@ export function AdminDockPanel({
     <aside
       role="complementary"
       aria-label={title}
-      data-stacked={stacked ? 'true' : undefined}
       className={cn(
-        'bg-card fixed flex flex-col overflow-hidden rounded-lg border shadow-xl',
-        stacked ? 'z-[60]' : 'z-40',
+        'bg-card fixed z-40 flex flex-col overflow-hidden rounded-lg border shadow-xl',
         'max-sm:inset-x-3 max-sm:top-[4.5rem] max-sm:bottom-3',
         'sm:right-4 sm:bottom-4 sm:top-[4.5rem] sm:w-80',
         'xl:w-[22rem]',

@@ -341,7 +341,7 @@ export function CourseRunsListPage() {
         />
       ) : (
         <>
-          <AdminDockLayout dockOpen={Boolean(selectedRun)}>
+          <AdminDockLayout dockOpen={Boolean(selectedRun) && !deleteTarget && !bulkDeleteOpen}>
             <div className="space-y-3">
               {!selectedRun && tableData.length > 0 ? (
                 <p className="text-muted-foreground text-xs">
@@ -374,9 +374,8 @@ export function CourseRunsListPage() {
           </AdminDockLayout>
 
           <AdminDockPanel
-            open={Boolean(selectedRun)}
+            open={Boolean(selectedRun) && !deleteTarget && !bulkDeleteOpen}
             onClose={clearSelectedRun}
-            stacked={Boolean(deleteTarget) || bulkDeleteOpen}
             title={selectedRun?.code ?? 'Course run'}
             description={
               selectedRun

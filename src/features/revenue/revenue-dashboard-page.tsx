@@ -202,14 +202,14 @@ export function RevenueDashboardPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <FilterSelect
-            ariaLabel="Date range"
-            placeholder="Range"
+            label="Range"
+            placeholder="Date range"
             value={rangeDays}
             onChange={setRangeDays}
             options={RANGE_OPTIONS}
           />
           <FilterSelect
-            ariaLabel="Granularity"
+            label="Bucket"
             placeholder="Granularity"
             value={granularity}
             onChange={(value) => setGranularity(value as 'day' | 'week')}

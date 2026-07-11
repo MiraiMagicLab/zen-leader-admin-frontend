@@ -16,7 +16,7 @@ Nguyên tắc:
 - **Form Sheet rộng cố định 560px** (`className="… sm:w-[560px] sm:max-w-[560px]"`). Chỉ nới rộng khi nội dung thật sự cần.
 - **Dialog dùng width chuẩn**: `sm:max-w-md` (mặc định); `sm:max-w-lg`/`sm:max-w-xl` khi lưới 2 cột.
 - **List drill-down = `AdminDockPanel`**, không dùng `AdminInspector` / Sheet edge-locked.
-- **Dock + Dialog cùng lúc**: khi mở Dialog/AlertDialog từ dock, truyền `stacked` vào `AdminDockPanel` để card nổi vẫn hiện (z trên overlay, dưới dialog content). Không đóng dock trước khi mở form ngắn.
-- **Filter list (status/role/type) = `FilterSelect`**, không dùng segmented chips/tabs cho enum filter quản trị.
+- **Dock XOR Dialog**: chỉ hiện **một** trong hai. Khi mở Dialog/AlertDialog từ dock → đóng dock (giữ `selected*` để form vẫn có data). Khi đóng dialog → có thể mở lại dock nếu vẫn còn selection.
+- **Filter list (status/role/type) = `FilterSelect`** (shadcn `Select` + label), không dùng segmented chips/tabs.
 - **Row actions = `TableRowActionMenu`**: 1 primary ghost + menu ⋯ (destructive trong menu).
 - Khi phân vân Dialog vs Sheet: ≤ 5 ô đơn giản → Dialog. Có rich text / upload / nhiều bước → Sheet.

@@ -332,8 +332,8 @@ export function ModerationPage() {
           }}
         >
           <FilterSelect
-            ariaLabel="Report status"
-            placeholder="Status"
+            label="Status"
+            placeholder="All statuses"
             value={statusFilter}
             options={STATUS_OPTIONS}
             onChange={(value) => {
@@ -345,7 +345,7 @@ export function ModerationPage() {
       }
     >
       <>
-        <AdminDockLayout dockOpen={Boolean(selectedLiveReport)}>
+        <AdminDockLayout dockOpen={Boolean(selectedLiveReport) && !bulkAction}>
           <div className="space-y-3">
             {reportsQuery.isError ? (
               <AdminQueryError
@@ -401,9 +401,8 @@ export function ModerationPage() {
         </AdminDockLayout>
 
         <AdminDockPanel
-          open={Boolean(selectedLiveReport)}
+          open={Boolean(selectedLiveReport) && !bulkAction}
           onClose={clearSelectedReport}
-          stacked={Boolean(bulkAction)}
           title={selectedLiveReport?.reason ?? 'Report detail'}
           description={
             selectedLiveReport

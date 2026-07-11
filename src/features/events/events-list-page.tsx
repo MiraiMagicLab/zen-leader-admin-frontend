@@ -386,8 +386,8 @@ export function EventsListPage() {
             }}
           />
           <FilterSelect
-            ariaLabel="Event status"
-            placeholder="Status"
+            label="Status"
+            placeholder="All statuses"
             value={status}
             options={EVENT_STATUS_OPTIONS}
             onChange={(value) => {
@@ -396,8 +396,8 @@ export function EventsListPage() {
             }}
           />
           <FilterSelect
-            ariaLabel="Event type"
-            placeholder="Type"
+            label="Type"
+            placeholder="All types"
             value={typeFilter}
             options={EVENT_TYPE_OPTIONS}
             onChange={(value) => {

@@ -135,22 +135,22 @@ export function AuditLogsPage() {
           onClear={resetFilters}
         >
           <FilterSelect
-            ariaLabel="Audit action"
-            placeholder="Action"
+            label="Action"
+            placeholder="All actions"
             value={action}
             options={ACTION_FILTER_OPTIONS}
-            triggerClassName="w-[12rem]"
+            triggerClassName="min-w-[11rem]"
             onChange={(value) => {
               setAction(value);
               setPage(1);
             }}
           />
           <FilterSelect
-            ariaLabel="Entity type"
-            placeholder="Entity"
+            label="Entity"
+            placeholder="All entities"
             value={entityType}
             options={ENTITY_TYPE_FILTER_OPTIONS}
-            triggerClassName="w-[12rem]"
+            triggerClassName="min-w-[11rem]"
             onChange={(value) => {
               setEntityType(value);
               setPage(1);
