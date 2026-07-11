@@ -134,7 +134,7 @@ export function AdminLoadingOverlay({
     <div className="relative">
       {children}
       {loading ? (
-        <div className="bg-background/60 absolute inset-0 flex items-center justify-center rounded-xl backdrop-blur-[1px]">
+        <div className="bg-background/60 absolute inset-0 flex items-center justify-center rounded-lg backdrop-blur-[1px]">
           <AdminInlineLoading label={label} />
         </div>
       ) : null}

@@ -17,19 +17,20 @@ export function StatCard({ title, value, icon: Icon, href, isLoading }: StatCard
   const content = (
     <div
       className={cn(
-        'bg-card group flex h-full items-center gap-4 rounded-xl border p-4 shadow-sm transition-colors',
-        href && 'hover:bg-muted/40',
+        'admin-metric-card group flex h-full items-center gap-4 p-4',
       )}
     >
-      <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
+      <div className="bg-muted/70 text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-md border border-border/50">
         <Icon className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-muted-foreground text-sm">{title}</p>
+        <p className="text-muted-foreground text-xs font-medium">{title}</p>
         {isLoading ? (
           <AdminSkeletonBar className="mt-1 h-7 w-16" />
         ) : (
-          <p className="text-2xl font-semibold tabular-nums">{value ?? 0}</p>
+          <p className="text-foreground mt-0.5 text-xl font-semibold tracking-tight tabular-nums">
+            {value ?? 0}
+          </p>
         )}
       </div>
       {href ? (

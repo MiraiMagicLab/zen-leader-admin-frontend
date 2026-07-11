@@ -134,7 +134,7 @@ function OpsMetricCard({
       <div className="admin-metric-card relative flex h-full items-start gap-3 p-4">
         <span
           aria-hidden
-          className={cn('absolute inset-y-3 left-0 w-1 rounded-full', tone.accent)}
+          className={cn('absolute inset-y-3 left-0 w-0.5 rounded-sm', tone.accent)}
         />
         <div
           className={cn(

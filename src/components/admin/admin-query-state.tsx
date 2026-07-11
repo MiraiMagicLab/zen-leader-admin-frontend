@@ -114,11 +114,11 @@ export function AdminDetailSkeleton({ className }: AdminDetailSkeletonProps) {
         <AdminSkeletonBar className="h-4 w-96 max-w-full" />
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <AdminSkeletonBar className="h-24 rounded-xl" />
-        <AdminSkeletonBar className="h-24 rounded-xl" />
-        <AdminSkeletonBar className="h-24 rounded-xl" />
+        <AdminSkeletonBar className="h-24 rounded-lg" />
+        <AdminSkeletonBar className="h-24 rounded-lg" />
+        <AdminSkeletonBar className="h-24 rounded-lg" />
       </div>
-      <AdminSkeletonBar className="h-64 rounded-xl" />
+      <AdminSkeletonBar className="h-64 rounded-lg" />
     </div>
   );
 }

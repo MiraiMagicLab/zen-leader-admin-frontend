@@ -20,21 +20,21 @@ export function PageHeader({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between',
+        'flex flex-col gap-3 border-b border-border/60 pb-4 sm:flex-row sm:items-end sm:justify-between',
         className,
       )}
     >
-      <div className="space-y-1">
+      <div className="min-w-0 space-y-1">
         <h1
           className={cn(
-            'font-semibold tracking-tight',
-            size === 'sm' ? 'text-xl' : 'text-2xl sm:text-3xl',
+            'text-foreground font-semibold tracking-tight text-balance',
+            size === 'sm' ? 'text-lg' : 'text-xl sm:text-2xl',
           )}
         >
           {title}
         </h1>
         {description ? (
-          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
+          <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed text-pretty">
             {description}
           </p>
         ) : null}

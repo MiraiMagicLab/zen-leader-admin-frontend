@@ -190,9 +190,9 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     className={cn(
-                      'hover:bg-muted/40',
+                      'hover:bg-muted/30',
                       onRowClick && 'cursor-pointer',
-                      isActive && 'bg-muted/70 border-l-2 border-l-foreground',
+                      isActive && 'bg-muted/55 border-l-2 border-l-primary/70',
                     )}
                     onClick={onRowClick ? () => onRowClick(row.original) : undefined}
                     data-state={row.getIsSelected() ? 'selected' : undefined}

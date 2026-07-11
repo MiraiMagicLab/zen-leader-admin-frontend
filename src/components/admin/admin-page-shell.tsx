@@ -47,10 +47,14 @@ export function AdminPageShell({
         size={isList ? 'sm' : 'default'}
       />
       {isList && description ? (
-        <p className="text-muted-foreground -mt-2 max-w-2xl text-sm">{description}</p>
+        <p className="text-muted-foreground -mt-1 max-w-2xl text-sm leading-relaxed text-pretty">
+          {description}
+        </p>
       ) : null}
       {toolbar ? (
-        <div className="flex min-w-0 flex-col gap-3">{toolbar}</div>
+        <div className="admin-subtle-panel flex min-w-0 flex-col gap-3 p-3">
+          {toolbar}
+        </div>
       ) : null}
       <div className="min-w-0 flex-1">{children}</div>
     </div>
