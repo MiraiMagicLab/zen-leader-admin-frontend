@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2 } from 'lucide-react';
+import { BookOpen, Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 import { z } from 'zod';
 
@@ -14,9 +14,10 @@ import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { DataTable } from '@/components/data-table/data-table';
+import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
+import { InspectorField } from '@/components/admin/admin-inspector';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,16 +29,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
@@ -106,6 +101,9 @@ export function ProgramsListPage() {
     code: false,
     title: false,
   });
+  const [selectedProgram, setSelectedProgram] = useState<ProgramResponse | null>(null);
+
+  const dockOpen = Boolean(selectedProgram) && !dialogOpen && !Boolean(deleteTarget);
 
   const initialForm: FormState = editing
     ? {
@@ -199,6 +197,7 @@ export function ProgramsListPage() {
     onSuccess: () => {
       toast.success('Program deleted.');
       setDeleteTarget(null);
+      setSelectedProgram(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.programs.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -242,31 +241,8 @@ export function ProgramsListPage() {
         header: 'Created date',
         cell: ({ row }) => formatDate(row.original.createdAt),
       },
-      {
-        ...tableActionsColumn<ProgramResponse>(),
-        cell: ({ row }) => (
-          <TableRowActionMenu
-            items={[
-              {
-                label: 'Courses',
-                onClick: () => navigate(ROUTES.programCourses(row.original.id)),
-              },
-              {
-                label: 'Edit',
-                onClick: () => openEditDialog(row.original),
-              },
-              {
-                label: 'Delete',
-                icon: Trash2,
-                destructive: true,
-                onClick: () => setDeleteTarget(row.original),
-              },
-            ]}
-          />
-        ),
-      },
     ],
-    [navigate],
+    [],
   );
 
   return (
@@ -319,34 +295,98 @@ export function ProgramsListPage() {
           onRetry={() => void programsQuery.refetch()}
         />
       ) : (
-        <div className="space-y-4">
-          <DataTable
-            columns={columns}
-            data={filteredPrograms}
-            isLoading={programsQuery.isLoading}
-            showRowIndex
-            pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-            showPagination={false}
-            emptyMessage='No programs yet. Click "Add program" to create one.'
-            onRowClick={(program) => navigate(ROUTES.programCourses(program.id))}
-          />
+        <AdminDockLayout dockOpen={dockOpen}>
+          <div className="space-y-4">
+            <DataTable
+              columns={columns}
+              data={filteredPrograms}
+              isLoading={programsQuery.isLoading}
+              showRowIndex
+              pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+              showPagination={false}
+              emptyMessage='No programs yet. Click "Add program" to create one.'
+              onRowClick={(program) => setSelectedProgram(program)}
+            />
 
-          <ServerPagination
-            page={page}
-            totalPages={programsQuery.data?.totalPages ?? 1}
-            onPageChange={setPage}
-          />
-        </div>
+            <ServerPagination
+              page={page}
+              totalPages={programsQuery.data?.totalPages ?? 1}
+              onPageChange={setPage}
+            />
+          </div>
+        </AdminDockLayout>
       )}
 
-      <Sheet open={dialogOpen} onOpenChange={closeDialog}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>
-              {editing ? 'Edit program' : 'Add program'}
-            </SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+      <AdminDockPanel
+        open={dockOpen}
+        onClose={() => setSelectedProgram(null)}
+        title={selectedProgram?.title ?? ''}
+        description={selectedProgram?.code}
+        footer={
+          selectedProgram && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate(ROUTES.programCourses(selectedProgram.id))}
+              >
+                <BookOpen className="mr-1.5 size-3.5" />
+                View courses
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => openEditDialog(selectedProgram)}>
+                Edit
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setDeleteTarget(selectedProgram)}
+              >
+                <Trash2 className="mr-1.5 size-3.5" />
+                Delete
+              </Button>
+            </>
+          )
+        }
+      >
+        {selectedProgram && (
+          <dl className="space-y-4">
+            <InspectorField label="Code" value={selectedProgram.code} mono />
+            <InspectorField label="Title" value={selectedProgram.title} />
+            <InspectorField
+              label="Status"
+              value={
+                <Badge variant={selectedProgram.isPublished ? 'default' : 'outline'}>
+                  {selectedProgram.isPublished ? 'Published' : 'Draft'}
+                </Badge>
+              }
+            />
+            <InspectorField
+              label="Courses"
+              value={selectedProgram.courses?.length ?? 0}
+            />
+            <InspectorField
+              label="Description"
+              value={selectedProgram.description ?? undefined}
+            />
+            <InspectorField label="Created" value={formatDate(selectedProgram.createdAt)} />
+          </dl>
+        )}
+      </AdminDockPanel>
+
+      <AdminEditorDialog
+        open={dialogOpen}
+        onOpenChange={closeDialog}
+        title={editing ? 'Edit program' : 'Add program'}
+        size="lg"
+        footer={
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || requiredMissing}
+          >
+            Save
+          </Button>
+        }
+      >
             <div className="space-y-4">
               <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                 Basic info
@@ -451,17 +491,7 @@ export function ProgramsListPage() {
                 <Label>Publish (visible to users)</Label>
               </div>
             </div>
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || requiredMissing}
-            >
-              Save
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      </AdminEditorDialog>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>

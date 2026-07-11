@@ -25,13 +25,7 @@ import { RichTextPreview } from '@/components/rich-text-preview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import {
   Dialog,
   DialogContent,
@@ -671,80 +665,80 @@ export function CourseDetailPage() {
         }}
       />
 
-      <Sheet open={editCourseOpen} onOpenChange={handleEditCourseOpenChange}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Edit course</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="space-y-2">
-              <Label>
-                Course code <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                value={courseForm.code}
-                onChange={(e) => setCourseForm((prev) => ({ ...prev, code: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>
-                Title <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                value={courseForm.title}
-                onChange={(e) => setCourseForm((prev) => ({ ...prev, title: e.target.value }))}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Cover image</Label>
-              <ImageFilePicker
-                file={courseForm.thumbnailFile}
-                existingUrl={courseForm.thumbnailUrl}
-                previewAlt={courseForm.title || 'Course thumbnail'}
-                helperText="Choosing a new image replaces the current cover after saving."
-                onFileChange={(thumbnailFile) =>
-                  setCourseForm((prev) => ({ ...prev, thumbnailFile }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <RichTextEditor
-                value={courseForm.description}
-                minHeight="14rem"
-                placeholder="Enter a course description…"
-                onChange={(description) =>
-                  setCourseForm((prev) => ({ ...prev, description }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description preview</Label>
-              <div className="bg-muted/20 rounded-md border p-4">
-                <RichTextPreview value={courseForm.description} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Order</Label>
-              <Input
-                type="number"
-                value={courseForm.orderIndex}
-                onChange={(e) =>
-                  setCourseForm((prev) => ({ ...prev, orderIndex: e.target.value }))
-                }
-              />
+      <AdminEditorDialog
+        open={editCourseOpen}
+        onOpenChange={handleEditCourseOpenChange}
+        title="Edit course"
+        size="xl"
+        footer={
+          <Button
+            onClick={() => updateCourseMutation.mutate()}
+            disabled={updateCourseMutation.isPending || !courseFormValid}
+          >
+            Save
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>
+              Course code <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={courseForm.code}
+              onChange={(e) => setCourseForm((prev) => ({ ...prev, code: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>
+              Title <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={courseForm.title}
+              onChange={(e) => setCourseForm((prev) => ({ ...prev, title: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Cover image</Label>
+            <ImageFilePicker
+              file={courseForm.thumbnailFile}
+              existingUrl={courseForm.thumbnailUrl}
+              previewAlt={courseForm.title || 'Course thumbnail'}
+              helperText="Choosing a new image replaces the current cover after saving."
+              onFileChange={(thumbnailFile) =>
+                setCourseForm((prev) => ({ ...prev, thumbnailFile }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <RichTextEditor
+              value={courseForm.description}
+              minHeight="14rem"
+              placeholder="Enter a course description…"
+              onChange={(description) =>
+                setCourseForm((prev) => ({ ...prev, description }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Description preview</Label>
+            <div className="bg-muted/20 rounded-md border p-4">
+              <RichTextPreview value={courseForm.description} />
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => updateCourseMutation.mutate()}
-              disabled={updateCourseMutation.isPending || !courseFormValid}
-            >
-              Save
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          <div className="space-y-2">
+            <Label>Order</Label>
+            <Input
+              type="number"
+              value={courseForm.orderIndex}
+              onChange={(e) =>
+                setCourseForm((prev) => ({ ...prev, orderIndex: e.target.value }))
+              }
+            />
+          </div>
+        </div>
+      </AdminEditorDialog>
 
       <Dialog open={editIapOpen} onOpenChange={handleEditIapOpenChange}>
         <DialogContent className="sm:max-w-lg">
@@ -781,115 +775,115 @@ export function CourseDetailPage() {
         </DialogContent>
       </Dialog>
 
-      <Sheet open={Boolean(editingRun)} onOpenChange={handleEditRunOpenChange}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Edit class</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+      <AdminEditorDialog
+        open={Boolean(editingRun)}
+        onOpenChange={handleEditRunOpenChange}
+        title="Edit class"
+        size="lg"
+        footer={
+          <Button
+            onClick={() => updateRunMutation.mutate()}
+            disabled={updateRunMutation.isPending || !runFormValid}
+          >
+            Save
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>
+              Class code <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={runForm.code}
+              onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select
+              value={runForm.status}
+              onValueChange={(value) => setRunForm((prev) => ({ ...prev, status: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DRAFT">Draft</SelectItem>
+                <SelectItem value="OPEN">Open</SelectItem>
+                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>
-                Class code <span className="text-destructive">*</span>
+                Starts <span className="text-destructive">*</span>
               </Label>
-              <Input
-                value={runForm.code}
-                onChange={(e) => setRunForm((prev) => ({ ...prev, code: e.target.value }))}
+              <DateTimePicker
+                value={runForm.startsAt}
+                onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
               />
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={runForm.status}
-                onValueChange={(value) => setRunForm((prev) => ({ ...prev, status: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DRAFT">Draft</SelectItem>
-                  <SelectItem value="OPEN">Open</SelectItem>
-                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                  <SelectItem value="COMPLETED">Completed</SelectItem>
-                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>
-                  Starts <span className="text-destructive">*</span>
-                </Label>
-                <DateTimePicker
-                  value={runForm.startsAt}
-                  onChange={(startsAt) => setRunForm((prev) => ({ ...prev, startsAt }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>
-                  Ends <span className="text-destructive">*</span>
-                </Label>
-                <DateTimePicker
-                  value={runForm.endsAt}
-                  onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Enrollment opens</Label>
-                <DateTimePicker
-                  value={runForm.enrollmentStartDate}
-                  onChange={(value) =>
-                    setRunForm((prev) => ({ ...prev, enrollmentStartDate: value }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Enrollment closes</Label>
-                <DateTimePicker
-                  value={runForm.enrollmentEndDate}
-                  onChange={(value) =>
-                    setRunForm((prev) => ({ ...prev, enrollmentEndDate: value }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Capacity</Label>
-              <Input
-                type="number"
-                value={runForm.capacity}
-                onChange={(e) => setRunForm((prev) => ({ ...prev, capacity: e.target.value }))}
+              <Label>
+                Ends <span className="text-destructive">*</span>
+              </Label>
+              <DateTimePicker
+                value={runForm.endsAt}
+                onChange={(endsAt) => setRunForm((prev) => ({ ...prev, endsAt }))}
               />
-            </div>
-            <div className="bg-muted/20 rounded-lg border p-4">
-              <p className="text-sm font-medium">Pricing</p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Set a single USD price for this class so checkout creates the correct order.
-              </p>
-              <div className="mt-4 space-y-2">
-                <Label>Price (USD)</Label>
-                <Input
-                  inputMode="decimal"
-                  placeholder="19.99"
-                  value={runForm.paypalPriceUsd}
-                  onChange={(e) =>
-                    setRunForm((prev) => ({ ...prev, paypalPriceUsd: e.target.value }))
-                  }
-                />
-              </div>
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => updateRunMutation.mutate()}
-              disabled={updateRunMutation.isPending || !runFormValid}
-            >
-              Save
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Enrollment opens</Label>
+              <DateTimePicker
+                value={runForm.enrollmentStartDate}
+                onChange={(value) =>
+                  setRunForm((prev) => ({ ...prev, enrollmentStartDate: value }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Enrollment closes</Label>
+              <DateTimePicker
+                value={runForm.enrollmentEndDate}
+                onChange={(value) =>
+                  setRunForm((prev) => ({ ...prev, enrollmentEndDate: value }))
+                }
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Capacity</Label>
+            <Input
+              type="number"
+              value={runForm.capacity}
+              onChange={(e) => setRunForm((prev) => ({ ...prev, capacity: e.target.value }))}
+            />
+          </div>
+          <div className="bg-muted/20 rounded-lg border p-4">
+            <p className="text-sm font-medium">Pricing</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Set a single USD price for this class so checkout creates the correct order.
+            </p>
+            <div className="mt-4 space-y-2">
+              <Label>Price (USD)</Label>
+              <Input
+                inputMode="decimal"
+                placeholder="19.99"
+                value={runForm.paypalPriceUsd}
+                onChange={(e) =>
+                  setRunForm((prev) => ({ ...prev, paypalPriceUsd: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+        </div>
+      </AdminEditorDialog>
 
       <ConfirmDialog
         open={Boolean(pendingConfirm)}

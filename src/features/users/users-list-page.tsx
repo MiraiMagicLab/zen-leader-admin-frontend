@@ -20,7 +20,6 @@ import { TechnicalDetails } from '@/components/admin/technical-details';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -413,84 +412,8 @@ export function UsersListPage() {
           );
         },
       },
-      {
-        ...tableActionsColumn<UserResponse>(),
-        cell: ({ row }) => {
-          const user = row.original;
-          const deleted = isDeletedUser(user);
-          const items = [];
-
-          if (!deleted) {
-            items.push({
-              label: 'Edit role',
-              onClick: () => openRolesDialog(user),
-            });
-            if (user.isActive) {
-              items.push({
-                label: 'Lock',
-                icon: Lock,
-                onClick: () => {
-                  setSelectedUser(user);
-                  setLockConfirmOpen(true);
-                },
-              });
-            } else {
-              items.push({
-                label: 'Unlock',
-                icon: Unlock,
-                onClick: () => {
-                  setSelectedUser(user);
-                  setUnlockConfirmOpen(true);
-                },
-              });
-            }
-            if (user.bannedUntil) {
-              items.push({
-                label: 'Unban',
-                icon: ShieldAlert,
-                onClick: () => {
-                  setSelectedUser(user);
-                  setUnbanConfirmOpen(true);
-                },
-              });
-            } else {
-              items.push({
-                label: 'Ban',
-                icon: ShieldAlert,
-                onClick: () => {
-                  setSelectedUser(user);
-                  setBanConfirmOpen(true);
-                },
-              });
-            }
-            items.push({
-              label: 'Soft delete',
-              icon: Trash2,
-              destructive: true,
-              onClick: () => {
-                setSelectedUser(user);
-                setDeleteConfirmOpen(true);
-              },
-            });
-          }
-
-          return (
-            <TableRowActionMenu
-              menuLabel={`Actions for ${user.displayName}`}
-              items={items}
-            />
-          );
-        },
-      },
     ],
-    [
-      statusMutation,
-      selectedIds,
-      allSelectableSelected,
-      selectableRows,
-      toggleAll,
-      toggleRow,
-    ],
+    [selectedIds, allSelectableSelected, selectableRows, toggleAll, toggleRow],
   );
 
   return (
@@ -608,7 +531,7 @@ export function UsersListPage() {
           description={selectedLiveUser?.email}
           footer={
             selectedLiveUser && !isDeletedUser(selectedLiveUser) ? (
-              <>
+              <div className="flex w-full flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -622,14 +545,26 @@ export function UsersListPage() {
                     size="sm"
                     onClick={() => setUnbanConfirmOpen(true)}
                   >
+                    <ShieldAlert className="mr-1.5 size-3.5" />
                     Unban
                   </Button>
-                ) : selectedLiveUser.isActive ? (
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setBanConfirmOpen(true)}
+                  >
+                    <ShieldAlert className="mr-1.5 size-3.5" />
+                    Ban
+                  </Button>
+                )}
+                {selectedLiveUser.isActive ? (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setLockConfirmOpen(true)}
                   >
+                    <Lock className="mr-1.5 size-3.5" />
                     Lock
                   </Button>
                 ) : (
@@ -638,10 +573,19 @@ export function UsersListPage() {
                     size="sm"
                     onClick={() => setUnlockConfirmOpen(true)}
                   >
+                    <Unlock className="mr-1.5 size-3.5" />
                     Unlock
                   </Button>
                 )}
-              </>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setDeleteConfirmOpen(true)}
+                >
+                  <Trash2 className="mr-1.5 size-3.5" />
+                  Delete
+                </Button>
+              </div>
             ) : null
           }
         >

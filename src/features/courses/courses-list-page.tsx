@@ -6,12 +6,13 @@ import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 import { z } from 'zod';
 
+import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
+import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { getZodFieldErrors } from '@/lib/format-zod-error';
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -27,16 +28,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -95,6 +90,7 @@ export function CoursesListPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [deleteTarget, setDeleteTarget] = useState<CourseResponse | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [selectedCourse, setSelectedCourse] = useState<CourseResponse | null>(null);
 
   const programQuery = useQuery({
     queryKey: queryKeys.programs.detail(programId ?? ''),
@@ -181,6 +177,7 @@ export function CoursesListPage() {
     onSuccess: () => {
       toast.success('Course deleted.');
       setDeleteTarget(null);
+      setSelectedCourse(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.courses.all });
     },
     onError: (error) => toast.error(getApiErrorMessage(error)),
@@ -229,6 +226,14 @@ export function CoursesListPage() {
     setFieldErrors({});
     setDialogOpen(true);
   };
+
+  const clearSelectedCourse = () => setSelectedCourse(null);
+
+  const rows = coursesQuery.data?.data ?? [];
+  const selectedLiveCourse =
+    (selectedCourse && rows.find((c) => c.id === selectedCourse.id)) || selectedCourse;
+  const dockModalOpen = Boolean(deleteTarget) || dialogOpen;
+  const dockOpen = Boolean(selectedLiveCourse) && !dockModalOpen;
 
   const openEditDialog = (course: CourseResponse) => {
     setEditing(course);
@@ -302,32 +307,8 @@ export function CoursesListPage() {
       });
     }
 
-    base.push({
-      ...tableActionsColumn<CourseResponse>(),
-      cell: ({ row }) => (
-        <TableRowActionMenu
-          items={[
-            {
-              label: 'Open',
-              onClick: () => navigate(ROUTES.courseDetail(row.original.id)),
-            },
-            {
-              label: 'Edit',
-              onClick: () => openEditDialog(row.original),
-            },
-            {
-              label: 'Delete',
-              icon: Trash2,
-              destructive: true,
-              onClick: () => setDeleteTarget(row.original),
-            },
-          ]}
-        />
-      ),
-    });
-
     return base;
-  }, [isProgramScope, navigate]);
+  }, [isProgramScope]);
 
   return (
     <AdminPageShell
@@ -341,7 +322,7 @@ export function CoursesListPage() {
       description={
         isProgramScope
           ? `Manage courses for program ${programQuery.data?.code ?? ''}.`
-          : 'All courses. Open a course to manage syllabus, course runs, pricing, and learning operations.'
+          : 'Select a row to preview in the dock, then open the workspace or edit.'
       }
       actions={
         <Button size="sm" onClick={openCreateDialog} disabled={saveMutation.isPending}>
@@ -375,39 +356,118 @@ export function CoursesListPage() {
           onRetry={() => void coursesQuery.refetch()}
         />
       ) : (
-        <div className="space-y-4">
-          <DataTable
-            columns={columns}
-            data={filteredCourses}
-            isLoading={coursesQuery.isLoading}
-            showRowIndex
-            pageOffset={page * ADMIN_LIST_PAGE_SIZE}
-            emptyMessage='No courses yet. Click "Add course" to create one.'
-            showPagination={false}
-            onRowClick={(course) => navigate(ROUTES.courseDetail(course.id))}
-          />
+        <>
+          <AdminDockLayout dockOpen={dockOpen}>
+            <div className="space-y-4">
+              <DataTable
+                columns={columns}
+                data={filteredCourses}
+                isLoading={coursesQuery.isLoading}
+                showRowIndex
+                pageOffset={page * ADMIN_LIST_PAGE_SIZE}
+                emptyMessage='No courses yet. Click "Add course" to create one.'
+                showPagination={false}
+                activeRowId={selectedLiveCourse?.id ?? null}
+                getRowId={(row) => row.id}
+                onRowClick={setSelectedCourse}
+              />
 
-          <ServerPagination
-            page={page}
-            totalPages={coursesQuery.data?.totalPages ?? 1}
-            onPageChange={setPage}
-          />
-        </div>
+              <ServerPagination
+                page={page}
+                totalPages={coursesQuery.data?.totalPages ?? 1}
+                onPageChange={(nextPage) => {
+                  setPage(nextPage);
+                  clearSelectedCourse();
+                }}
+              />
+            </div>
+          </AdminDockLayout>
+
+          <AdminDockPanel
+            open={dockOpen}
+            onClose={clearSelectedCourse}
+            title={selectedLiveCourse?.title ?? 'Course'}
+            description={
+              selectedLiveCourse
+                ? `${selectedLiveCourse.code}${selectedLiveCourse.programCode ? ` · ${selectedLiveCourse.programCode}` : ''}`
+                : undefined
+            }
+            footer={
+              selectedLiveCourse ? (
+                <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openEditDialog(selectedLiveCourse)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteTarget(selectedLiveCourse)}
+                  >
+                    <Trash2 className="mr-1.5 size-3.5" />
+                    Delete
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => navigate(ROUTES.courseDetail(selectedLiveCourse.id))}
+                  >
+                    Open workspace
+                  </Button>
+                </div>
+              ) : null
+            }
+          >
+            {selectedLiveCourse ? (
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                <InspectorField label="Code" value={selectedLiveCourse.code} />
+                <InspectorField
+                  label="Program"
+                  value={selectedLiveCourse.programCode ?? '—'}
+                />
+                <InspectorField
+                  label="Title"
+                  value={selectedLiveCourse.title}
+                  className="col-span-2"
+                />
+                <InspectorField
+                  label="Runs"
+                  value={String(selectedLiveCourse.courseRuns?.length ?? 0)}
+                />
+                <InspectorField
+                  label="Order"
+                  value={String(selectedLiveCourse.orderIndex)}
+                />
+              </dl>
+            ) : null}
+          </AdminDockPanel>
+        </>
       )}
 
-      <Sheet open={dialogOpen} onOpenChange={handleDialogOpenChange}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>{editing ? 'Edit course' : 'Add course'}</SheetTitle>
-            {!editing ? (
-              <p className="text-muted-foreground text-sm">
-                {isProgramScope && programQuery.data
-                  ? `Adding a course to program ${programQuery.data.code} — ${programQuery.data.title}. After creation, you will be taken to the Syllabus tab to add lessons.`
-                  : 'After creation, you will be taken to the Syllabus tab to add lessons.'}
-              </p>
-            ) : null}
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+      <AdminEditorDialog
+        open={dialogOpen}
+        onOpenChange={handleDialogOpenChange}
+        title={editing ? 'Edit course' : 'Add course'}
+        description={
+          !editing
+            ? isProgramScope && programQuery.data
+              ? `Adding a course to program ${programQuery.data.code} — ${programQuery.data.title}. After creation, you will be taken to the Syllabus tab to add lessons.`
+              : 'After creation, you will be taken to the Syllabus tab to add lessons.'
+            : undefined
+        }
+        size="xl"
+        footer={
+          <Button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending || !requiredFilled}
+          >
+            Save
+          </Button>
+        }
+      >
+        <div className="space-y-4">
             {isProgramScope && (programQuery.data || editing) ? (
               <div className="space-y-2">
                 <Label>Program</Label>
@@ -542,28 +602,19 @@ export function CoursesListPage() {
                 }
               />
             </div>
-            <div className="space-y-2">
-              <Label>Thumbnail</Label>
-              <ImageFilePicker
-                file={form.thumbnailFile}
-                existingUrl={editing?.thumbnailUrl}
-                previewAlt={form.title || 'Course thumbnail'}
-                onFileChange={(thumbnailFile) =>
-                  setForm((f) => ({ ...f, thumbnailFile }))
-                }
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Thumbnail</Label>
+            <ImageFilePicker
+              file={form.thumbnailFile}
+              existingUrl={editing?.thumbnailUrl}
+              previewAlt={form.title || 'Course thumbnail'}
+              onFileChange={(thumbnailFile) =>
+                setForm((f) => ({ ...f, thumbnailFile }))
+              }
+            />
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => saveMutation.mutate()}
-              disabled={saveMutation.isPending || !requiredFilled}
-            >
-              Save
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+        </div>
+      </AdminEditorDialog>
 
       <AlertDialog open={Boolean(deleteTarget)} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>

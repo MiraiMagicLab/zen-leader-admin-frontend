@@ -5,7 +5,6 @@ import { Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
-import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -19,13 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -226,36 +219,8 @@ export function CourseRunSessionsPanel({
           </span>
         ),
       },
-      {
-        id: 'actions',
-        header: '',
-        size: 48,
-        cell: ({ row }) => (
-          <TableRowActionMenu
-            items={[
-              {
-                label: 'Edit',
-                onClick: () => openEditSession(row.original),
-              },
-              {
-                label: 'Delete',
-                icon: Trash2,
-                destructive: true,
-                onClick: () =>
-                  setPendingConfirm({
-                    title: 'Delete session?',
-                    description: (
-                      <>Delete session &quot;{row.original.title}&quot;. This cannot be undone.</>
-                    ),
-                    action: () => deleteSessionMutation.mutate(row.original.id),
-                  }),
-              },
-            ]}
-          />
-        ),
-      },
     ],
-    [deleteSessionMutation],
+    [],
   );
 
   return (
@@ -275,10 +240,11 @@ export function CourseRunSessionsPanel({
           emptyMessage="No sessions yet."
           pageOffset={0}
           showPagination={false}
+          onRowClick={openEditSession}
         />
       </section>
 
-      <Sheet
+      <AdminEditorDialog
         open={createSessionOpen}
         onOpenChange={(open) => {
           if (!open && !confirmDiscard(createSessionDirty)) {
@@ -289,33 +255,180 @@ export function CourseRunSessionsPanel({
             setSessionForm(emptySessionForm);
           }
         }}
+        title="Add session"
+        size="lg"
+        footer={
+          <Button
+            onClick={() => createSessionMutation.mutate()}
+            disabled={createSessionMutation.isPending || sessionForm.title.trim() === ''}
+          >
+            Save
+          </Button>
+        }
       >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Add session</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>
+              Title <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={sessionForm.title}
+              aria-invalid={sessionForm.title.trim() === ''}
+              onChange={(event) =>
+                setSessionForm((current) => ({ ...current, title: event.target.value }))
+              }
+            />
+            {sessionForm.title.trim() === '' ? (
+              <p className="text-destructive text-sm">Title is required.</p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              value={sessionForm.description}
+              onChange={(event) =>
+                setSessionForm((current) => ({ ...current, description: event.target.value }))
+              }
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Session number</Label>
+              <Input
+                type="number"
+                value={sessionForm.sessionNumber}
+                onChange={(event) =>
+                  setSessionForm((current) => ({
+                    ...current,
+                    sessionNumber: event.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Duration (minutes)</Label>
+              <Input
+                type="number"
+                value={sessionForm.durationMinutes}
+                onChange={(event) =>
+                  setSessionForm((current) => ({
+                    ...current,
+                    durationMinutes: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Schedule</Label>
+            <DateTimePicker
+              value={sessionForm.scheduledAt}
+              onChange={(scheduledAt) =>
+                setSessionForm((current) => ({ ...current, scheduledAt }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select
+              value={sessionForm.status}
+              onValueChange={(value) =>
+                setSessionForm((current) => ({ ...current, status: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </AdminEditorDialog>
+
+      <AdminEditorDialog
+        open={Boolean(editSession)}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (!confirmDiscard(editSessionDirty)) {
+              return;
+            }
+            setEditSession(null);
+          }
+        }}
+        title="Edit session"
+        size="lg"
+        footer={
+          editSession ? (
+            <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="destructive"
+                onClick={() =>
+                  setPendingConfirm({
+                    title: 'Delete session?',
+                    description: (
+                      <>
+                        Delete session &quot;{editSession.form.title}&quot;. This cannot be
+                        undone.
+                      </>
+                    ),
+                    action: () => {
+                      deleteSessionMutation.mutate(editSession.id);
+                      setEditSession(null);
+                    },
+                  })
+                }
+              >
+                <Trash2 className="mr-1.5 size-3.5" />
+                Delete
+              </Button>
+              <Button
+                onClick={() => updateSessionMutation.mutate()}
+                disabled={updateSessionMutation.isPending || editSession.form.title.trim() === ''}
+              >
+                Save
+              </Button>
+            </div>
+          ) : undefined
+        }
+      >
+        {editSession ? (
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label>
                 Title <span className="text-destructive">*</span>
               </Label>
               <Input
-                value={sessionForm.title}
-                aria-invalid={sessionForm.title.trim() === ''}
+                value={editSession.form.title}
+                aria-invalid={editSession.form.title.trim() === ''}
                 onChange={(event) =>
-                  setSessionForm((current) => ({ ...current, title: event.target.value }))
+                  setEditSession((current) =>
+                    current && {
+                      ...current,
+                      form: { ...current.form, title: event.target.value },
+                    },
+                  )
                 }
               />
-              {sessionForm.title.trim() === '' ? (
+              {editSession.form.title.trim() === '' ? (
                 <p className="text-destructive text-sm">Title is required.</p>
               ) : null}
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
-                value={sessionForm.description}
+                value={editSession.form.description}
                 onChange={(event) =>
-                  setSessionForm((current) => ({ ...current, description: event.target.value }))
+                  setEditSession((current) =>
+                    current && {
+                      ...current,
+                      form: { ...current.form, description: event.target.value },
+                    },
+                  )
                 }
               />
             </div>
@@ -324,12 +437,14 @@ export function CourseRunSessionsPanel({
                 <Label>Session number</Label>
                 <Input
                   type="number"
-                  value={sessionForm.sessionNumber}
+                  value={editSession.form.sessionNumber}
                   onChange={(event) =>
-                    setSessionForm((current) => ({
-                      ...current,
-                      sessionNumber: event.target.value,
-                    }))
+                    setEditSession((current) =>
+                      current && {
+                        ...current,
+                        form: { ...current.form, sessionNumber: event.target.value },
+                      },
+                    )
                   }
                 />
               </div>
@@ -337,12 +452,14 @@ export function CourseRunSessionsPanel({
                 <Label>Duration (minutes)</Label>
                 <Input
                   type="number"
-                  value={sessionForm.durationMinutes}
+                  value={editSession.form.durationMinutes}
                   onChange={(event) =>
-                    setSessionForm((current) => ({
-                      ...current,
-                      durationMinutes: event.target.value,
-                    }))
+                    setEditSession((current) =>
+                      current && {
+                        ...current,
+                        form: { ...current.form, durationMinutes: event.target.value },
+                      },
+                    )
                   }
                 />
               </div>
@@ -350,18 +467,28 @@ export function CourseRunSessionsPanel({
             <div className="space-y-2">
               <Label>Schedule</Label>
               <DateTimePicker
-                value={sessionForm.scheduledAt}
+                value={editSession.form.scheduledAt}
                 onChange={(scheduledAt) =>
-                  setSessionForm((current) => ({ ...current, scheduledAt }))
+                  setEditSession((current) =>
+                    current && {
+                      ...current,
+                      form: { ...current.form, scheduledAt },
+                    },
+                  )
                 }
               />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
               <Select
-                value={sessionForm.status}
+                value={editSession.form.status}
                 onValueChange={(value) =>
-                  setSessionForm((current) => ({ ...current, status: value }))
+                  setEditSession((current) =>
+                    current && {
+                      ...current,
+                      form: { ...current.form, status: value },
+                    },
+                  )
                 }
               >
                 <SelectTrigger>
@@ -376,154 +503,8 @@ export function CourseRunSessionsPanel({
               </Select>
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => createSessionMutation.mutate()}
-              disabled={createSessionMutation.isPending || sessionForm.title.trim() === ''}
-            >
-              Save
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
-
-      <Sheet
-        open={Boolean(editSession)}
-        onOpenChange={(open) => {
-          if (!open) {
-            if (!confirmDiscard(editSessionDirty)) {
-              return;
-            }
-            setEditSession(null);
-          }
-        }}
-      >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Edit session</SheetTitle>
-          </SheetHeader>
-          {editSession ? (
-            <>
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-                <div className="space-y-2">
-                  <Label>
-                    Title <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    value={editSession.form.title}
-                    aria-invalid={editSession.form.title.trim() === ''}
-                    onChange={(event) =>
-                      setEditSession((current) =>
-                        current && {
-                          ...current,
-                          form: { ...current.form, title: event.target.value },
-                        },
-                      )
-                    }
-                  />
-                  {editSession.form.title.trim() === '' ? (
-                    <p className="text-destructive text-sm">Title is required.</p>
-                  ) : null}
-                </div>
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Textarea
-                    value={editSession.form.description}
-                    onChange={(event) =>
-                      setEditSession((current) =>
-                        current && {
-                          ...current,
-                          form: { ...current.form, description: event.target.value },
-                        },
-                      )
-                    }
-                  />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Session number</Label>
-                    <Input
-                      type="number"
-                      value={editSession.form.sessionNumber}
-                      onChange={(event) =>
-                        setEditSession((current) =>
-                          current && {
-                            ...current,
-                            form: { ...current.form, sessionNumber: event.target.value },
-                          },
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Duration (minutes)</Label>
-                    <Input
-                      type="number"
-                      value={editSession.form.durationMinutes}
-                      onChange={(event) =>
-                        setEditSession((current) =>
-                          current && {
-                            ...current,
-                            form: { ...current.form, durationMinutes: event.target.value },
-                          },
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Schedule</Label>
-                  <DateTimePicker
-                    value={editSession.form.scheduledAt}
-                    onChange={(scheduledAt) =>
-                      setEditSession((current) =>
-                        current && {
-                          ...current,
-                          form: { ...current.form, scheduledAt },
-                        },
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={editSession.form.status}
-                    onValueChange={(value) =>
-                      setEditSession((current) =>
-                        current && {
-                          ...current,
-                          form: { ...current.form, status: value },
-                        },
-                      )
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                      <SelectItem value="COMPLETED">Completed</SelectItem>
-                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-                <Button
-                  onClick={() => updateSessionMutation.mutate()}
-                  disabled={
-                    updateSessionMutation.isPending || editSession.form.title.trim() === ''
-                  }
-                >
-                  Save
-                </Button>
-              </SheetFooter>
-            </>
-          ) : null}
-        </SheetContent>
-      </Sheet>
+        ) : null}
+      </AdminEditorDialog>
 
       <ConfirmDialog
         open={Boolean(pendingConfirm)}

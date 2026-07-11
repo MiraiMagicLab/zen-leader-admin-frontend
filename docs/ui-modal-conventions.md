@@ -1,22 +1,35 @@
-# Quy ước Modal: AlertDialog vs Dialog vs Sheet vs Dock
+# Quy ước Modal: Dock → Dialog (Admin PC)
 
-Để UI nhất quán, chọn container theo bản chất tác vụ — không mặc định nhét mọi form vào Sheet.
+Admin chỉ tối ưu **desktop**. Không ưu tiên mobile/responsive.
 
-| Container | Dùng khi | Ví dụ trong app |
-|-----------|----------|-----------------|
-| **AlertDialog** (`ConfirmDialog`) | Xác nhận / hành động không hoàn tác. Chỉ Có/Không (tối đa 1 ô lý do). | Xóa khóa/lớp/bài, ban user, publish/unpublish |
-| **Dialog** (modal giữa) | Tác vụ ngắn, gọn: **≤ 4–5 ô đơn giản**, một quyết định, sửa nhanh. | Mã mua IAP, sửa ghi danh, thêm học viên, sửa bình luận, cập nhật vai trò |
-| **Sheet** (drawer phải, `sm:w-[560px]`) | Form **dài/phức tạp**: rich text, upload ảnh/video, nhiều date-picker, nhiều bước. | Tạo/sửa khóa học, tạo/sửa lớp, tạo/sửa sự kiện, soạn bài học, import Excel |
-| **Floating dock** (`AdminDockPanel`) | Đọc chi tiết / drill-down read-only + vài action nhẹ. Card nổi cách lề trên/phải/dưới — **không** dính mép như Sheet. | Audit log, payment order, moderation report, user, course run preview, enrollment detail |
-| **Trang riêng** (route) | Quản lý một bản ghi, có URL riêng. | Course detail, Course run detail |
+## Luồng chuẩn
 
-Nguyên tắc:
+```
+Click row → mở AdminDockPanel (chi tiết + nút action)
+         → bấm action trên dock → Dialog / AlertDialog
+         → đóng dialog → dock có thể mở lại (nếu còn selection)
+```
 
-- **Nhất quán theo loại tác vụ**: cùng kiểu việc → cùng container trên toàn app.
-- **Form Sheet rộng cố định 560px** (`className="… sm:w-[560px] sm:max-w-[560px]"`). Chỉ nới rộng khi nội dung thật sự cần.
-- **Dialog dùng width chuẩn**: `sm:max-w-md` (mặc định); `sm:max-w-lg`/`sm:max-w-xl` khi lưới 2 cột.
-- **List drill-down = `AdminDockPanel`**, không dùng `AdminInspector` / Sheet edge-locked.
-- **Dock XOR Dialog**: chỉ hiện **một** trong hai. Khi mở Dialog/AlertDialog từ dock → đóng dock (giữ `selected*` để form vẫn có data). Khi đóng dialog → có thể mở lại dock nếu vẫn còn selection.
-- **Filter list (status/role/type) = `FilterSelect`** (shadcn `Select` + label), không dùng segmented chips/tabs.
-- **Row actions = `TableRowActionMenu`**: 1 primary ghost + menu ⋯ (destructive trong menu).
-- Khi phân vân Dialog vs Sheet: ≤ 5 ô đơn giản → Dialog. Có rich text / upload / nhiều bước → Sheet.
+**Dock XOR Dialog:** chỉ hiện **một** trong hai. Không chồng dock + dialog.
+
+## Container
+
+| Container | Dùng khi | Ví dụ |
+|-----------|----------|--------|
+| **Floating dock** (`AdminDockPanel`) | Drill-down list: xem chi tiết + nhóm nút action | User, payment, report, course run preview, live session |
+| **Dialog** (modal giữa) | Form chỉnh sửa / tạo — ngắn hoặc dài. Form dài dùng `sm:max-w-2xl` / `sm:max-w-4xl` + `max-h-[90vh] overflow-y-auto` | Edit role, ban, tạo/sửa program/course/event, syllabus, import Excel |
+| **AlertDialog** (`ConfirmDialog`) | Xác nhận hủy / không hoàn tác | Lock, delete, end session, publish |
+| **Trang riêng** (route) | Workspace nhiều tab, URL shareable | Course detail, Course run detail, Event detail |
+
+## Không dùng
+
+- **Sheet** cho form admin (đã thay bằng Dialog lớn). Sheet chỉ còn cho mobile sidebar layout nếu có.
+- **`TableRowActionMenu` / dropdown ⋯ trên row** — mọi action nằm ở **dock footer** (hoặc page header trên trang detail).
+
+## Filter
+
+- Status / role / type trên toolbar = **`FilterSelect`** (shadcn `Select` + label), không dùng segmented tabs/chips.
+
+## List pages có workspace lớn
+
+Row click → **dock preview** + nút **Open workspace** (navigate). Không navigate ngay khi click row.

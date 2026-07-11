@@ -15,7 +15,6 @@ import { TechnicalDetails } from '@/components/admin/technical-details';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -261,50 +260,8 @@ export function ModerationPage() {
         meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
-      {
-        ...tableActionsColumn<UgcReportResponse>(),
-        cell: ({ row }) =>
-          row.original.status === 'PENDING' ? (
-            <TableRowActionMenu
-              items={[
-                {
-                  label: 'Resolve',
-                  onClick: () =>
-                    setPendingConfirm({
-                      title: 'Resolve this report?',
-                      description: `"${row.original.reason}" will be marked as resolved.`,
-                      confirmLabel: 'Resolve',
-                      variant: 'default',
-                      action: async () => {
-                        await updateStatusMutation.mutateAsync({
-                          reportId: row.original.id,
-                          status: 'RESOLVED',
-                        });
-                      },
-                    }),
-                },
-                {
-                  label: 'Dismiss',
-                  onClick: () =>
-                    setPendingConfirm({
-                      title: 'Dismiss this report?',
-                      description: `"${row.original.reason}" will be marked as dismissed.`,
-                      confirmLabel: 'Dismiss',
-                      variant: 'default',
-                      action: async () => {
-                        await updateStatusMutation.mutateAsync({
-                          reportId: row.original.id,
-                          status: 'DISMISSED',
-                        });
-                      },
-                    }),
-                },
-              ]}
-            />
-          ) : null,
-      },
     ],
-    [updateStatusMutation, selectedIds, allPendingSelected, pendingRows, toggleAll, toggleRow],
+    [selectedIds, allPendingSelected, pendingRows, toggleAll, toggleRow],
   );
 
   return (
@@ -345,7 +302,7 @@ export function ModerationPage() {
       }
     >
       <>
-        <AdminDockLayout dockOpen={Boolean(selectedLiveReport) && !bulkAction}>
+        <AdminDockLayout dockOpen={Boolean(selectedLiveReport) && !bulkAction && pendingConfirm === null}>
           <div className="space-y-3">
             {reportsQuery.isError ? (
               <AdminQueryError
@@ -401,7 +358,7 @@ export function ModerationPage() {
         </AdminDockLayout>
 
         <AdminDockPanel
-          open={Boolean(selectedLiveReport) && !bulkAction}
+          open={Boolean(selectedLiveReport) && !bulkAction && pendingConfirm === null}
           onClose={clearSelectedReport}
           title={selectedLiveReport?.reason ?? 'Report detail'}
           description={
@@ -411,15 +368,23 @@ export function ModerationPage() {
           }
           footer={
             selectedLiveReport?.status === 'PENDING' ? (
-              <>
+              <div className="flex w-full flex-wrap items-center justify-end gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
                   disabled={updateStatusMutation.isPending}
                   onClick={() =>
-                    updateStatusMutation.mutate({
-                      reportId: selectedLiveReport.id,
-                      status: 'DISMISSED',
+                    setPendingConfirm({
+                      title: 'Dismiss this report?',
+                      description: `"${selectedLiveReport.reason}" will be marked as dismissed.`,
+                      confirmLabel: 'Dismiss',
+                      variant: 'default',
+                      action: async () => {
+                        await updateStatusMutation.mutateAsync({
+                          reportId: selectedLiveReport.id,
+                          status: 'DISMISSED',
+                        });
+                      },
                     })
                   }
                 >
@@ -429,15 +394,23 @@ export function ModerationPage() {
                   size="sm"
                   disabled={updateStatusMutation.isPending}
                   onClick={() =>
-                    updateStatusMutation.mutate({
-                      reportId: selectedLiveReport.id,
-                      status: 'RESOLVED',
+                    setPendingConfirm({
+                      title: 'Resolve this report?',
+                      description: `"${selectedLiveReport.reason}" will be marked as resolved.`,
+                      confirmLabel: 'Resolve',
+                      variant: 'default',
+                      action: async () => {
+                        await updateStatusMutation.mutateAsync({
+                          reportId: selectedLiveReport.id,
+                          status: 'RESOLVED',
+                        });
+                      },
                     })
                   }
                 >
                   Resolve
                 </Button>
-              </>
+              </div>
             ) : null
           }
         >

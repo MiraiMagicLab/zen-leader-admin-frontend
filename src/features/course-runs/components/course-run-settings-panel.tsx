@@ -13,13 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { queryKeys } from '@/hooks/query-keys';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -134,139 +128,139 @@ function CourseRunSettingsPanelBody({ open, onOpenChange, run }: CourseRunSettin
   });
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-        <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-          <SheetTitle>Course run settings</SheetTitle>
-        </SheetHeader>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
+    <AdminEditorDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="Course run settings"
+      size="lg"
+      footer={
+        <Button
+          onClick={() => updateRunMutation.mutate()}
+          disabled={
+            updateRunMutation.isPending ||
+            runSettings.code.trim() === '' ||
+            runSettings.status.trim() === '' ||
+            runSettings.startsAt.trim() === '' ||
+            runSettings.endsAt.trim() === ''
+          }
+        >
+          Save
+        </Button>
+      }
+    >
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label>
+            Class code <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            value={runSettings.code}
+            aria-invalid={runSettings.code.trim() === ''}
+            onChange={(event) =>
+              setRunSettings((current) => ({ ...current, code: event.target.value }))
+            }
+          />
+          {runSettings.code.trim() === '' ? (
+            <p className="text-destructive text-sm">Class code is required.</p>
+          ) : null}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label>
-              Class code <span className="text-destructive">*</span>
+              Status <span className="text-destructive">*</span>
             </Label>
+            <Select
+              value={runSettings.status}
+              onValueChange={(value) =>
+                setRunSettings((current) => ({ ...current, status: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="DRAFT">DRAFT</SelectItem>
+                <SelectItem value="OPEN">OPEN</SelectItem>
+                <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
+                <SelectItem value="COMPLETED">COMPLETED</SelectItem>
+                <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Capacity</Label>
             <Input
-              value={runSettings.code}
-              aria-invalid={runSettings.code.trim() === ''}
+              type="number"
+              value={runSettings.capacity}
               onChange={(event) =>
-                setRunSettings((current) => ({ ...current, code: event.target.value }))
+                setRunSettings((current) => ({ ...current, capacity: event.target.value }))
               }
             />
-            {runSettings.code.trim() === '' ? (
-              <p className="text-destructive text-sm">Class code is required.</p>
-            ) : null}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>
-                Status <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={runSettings.status}
-                onValueChange={(value) =>
-                  setRunSettings((current) => ({ ...current, status: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DRAFT">DRAFT</SelectItem>
-                  <SelectItem value="OPEN">OPEN</SelectItem>
-                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Capacity</Label>
-              <Input
-                type="number"
-                value={runSettings.capacity}
-                onChange={(event) =>
-                  setRunSettings((current) => ({ ...current, capacity: event.target.value }))
-                }
-              />
-            </div>
-          </div>
-          <div className="rounded-lg border bg-muted/20 p-4">
-            <p className="text-sm font-medium">Checkout pricing</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Set one global USD price on this run so checkout can create the correct payment order.
-            </p>
-            <div className="mt-4 space-y-2">
-              <Label>Global price (USD)</Label>
-              <Input
-                inputMode="decimal"
-                placeholder="19.99"
-                value={runSettings.paypalPriceUsd}
-                onChange={(event) =>
-                  setRunSettings((current) => ({
-                    ...current,
-                    paypalPriceUsd: event.target.value,
-                  }))
-                }
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>
-                Start <span className="text-destructive">*</span>
-              </Label>
-              <DateTimePicker
-                value={runSettings.startsAt}
-                onChange={(startsAt) =>
-                  setRunSettings((current) => ({ ...current, startsAt }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>
-                End <span className="text-destructive">*</span>
-              </Label>
-              <DateTimePicker
-                value={runSettings.endsAt}
-                onChange={(endsAt) => setRunSettings((current) => ({ ...current, endsAt }))}
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Open enrollment</Label>
-              <DateTimePicker
-                value={runSettings.enrollmentStartDate}
-                onChange={(enrollmentStartDate) =>
-                  setRunSettings((current) => ({ ...current, enrollmentStartDate }))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Close enrollment</Label>
-              <DateTimePicker
-                value={runSettings.enrollmentEndDate}
-                onChange={(enrollmentEndDate) =>
-                  setRunSettings((current) => ({ ...current, enrollmentEndDate }))
-                }
-              />
-            </div>
           </div>
         </div>
-        <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-          <Button
-            onClick={() => updateRunMutation.mutate()}
-            disabled={
-              updateRunMutation.isPending ||
-              runSettings.code.trim() === '' ||
-              runSettings.status.trim() === '' ||
-              runSettings.startsAt.trim() === '' ||
-              runSettings.endsAt.trim() === ''
-            }
-          >
-            Save
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        <div className="rounded-lg border bg-muted/20 p-4">
+          <p className="text-sm font-medium">Checkout pricing</p>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Set one global USD price on this run so checkout can create the correct payment order.
+          </p>
+          <div className="mt-4 space-y-2">
+            <Label>Global price (USD)</Label>
+            <Input
+              inputMode="decimal"
+              placeholder="19.99"
+              value={runSettings.paypalPriceUsd}
+              onChange={(event) =>
+                setRunSettings((current) => ({
+                  ...current,
+                  paypalPriceUsd: event.target.value,
+                }))
+              }
+            />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>
+              Start <span className="text-destructive">*</span>
+            </Label>
+            <DateTimePicker
+              value={runSettings.startsAt}
+              onChange={(startsAt) =>
+                setRunSettings((current) => ({ ...current, startsAt }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>
+              End <span className="text-destructive">*</span>
+            </Label>
+            <DateTimePicker
+              value={runSettings.endsAt}
+              onChange={(endsAt) => setRunSettings((current) => ({ ...current, endsAt }))}
+            />
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Open enrollment</Label>
+            <DateTimePicker
+              value={runSettings.enrollmentStartDate}
+              onChange={(enrollmentStartDate) =>
+                setRunSettings((current) => ({ ...current, enrollmentStartDate }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Close enrollment</Label>
+            <DateTimePicker
+              value={runSettings.enrollmentEndDate}
+              onChange={(enrollmentEndDate) =>
+                setRunSettings((current) => ({ ...current, enrollmentEndDate }))
+              }
+            />
+          </div>
+        </div>
+      </div>
+    </AdminEditorDialog>
   );
 }

@@ -26,13 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import {
   Dialog,
   DialogContent,
@@ -531,133 +525,131 @@ export function EventDetailPage() {
         </div>
       ) : null}
 
-      <Sheet open={editEventOpen} onOpenChange={closeEditEventSheet}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Edit event</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            <div className="space-y-4">
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                Basic info
-              </p>
+      <AdminEditorDialog
+        open={editEventOpen}
+        onOpenChange={closeEditEventSheet}
+        title="Edit event"
+        size="lg"
+        footer={
+          <Button
+            onClick={() => updateMutation.mutate()}
+            disabled={editEventRequiredMissing || updateMutation.isPending}
+          >
+            Save changes
+          </Button>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+            Basic info
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="edit-event-title">
+              Event title <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="edit-event-title"
+              value={editTitle}
+              aria-invalid={editTouched.title && !editTitle.trim()}
+              onBlur={() => setEditTouched((t) => ({ ...t, title: true }))}
+              onChange={(currentEvent) => setEditTitle(currentEvent.target.value)}
+            />
+            {editTouched.title && !editTitle.trim() ? (
+              <p className="text-destructive text-sm">Event title is required.</p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-event-description">Short summary</Label>
+            <Textarea
+              id="edit-event-description"
+              value={editDescription}
+              onChange={(currentEvent) => setEditDescription(currentEvent.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-event-content">Full details</Label>
+            <Textarea
+              id="edit-event-content"
+              rows={8}
+              value={editContent}
+              onChange={(currentEvent) => setEditContent(currentEvent.target.value)}
+            />
+          </div>
+
+          <div className="mt-6 space-y-4 border-t pt-6">
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+              Schedule
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="edit-event-title">
-                  Event title <span className="text-destructive">*</span>
+                <Label>
+                  Start time <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="edit-event-title"
-                  value={editTitle}
-                  aria-invalid={editTouched.title && !editTitle.trim()}
-                  onBlur={() => setEditTouched((t) => ({ ...t, title: true }))}
-                  onChange={(currentEvent) => setEditTitle(currentEvent.target.value)}
+                <DateTimePicker
+                  value={editStart}
+                  onChange={(value) => {
+                    setEditStart(value);
+                    setEditTouched((t) => ({ ...t, start: true }));
+                  }}
                 />
-                {editTouched.title && !editTitle.trim() ? (
-                  <p className="text-destructive text-sm">Event title is required.</p>
+                {editTouched.start && !editStart ? (
+                  <p className="text-destructive text-sm">Start time is required.</p>
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-event-description">Short summary</Label>
-                <Textarea
-                  id="edit-event-description"
-                  value={editDescription}
-                  onChange={(currentEvent) => setEditDescription(currentEvent.target.value)}
+                <Label>
+                  End time <span className="text-destructive">*</span>
+                </Label>
+                <DateTimePicker
+                  value={editEnd}
+                  onChange={(value) => {
+                    setEditEnd(value);
+                    setEditTouched((t) => ({ ...t, end: true }));
+                  }}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-event-content">Full details</Label>
-                <Textarea
-                  id="edit-event-content"
-                  rows={8}
-                  value={editContent}
-                  onChange={(currentEvent) => setEditContent(currentEvent.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4 border-t pt-6">
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                Schedule
-              </p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>
-                    Start time <span className="text-destructive">*</span>
-                  </Label>
-                  <DateTimePicker
-                    value={editStart}
-                    onChange={(value) => {
-                      setEditStart(value);
-                      setEditTouched((t) => ({ ...t, start: true }));
-                    }}
-                  />
-                  {editTouched.start && !editStart ? (
-                    <p className="text-destructive text-sm">Start time is required.</p>
-                  ) : null}
-                </div>
-                <div className="space-y-2">
-                  <Label>
-                    End time <span className="text-destructive">*</span>
-                  </Label>
-                  <DateTimePicker
-                    value={editEnd}
-                    onChange={(value) => {
-                      setEditEnd(value);
-                      setEditTouched((t) => ({ ...t, end: true }));
-                    }}
-                  />
-                  {editTouched.end && !editEnd ? (
-                    <p className="text-destructive text-sm">End time is required.</p>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4 border-t pt-6">
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                Media
-              </p>
-              <div className="space-y-2">
-                <Label htmlFor="edit-event-thumbnail-url">Thumbnail link</Label>
-                <Input
-                  id="edit-event-thumbnail-url"
-                  value={editThumbnailUrl}
-                  placeholder="https://..."
-                  onChange={(currentEvent) => setEditThumbnailUrl(currentEvent.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-event-thumbnail-file">Upload new image</Label>
-                <ImageFilePicker
-                  id="edit-event-thumbnail-file"
-                  file={editThumbnailFile}
-                  existingUrl={editThumbnailUrl}
-                  previewAlt={editTitle || 'Event thumbnail'}
-                  onFileChange={setEditThumbnailFile}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 space-y-4 border-t pt-6">
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                Status
-              </p>
-              <div className="flex items-center gap-2">
-                <Switch checked={editIsOfficial} onCheckedChange={setEditIsOfficial} />
-                <Label>System event</Label>
+                {editTouched.end && !editEnd ? (
+                  <p className="text-destructive text-sm">End time is required.</p>
+                ) : null}
               </div>
             </div>
           </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => updateMutation.mutate()}
-              disabled={editEventRequiredMissing || updateMutation.isPending}
-            >
-              Save changes
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+
+          <div className="mt-6 space-y-4 border-t pt-6">
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+              Media
+            </p>
+            <div className="space-y-2">
+              <Label htmlFor="edit-event-thumbnail-url">Thumbnail link</Label>
+              <Input
+                id="edit-event-thumbnail-url"
+                value={editThumbnailUrl}
+                placeholder="https://..."
+                onChange={(currentEvent) => setEditThumbnailUrl(currentEvent.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-event-thumbnail-file">Upload new image</Label>
+              <ImageFilePicker
+                id="edit-event-thumbnail-file"
+                file={editThumbnailFile}
+                existingUrl={editThumbnailUrl}
+                previewAlt={editTitle || 'Event thumbnail'}
+                onFileChange={setEditThumbnailFile}
+              />
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-4 border-t pt-6">
+            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+              Status
+            </p>
+            <div className="flex items-center gap-2">
+              <Switch checked={editIsOfficial} onCheckedChange={setEditIsOfficial} />
+              <Label>System event</Label>
+            </div>
+          </div>
+        </div>
+      </AdminEditorDialog>
 
       <Dialog
         open={editCommentOpen && Boolean(editComment)}

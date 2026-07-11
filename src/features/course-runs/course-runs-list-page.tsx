@@ -15,7 +15,6 @@ import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
 import { DataTable } from '@/components/data-table/data-table';
 import {
@@ -256,27 +255,8 @@ export function CourseRunsListPage() {
         meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => formatDateTime(row.original.startsAt),
       },
-      {
-        ...tableActionsColumn<CourseRunResponse>(),
-        cell: ({ row }) => (
-          <TableRowActionMenu
-            items={[
-              {
-                label: 'Open',
-                onClick: () => navigate(ROUTES.courseRunDetail(row.original.id)),
-              },
-              {
-                label: 'Delete',
-                icon: Trash2,
-                destructive: true,
-                onClick: () => setDeleteTarget(row.original),
-              },
-            ]}
-          />
-        ),
-      },
     ],
-    [allVisibleSelected, courseTitleById, navigate, selectedIds, toggleAllVisible, toggleOne],
+    [allVisibleSelected, courseTitleById, selectedIds, toggleAllVisible, toggleOne],
   );
 
   return (
@@ -384,9 +364,14 @@ export function CourseRunsListPage() {
             }
             footer={
               selectedRun ? (
-                <>
-                  <Button variant="ghost" size="sm" onClick={clearSelectedRun}>
-                    Close
+                <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setDeleteTarget(selectedRun)}
+                  >
+                    <Trash2 className="mr-1.5 size-3.5" />
+                    Delete
                   </Button>
                   <Button
                     size="sm"
@@ -394,7 +379,7 @@ export function CourseRunsListPage() {
                   >
                     Open workspace
                   </Button>
-                </>
+                </div>
               ) : null
             }
           >

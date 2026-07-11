@@ -15,7 +15,6 @@ import { TechnicalDetails } from '@/components/admin/technical-details';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
 import {
   AlertDialog,
@@ -288,53 +287,8 @@ export function PaymentsPage() {
         meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
-      {
-        ...tableActionsColumn<AdminPaymentOrderResponse>(),
-        cell: ({ row }) => {
-          const order = row.original;
-          const items = [
-            {
-              label: 'Open course run',
-              onClick: () => navigate(ROUTES.courseRunDetail(order.courseRunId)),
-            },
-            {
-              label: 'Copy order reference',
-              icon: Copy,
-              onClick: () => {
-                void navigator.clipboard?.writeText(order.orderId);
-                toast.success('Order reference copied.');
-              },
-            },
-            ...(canRetryEnrollment(order)
-              ? [
-                  {
-                    label: 'Retry enrollment',
-                    icon: RefreshCw,
-                    onClick: () =>
-                      setPendingConfirm({
-                        title: 'Retry enrollment for this order?',
-                        description: `Re-enroll ${order.userDisplayName} into ${order.courseRunCode}.`,
-                        confirmLabel: 'Retry enrollment',
-                        variant: 'default' as const,
-                        action: async () => {
-                          await retryMutation.mutateAsync(order.orderId);
-                        },
-                      }),
-                  },
-                ]
-              : []),
-          ];
-
-          return (
-            <TableRowActionMenu
-              items={items}
-              menuLabel={`Actions for ${order.userDisplayName}`}
-            />
-          );
-        },
-      },
     ],
-    [navigate, retryMutation, selectedIds, allRetryableSelected, retryableRows, toggleAll, toggleRow],
+    [selectedIds, allRetryableSelected, retryableRows, toggleAll, toggleRow],
   );
 
   return (
@@ -433,25 +387,47 @@ export function PaymentsPage() {
               : undefined
           }
           footer={
-            selectedLiveOrder && canRetryEnrollment(selectedLiveOrder) ? (
-              <Button
-                size="sm"
-                disabled={retryMutation.isPending}
-                onClick={() =>
-                  setPendingConfirm({
-                    title: 'Retry enrollment for this order?',
-                    description: `Re-enroll ${selectedLiveOrder.userDisplayName} into ${selectedLiveOrder.courseRunCode}.`,
-                    confirmLabel: 'Retry enrollment',
-                    variant: 'default',
-                    action: async () => {
-                      await retryMutation.mutateAsync(selectedLiveOrder.orderId);
-                    },
-                  })
-                }
-              >
-                <RefreshCw className="mr-2 size-4" />
-                Retry enrollment
-              </Button>
+            selectedLiveOrder ? (
+              <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(selectedLiveOrder.orderId);
+                    toast.success('Order reference copied.');
+                  }}
+                >
+                  <Copy className="mr-1.5 size-3.5" />
+                  Copy ref
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(ROUTES.courseRunDetail(selectedLiveOrder.courseRunId))}
+                >
+                  Open course run
+                </Button>
+                {canRetryEnrollment(selectedLiveOrder) ? (
+                  <Button
+                    size="sm"
+                    disabled={retryMutation.isPending}
+                    onClick={() =>
+                      setPendingConfirm({
+                        title: 'Retry enrollment for this order?',
+                        description: `Re-enroll ${selectedLiveOrder.userDisplayName} into ${selectedLiveOrder.courseRunCode}.`,
+                        confirmLabel: 'Retry enrollment',
+                        variant: 'default',
+                        action: async () => {
+                          await retryMutation.mutateAsync(selectedLiveOrder.orderId);
+                        },
+                      })
+                    }
+                  >
+                    <RefreshCw className="mr-1.5 size-3.5" />
+                    Retry enrollment
+                  </Button>
+                ) : null}
+              </div>
             ) : null
           }
         >

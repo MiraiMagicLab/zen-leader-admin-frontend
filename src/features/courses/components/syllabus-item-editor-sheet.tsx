@@ -20,13 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -283,145 +277,14 @@ export function SyllabusItemEditorSheet({
     (itemType !== 'VIDEO' || Boolean(videoFile) || Boolean(existingVideoAttachment));
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-        <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-          <SheetTitle>{isEdit ? 'Edit lesson' : 'Add lesson'}</SheetTitle>
-          {sectionTitle ? (
-            <p className="text-muted-foreground text-sm">Chapter: {sectionTitle}</p>
-          ) : null}
-        </SheetHeader>
-
-        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-4">
-          {isEdit && itemQuery.isLoading ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading lesson…
-            </div>
-          ) : (
-          <>
-          <div>
-            <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Basic info</p>
-            <div className="mt-3 space-y-4">
-              <div className="space-y-2">
-                <Label>
-                  Title <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  value={title}
-                  placeholder="e.g. Session 1 — Introduction to Zen Leader"
-                  aria-invalid={Boolean(titleError)}
-                  onChange={(e) => {
-                    setTitle(e.target.value);
-                    if (touched.title && e.target.value.trim()) {
-                      setTouched((prev) => ({ ...prev, title: false }));
-                    }
-                  }}
-                  onBlur={() => setTouched((prev) => ({ ...prev, title: true }))}
-                />
-                {titleError ? (
-                  <p className="text-destructive text-sm">{titleError}</p>
-                ) : null}
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Type</Label>
-                  <Select value={type} onValueChange={setType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="VIDEO">Video</SelectItem>
-                      <SelectItem value="ARTICLE">Article</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Short description</Label>
-                  <Input
-                    value={description}
-                    placeholder="Optional"
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                  <p className="text-muted-foreground text-xs">Brief summary shown in the lesson list.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {itemType === 'VIDEO' ? (
-            <div>
-              <p className="text-muted-foreground mb-3 text-xs font-medium uppercase tracking-wide">
-                Video
-              </p>
-              <VideoUploadField
-                file={videoFile}
-                onFileChange={setVideoFile}
-                existingAttachment={existingVideoAttachment}
-                error={videoError ?? undefined}
-                touched={touched.video}
-                onBlur={() => setTouched((prev) => ({ ...prev, video: true }))}
-                isUploading={saveMutation.isPending}
-                uploadProgress={uploadProgress}
-              />
-            </div>
-          ) : (
-            <div>
-              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Article content</p>
-              <div className="mt-3 space-y-2">
-                <RichTextEditor
-                  value={body}
-                  minHeight="12rem"
-                  placeholder="Compose content shown in app…"
-                  onChange={setBody}
-                />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <div className="rounded-lg border">
-              <button
-                type="button"
-                onClick={() => setAdvancedOpen(!advancedOpen)}
-                className="flex w-full items-center justify-between p-3 text-left text-sm font-medium"
-              >
-                <span>Advanced options</span>
-                <ChevronDown
-                  className={cn(
-                    'size-4 text-muted-foreground transition-transform duration-200',
-                    advancedOpen && 'rotate-180',
-                  )}
-                />
-              </button>
-
-              {advancedOpen && (
-                <div className="border-t p-3 bg-muted/10 space-y-3 animate-in fade-in-50 duration-200">
-                  <div className="flex flex-wrap gap-6">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                      <Switch checked={isHidden} onCheckedChange={setIsHidden} />
-                      <span>Hidden from students</span>
-                    </label>
-                    <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
-                      <Switch checked={isOptional} onCheckedChange={setIsOptional} />
-                      <span>Optional lesson</span>
-                    </label>
-                  </div>
-                  {isEdit ? (
-                    <p className="text-muted-foreground text-xs">
-                      Current type: {TYPE_LABELS[itemType] ?? itemType}.
-                    </p>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          </div>
-          </>
-          )}
-        </div>
-
-        <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end gap-2">
+    <AdminEditorDialog
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={isEdit ? 'Edit lesson' : 'Add lesson'}
+      description={sectionTitle ? `Chapter: ${sectionTitle}` : undefined}
+      size="lg"
+      footer={
+        <>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
@@ -435,8 +298,137 @@ export function SyllabusItemEditorSheet({
             {saveMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
             {isEdit ? 'Save' : 'Create lesson'}
           </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </>
+      }
+    >
+      <div className="space-y-6">
+        {isEdit && itemQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading lesson…
+          </div>
+        ) : (
+          <>
+            <div>
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Basic info</p>
+              <div className="mt-3 space-y-4">
+                <div className="space-y-2">
+                  <Label>
+                    Title <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    value={title}
+                    placeholder="e.g. Session 1 — Introduction to Zen Leader"
+                    aria-invalid={Boolean(titleError)}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      if (touched.title && e.target.value.trim()) {
+                        setTouched((prev) => ({ ...prev, title: false }));
+                      }
+                    }}
+                    onBlur={() => setTouched((prev) => ({ ...prev, title: true }))}
+                  />
+                  {titleError ? (
+                    <p className="text-destructive text-sm">{titleError}</p>
+                  ) : null}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Type</Label>
+                    <Select value={type} onValueChange={setType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="VIDEO">Video</SelectItem>
+                        <SelectItem value="ARTICLE">Article</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Short description</Label>
+                    <Input
+                      value={description}
+                      placeholder="Optional"
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                    <p className="text-muted-foreground text-xs">Brief summary shown in the lesson list.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {itemType === 'VIDEO' ? (
+              <div>
+                <p className="text-muted-foreground mb-3 text-xs font-medium uppercase tracking-wide">
+                  Video
+                </p>
+                <VideoUploadField
+                  file={videoFile}
+                  onFileChange={setVideoFile}
+                  existingAttachment={existingVideoAttachment}
+                  error={videoError ?? undefined}
+                  touched={touched.video}
+                  onBlur={() => setTouched((prev) => ({ ...prev, video: true }))}
+                  isUploading={saveMutation.isPending}
+                  uploadProgress={uploadProgress}
+                />
+              </div>
+            ) : (
+              <div>
+                <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">Article content</p>
+                <div className="mt-3 space-y-2">
+                  <RichTextEditor
+                    value={body}
+                    minHeight="12rem"
+                    placeholder="Compose content shown in app…"
+                    onChange={setBody}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <div className="rounded-lg border">
+                <button
+                  type="button"
+                  onClick={() => setAdvancedOpen(!advancedOpen)}
+                  className="flex w-full items-center justify-between p-3 text-left text-sm font-medium"
+                >
+                  <span>Advanced options</span>
+                  <ChevronDown
+                    className={cn(
+                      'size-4 text-muted-foreground transition-transform duration-200',
+                      advancedOpen && 'rotate-180',
+                    )}
+                  />
+                </button>
+
+                {advancedOpen && (
+                  <div className="border-t p-3 bg-muted/10 space-y-3 animate-in fade-in-50 duration-200">
+                    <div className="flex flex-wrap gap-6">
+                      <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <Switch checked={isHidden} onCheckedChange={setIsHidden} />
+                        <span>Hidden from students</span>
+                      </label>
+                      <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+                        <Switch checked={isOptional} onCheckedChange={setIsOptional} />
+                        <span>Optional lesson</span>
+                      </label>
+                    </div>
+                    {isEdit ? (
+                      <p className="text-muted-foreground text-xs">
+                        Current type: {TYPE_LABELS[itemType] ?? itemType}.
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </AdminEditorDialog>
   );
 }

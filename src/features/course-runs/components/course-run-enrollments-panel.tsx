@@ -6,7 +6,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { AdminDockPanel } from '@/components/admin/admin-dock-panel';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -19,13 +19,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import {
   Dialog,
   DialogContent,
@@ -311,49 +304,8 @@ export function CourseRunEnrollmentsPanel({
         header: 'Enrolled at',
         cell: ({ row }) => formatDateTime(row.original.enrolledAt),
       },
-      {
-        ...tableActionsColumn<EnrollmentResponse>(),
-        cell: ({ row }) => (
-          <TableRowActionMenu
-            items={[
-              {
-                label: 'Progress',
-                icon: Eye,
-                onClick: () => onOpenProgress(row.original),
-              },
-              {
-                label: 'View detail',
-                onClick: () => setViewEnrollment(row.original),
-              },
-              {
-                label: 'Edit',
-                onClick: () => openEditEnrollment(row.original),
-              },
-              {
-                label: 'Delete',
-                icon: Trash2,
-                destructive: true,
-                onClick: () =>
-                  setPendingConfirm({
-                    title: 'Delete enrollment?',
-                    description: (
-                      <>
-                        Remove{' '}
-                        {row.original.userDisplayName ??
-                          row.original.userEmail ??
-                          'this learner'}{' '}
-                        from this course run. This cannot be undone.
-                      </>
-                    ),
-                    action: () => deleteEnrollmentMutation.mutate(row.original.id),
-                  }),
-              },
-            ]}
-          />
-        ),
-      },
     ],
-    [deleteEnrollmentMutation, onOpenProgress],
+    [],
   );
 
   return (
@@ -380,7 +332,7 @@ export function CourseRunEnrollmentsPanel({
           showRowIndex
           pageOffset={(enrollmentPage - 1) * ADMIN_LIST_PAGE_SIZE}
           showPagination={false}
-          onRowClick={onOpenProgress}
+          onRowClick={setViewEnrollment}
         />
         <div className="flex justify-end gap-2">
           <Button
@@ -470,7 +422,7 @@ export function CourseRunEnrollmentsPanel({
         </DialogContent>
       </Dialog>
 
-      <Sheet
+      <AdminEditorDialog
         open={importOpen}
         onOpenChange={(open) => {
           if (!open && !confirmDiscard(importDirty)) {
@@ -483,143 +435,10 @@ export function CourseRunEnrollmentsPanel({
             importFileBufferRef.current = null;
           }
         }}
-      >
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Import enrollments via Excel</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
-            <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground space-y-2">
-              <p>1. Download the template (.xlsx).</p>
-              <p>2. Paste learner emails starting from row 2. Keep the header row: email, order_no, amount.</p>
-              <p>3. Save as <strong>.xlsx</strong> in Excel, then <strong>close the file</strong> before Preview/Import.</p>
-              <p>4. Preview, then import. Rows with unknown emails are skipped.</p>
-              <p>5. Import is enabled only after Preview shows at least one OK row.</p>
-            </div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                void enrollmentsApi
-                  .downloadImportTemplate()
-                  .then((blob) => {
-                    const url = URL.createObjectURL(blob);
-                    const anchor = document.createElement('a');
-                    anchor.href = url;
-                    anchor.download = 'enrollment-template.xlsx';
-                    anchor.click();
-                    URL.revokeObjectURL(url);
-                  })
-                  .catch((error) => toast.error(error));
-              }}
-            >
-              <FileSpreadsheet className="mr-2 size-4" />
-              Download template
-            </Button>
-            <div className="space-y-2">
-              <Label>Choose file</Label>
-              <input
-                ref={importFileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={(event) => {
-                  const picked = event.target.files?.[0] ?? null;
-                  setImportPreview(null);
-                  if (!picked) {
-                    setImportFile(null);
-                    importFileBufferRef.current = null;
-                    return;
-                  }
-
-                  void (async () => {
-                    try {
-                      const snapshot = await snapshotUploadFile(picked);
-                      const validationError = await validateExcelFile(snapshot);
-                      if (validationError) {
-                        toast.error(validationError);
-                        setImportFile(null);
-                        importFileBufferRef.current = null;
-                        event.target.value = '';
-                        return;
-                      }
-                      importFileBufferRef.current = await snapshot.arrayBuffer();
-                      setImportFile(snapshot);
-                    } catch {
-                      toast.error(FILE_READ_ERROR_MESSAGE);
-                      setImportFile(null);
-                      importFileBufferRef.current = null;
-                      event.target.value = '';
-                    }
-                  })();
-                }}
-              />
-
-              {importFile ? (
-                <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
-                      <FileSpreadsheet className="size-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{importFile.name}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {Math.round((importFile.size / 1024) * 10) / 10} KB
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setImportFile(null);
-                      setImportPreview(null);
-                      importFileBufferRef.current = null;
-                      if (importFileInputRef.current) {
-                        importFileInputRef.current.value = '';
-                      }
-                    }}
-                  >
-                    <X className="mr-1 size-4" /> Remove
-                  </Button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => importFileInputRef.current?.click()}
-                  className="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/5 py-8 px-4 text-center hover:bg-muted/10 transition-colors cursor-pointer"
-                >
-                  <div className="bg-muted flex size-10 items-center justify-center rounded-full">
-                    <Upload className="text-muted-foreground size-5" />
-                  </div>
-                  <p className="mt-3 text-sm font-medium">Click to upload spreadsheet template</p>
-                  <p className="text-muted-foreground mt-1 text-xs">Excel format (.xlsx or .xls)</p>
-                </button>
-              )}
-            </div>
-            {importPreview ? (
-              <div className="space-y-2 rounded-lg border p-4 text-sm">
-                <p>
-                  Preview: {importPreview.successCount} OK, {importPreview.failedCount} failed,{' '}
-                  {importPreview.skippedCount} skipped / {importPreview.totalRows} rows
-                </p>
-                {importPreview.failures.length > 0 ? (
-                  <div className="space-y-2">
-                    {importPreview.failures.slice(0, 10).map((failure) => (
-                      <div
-                        key={`${failure.rowNumber}-${failure.email ?? 'unknown'}`}
-                        className="rounded-md border p-3"
-                      >
-                        <p className="font-medium">Row {failure.rowNumber}</p>
-                        <p className="text-muted-foreground">{failure.reason}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
+        title="Import enrollments via Excel"
+        size="lg"
+        footer={
+          <>
             <Button
               variant="outline"
               disabled={
@@ -645,12 +464,144 @@ export function CourseRunEnrollmentsPanel({
               <Upload className="mr-2 size-4" />
               Import Excel
             </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div className="rounded-lg border bg-muted/20 p-4 text-sm text-muted-foreground space-y-2">
+            <p>1. Download the template (.xlsx).</p>
+            <p>2. Paste learner emails starting from row 2. Keep the header row: email, order_no, amount.</p>
+            <p>3. Save as <strong>.xlsx</strong> in Excel, then <strong>close the file</strong> before Preview/Import.</p>
+            <p>4. Preview, then import. Rows with unknown emails are skipped.</p>
+            <p>5. Import is enabled only after Preview shows at least one OK row.</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void enrollmentsApi
+                .downloadImportTemplate()
+                .then((blob) => {
+                  const url = URL.createObjectURL(blob);
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = 'enrollment-template.xlsx';
+                  anchor.click();
+                  URL.revokeObjectURL(url);
+                })
+                .catch((error) => toast.error(error));
+            }}
+          >
+            <FileSpreadsheet className="mr-2 size-4" />
+            Download template
+          </Button>
+          <div className="space-y-2">
+            <Label>Choose file</Label>
+            <input
+              ref={importFileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(event) => {
+                const picked = event.target.files?.[0] ?? null;
+                setImportPreview(null);
+                if (!picked) {
+                  setImportFile(null);
+                  importFileBufferRef.current = null;
+                  return;
+                }
+
+                void (async () => {
+                  try {
+                    const snapshot = await snapshotUploadFile(picked);
+                    const validationError = await validateExcelFile(snapshot);
+                    if (validationError) {
+                      toast.error(validationError);
+                      setImportFile(null);
+                      importFileBufferRef.current = null;
+                      event.target.value = '';
+                      return;
+                    }
+                    importFileBufferRef.current = await snapshot.arrayBuffer();
+                    setImportFile(snapshot);
+                  } catch {
+                    toast.error(FILE_READ_ERROR_MESSAGE);
+                    setImportFile(null);
+                    importFileBufferRef.current = null;
+                    event.target.value = '';
+                  }
+                })();
+              }}
+            />
+
+            {importFile ? (
+              <div className="flex items-center justify-between rounded-lg border bg-muted/40 p-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="bg-muted text-muted-foreground flex size-10 shrink-0 items-center justify-center rounded-lg">
+                    <FileSpreadsheet className="size-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{importFile.name}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {Math.round((importFile.size / 1024) * 10) / 10} KB
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setImportFile(null);
+                    setImportPreview(null);
+                    importFileBufferRef.current = null;
+                    if (importFileInputRef.current) {
+                      importFileInputRef.current.value = '';
+                    }
+                  }}
+                >
+                  <X className="mr-1 size-4" /> Remove
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => importFileInputRef.current?.click()}
+                className="flex w-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/5 py-8 px-4 text-center hover:bg-muted/10 transition-colors cursor-pointer"
+              >
+                <div className="bg-muted flex size-10 items-center justify-center rounded-full">
+                  <Upload className="text-muted-foreground size-5" />
+                </div>
+                <p className="mt-3 text-sm font-medium">Click to upload spreadsheet template</p>
+                <p className="text-muted-foreground mt-1 text-xs">Excel format (.xlsx or .xls)</p>
+              </button>
+            )}
+          </div>
+          {importPreview ? (
+            <div className="space-y-2 rounded-lg border p-4 text-sm">
+              <p>
+                Preview: {importPreview.successCount} OK, {importPreview.failedCount} failed,{' '}
+                {importPreview.skippedCount} skipped / {importPreview.totalRows} rows
+              </p>
+              {importPreview.failures.length > 0 ? (
+                <div className="space-y-2">
+                  {importPreview.failures.slice(0, 10).map((failure) => (
+                    <div
+                      key={`${failure.rowNumber}-${failure.email ?? 'unknown'}`}
+                      className="rounded-md border p-3"
+                    >
+                      <p className="font-medium">Row {failure.rowNumber}</p>
+                      <p className="text-muted-foreground">{failure.reason}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </AdminEditorDialog>
 
       <AdminDockPanel
-        open={Boolean(viewEnrollment)}
+        open={Boolean(viewEnrollment) && !editEnrollment && !pendingConfirm}
         onClose={() => setViewEnrollment(null)}
         title={
           viewEnrollment?.userDisplayName ??
@@ -660,11 +611,17 @@ export function CourseRunEnrollmentsPanel({
         description={viewEnrollment?.userEmail ?? undefined}
         footer={
           viewEnrollment ? (
-            <>
-              <Button variant="ghost" size="sm" onClick={() => setViewEnrollment(null)}>
-                Close
+            <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onOpenProgress(viewEnrollment)}
+              >
+                <Eye className="mr-1.5 size-3.5" />
+                Progress
               </Button>
               <Button
+                variant="outline"
                 size="sm"
                 onClick={() => {
                   openEditEnrollment(viewEnrollment);
@@ -673,7 +630,29 @@ export function CourseRunEnrollmentsPanel({
               >
                 Edit
               </Button>
-            </>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() =>
+                  setPendingConfirm({
+                    title: 'Delete enrollment?',
+                    description: (
+                      <>
+                        Remove{' '}
+                        {viewEnrollment.userDisplayName ??
+                          viewEnrollment.userEmail ??
+                          'this learner'}{' '}
+                        from this course run. This cannot be undone.
+                      </>
+                    ),
+                    action: () => deleteEnrollmentMutation.mutate(viewEnrollment.id),
+                  })
+                }
+              >
+                <Trash2 className="mr-1.5 size-3.5" />
+                Delete
+              </Button>
+            </div>
           ) : null
         }
       >

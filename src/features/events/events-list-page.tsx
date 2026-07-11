@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -14,8 +14,9 @@ import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu, tableActionsColumn } from '@/components/admin/table-row-actions';
 import { DataTable } from '@/components/data-table/data-table';
+import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
+import { InspectorField } from '@/components/admin/admin-inspector';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,17 +28,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
@@ -114,6 +108,9 @@ export function EventsListPage() {
     startTime: boolean;
     endTime: boolean;
   }>({ title: false, startTime: false, endTime: false });
+  const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
+
+  const dockOpen = Boolean(selectedEvent) && !sheetOpen && !Boolean(pendingAction);
 
   const isDirty =
     form.title !== emptyForm.title ||
@@ -203,6 +200,7 @@ export function EventsListPage() {
     mutationFn: (id: string) => eventsApi.remove(id),
     onSuccess: () => {
       toast.success('Event deleted.');
+      setSelectedEvent(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
     onError: (error) => toast.error(error),
@@ -284,54 +282,8 @@ export function EventsListPage() {
         header: 'Start',
         cell: ({ row }) => formatDateTime(row.original.startTime),
       },
-      {
-        ...tableActionsColumn<EventResponse>(),
-        cell: ({ row }) => {
-          const status = normalizeEventStatus(row.original.status);
-          const items = [
-            status !== 'PUBLISHED'
-              ? {
-                  label: 'Publish',
-                  onClick: () =>
-                    openActionDialog(row.original.id, row.original.title, 'publish'),
-                }
-              : null,
-            status !== 'DRAFT'
-              ? {
-                  label: 'Move to draft',
-                  onClick: () =>
-                    openActionDialog(row.original.id, row.original.title, 'unpublish'),
-                }
-              : null,
-            {
-              label: 'Delete',
-              icon: Trash2,
-              destructive: true,
-              onClick: () =>
-                openActionDialog(row.original.id, row.original.title, 'delete'),
-            },
-          ].filter(Boolean) as Array<{
-            label: string;
-            icon?: typeof Trash2;
-            destructive?: boolean;
-            onClick: () => void;
-          }>;
-
-          return (
-            <TableRowActionMenu
-              items={[
-                {
-                  label: 'Open',
-                  onClick: () => navigate(ROUTES.eventDetail(row.original.id)),
-                },
-                ...items,
-              ]}
-            />
-          );
-        },
-      },
     ],
-    [deleteMutation, navigate, publishMutation, unpublishMutation],
+    [],
   );
 
   const hasActiveFilters =
@@ -414,35 +366,129 @@ export function EventsListPage() {
           onRetry={() => void eventsQuery.refetch()}
         />
       ) : (
-        <div className="space-y-4">
-          <DataTable
-            columns={columns}
-            data={eventsQuery.data?.data ?? []}
-            isLoading={eventsQuery.isLoading}
-            showRowIndex
-            pageOffset={(eventsQuery.data?.currentPage ?? page) * ADMIN_LIST_PAGE_SIZE}
-            showPagination={false}
-            emptyMessage="No events yet."
-            onRowClick={(event) => navigate(ROUTES.eventDetail(event.id))}
-          />
+        <AdminDockLayout dockOpen={dockOpen}>
+          <div className="space-y-4">
+            <DataTable
+              columns={columns}
+              data={eventsQuery.data?.data ?? []}
+              isLoading={eventsQuery.isLoading}
+              showRowIndex
+              pageOffset={(eventsQuery.data?.currentPage ?? page) * ADMIN_LIST_PAGE_SIZE}
+              showPagination={false}
+              emptyMessage="No events yet."
+              onRowClick={(event) => setSelectedEvent(event)}
+            />
 
-          <ServerPagination
-            page={eventsQuery.data?.currentPage ?? page}
-            totalPages={eventsQuery.data?.totalPages ?? 1}
-            onPageChange={setPage}
-          />
-        </div>
+            <ServerPagination
+              page={eventsQuery.data?.currentPage ?? page}
+              totalPages={eventsQuery.data?.totalPages ?? 1}
+              onPageChange={setPage}
+            />
+          </div>
+        </AdminDockLayout>
       )}
 
-      <Sheet open={sheetOpen} onOpenChange={closeSheet}>
-        <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">
-          <SheetHeader className="shrink-0 border-b px-6 pt-6 pb-4 text-left">
-            <SheetTitle>Add event</SheetTitle>
-            <SheetDescription>
-              Create the event details, schedule, and thumbnail before publishing.
-            </SheetDescription>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+      <AdminDockPanel
+        open={dockOpen}
+        onClose={() => setSelectedEvent(null)}
+        title={selectedEvent?.title ?? ''}
+        description={
+          selectedEvent
+            ? eventTypeLabel(selectedEvent.isOfficial) + ' · ' + eventStatusLabel(selectedEvent.status)
+            : undefined
+        }
+        footer={
+          selectedEvent && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate(ROUTES.eventDetail(selectedEvent.id))}
+              >
+                <ExternalLink className="mr-1.5 size-3.5" />
+                Open workspace
+              </Button>
+              {normalizeEventStatus(selectedEvent.status) !== 'PUBLISHED' ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    openActionDialog(selectedEvent.id, selectedEvent.title, 'publish')
+                  }
+                >
+                  Publish
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    openActionDialog(selectedEvent.id, selectedEvent.title, 'unpublish')
+                  }
+                >
+                  Unpublish
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() =>
+                  openActionDialog(selectedEvent.id, selectedEvent.title, 'delete')
+                }
+              >
+                <Trash2 className="mr-1.5 size-3.5" />
+                Delete
+              </Button>
+            </>
+          )
+        }
+      >
+        {selectedEvent && (
+          <dl className="space-y-4">
+            <InspectorField label="Title" value={selectedEvent.title} />
+            <InspectorField
+              label="Status"
+              value={
+                <Badge variant="secondary">{eventStatusLabel(selectedEvent.status)}</Badge>
+              }
+            />
+            <InspectorField
+              label="Type"
+              value={
+                <Badge variant={selectedEvent.isOfficial ? 'default' : 'secondary'}>
+                  {eventTypeLabel(selectedEvent.isOfficial)}
+                </Badge>
+              }
+            />
+            <InspectorField
+              label="Creator"
+              value={
+                selectedEvent.isOfficial ? 'Zen Leader System' : selectedEvent.author.name
+              }
+            />
+            <InspectorField label="Start" value={formatDateTime(selectedEvent.startTime)} />
+            <InspectorField label="End" value={formatDateTime(selectedEvent.endTime)} />
+            <InspectorField label="Summary" value={selectedEvent.description ?? undefined} />
+          </dl>
+        )}
+      </AdminDockPanel>
+
+      <AdminEditorDialog
+        open={sheetOpen}
+        onOpenChange={closeSheet}
+        title="Add event"
+        description="Create the event details, schedule, and thumbnail before publishing."
+        size="lg"
+        footer={
+          <Button
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending || requiredMissing}
+          >
+            Create event
+          </Button>
+        }
+      >
+        <div>
             <div className="space-y-4">
               <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                 Basic info
@@ -563,17 +609,8 @@ export function EventsListPage() {
                 <Label>System event</Label>
               </div>
             </div>
-          </div>
-          <SheetFooter className="shrink-0 border-t px-6 py-4 sm:flex-row sm:justify-end">
-            <Button
-              onClick={() => createMutation.mutate()}
-              disabled={createMutation.isPending || requiredMissing}
-            >
-              Create event
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+        </div>
+      </AdminEditorDialog>
 
       <AlertDialog
         open={Boolean(pendingAction)}
