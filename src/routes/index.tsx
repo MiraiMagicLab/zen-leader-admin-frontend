@@ -65,6 +65,9 @@ const LiveSessionsPage = lazy(() =>
 const PaymentsPage = lazy(() =>
   import('@/features/payments/payments-page').then((m) => ({ default: m.PaymentsPage })),
 );
+const RevenueDashboardPage = lazy(() =>
+  import('@/features/revenue').then((m) => ({ default: m.RevenueDashboardPage })),
+);
 const NotificationsPage = lazy(() =>
   import('@/features/notifications/notifications-page').then((m) => ({
     default: m.NotificationsPage,
@@ -235,6 +238,14 @@ export const appRouter = createBrowserRouter([
             element: (
               <LazyPage>
                 <PaymentsPage />
+              </LazyPage>
+            ),
+          },
+          {
+            path: ROUTES.revenue,
+            element: (
+              <LazyPage>
+                <RevenueDashboardPage />
               </LazyPage>
             ),
           },

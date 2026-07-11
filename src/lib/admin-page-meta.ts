@@ -54,6 +54,11 @@ export const ADMIN_PAGE_META = {
     description:
       'Review payment orders and resolve enrollment follow-up after successful checkout.',
   },
+  revenue: {
+    title: 'Zen Leader Admin | Revenue',
+    description:
+      'Track collected course-purchase revenue, payment mix, and top-selling course runs.',
+  },
   moderation: {
     title: 'Zen Leader Admin | Moderation',
     description:

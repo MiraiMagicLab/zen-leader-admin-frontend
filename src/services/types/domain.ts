@@ -398,6 +398,67 @@ export type PaymentOrderResponse = {
   enrollmentRetryCount: number;
 };
 
+export type CurrencyAmountResponse = {
+  currency: string;
+  amount: number;
+  orderCount: number;
+};
+
+export type AdminOpsOverviewResponse = {
+  activeLiveSessions: number;
+  pendingReports: number;
+  pendingPayments: number;
+  enrollmentFailures: number;
+  paidOrders: number;
+  totalUsers: number;
+  collectedRevenue: CurrencyAmountResponse[];
+  collectedRevenueLast30Days: CurrencyAmountResponse[];
+  generatedAt: string;
+};
+
+export type PaymentStatusCountResponse = {
+  status: string;
+  count: number;
+};
+
+export type ProviderRevenueResponse = {
+  provider: string;
+  currency: string;
+  amount: number;
+  orderCount: number;
+};
+
+export type RevenueTimePointResponse = {
+  bucket: string;
+  currency: string;
+  amount: number;
+  orderCount: number;
+};
+
+export type CourseRunRevenueResponse = {
+  courseRunId: string;
+  courseRunCode: string;
+  currency: string;
+  amount: number;
+  orderCount: number;
+};
+
+export type PaymentAnalyticsResponse = {
+  from: string;
+  to: string;
+  granularity: string;
+  collectedRevenue: CurrencyAmountResponse[];
+  refundedAmount: CurrencyAmountResponse[];
+  paidOrderCount: number;
+  pendingOrderCount: number;
+  enrollmentFailedOrderCount: number;
+  refundedOrderCount: number;
+  byStatus: PaymentStatusCountResponse[];
+  byProvider: ProviderRevenueResponse[];
+  timeseries: RevenueTimePointResponse[];
+  topCourseRuns: CourseRunRevenueResponse[];
+};
+
 export type UgcReportResponse = {
   id: string;
   reporterId: string;

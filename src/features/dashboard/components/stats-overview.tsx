@@ -3,6 +3,7 @@ import {
   CircleDollarSign,
   Radio,
   ShieldAlert,
+  Users,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -17,74 +18,25 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { formatMoney, formatNumber } from '@/lib/format';
+import { formatCurrencyAmounts, formatNumber, primaryCurrencyAmount } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/routes/paths';
-import type { DashboardOpsMetrics } from '../hooks/use-dashboard-data';
-
-type OpsMetricKey = keyof Pick<
-  DashboardOpsMetrics,
-  | 'activeLiveSessions'
-  | 'pendingPayments'
-  | 'paidOrders'
-  | 'enrollmentFailures'
-  | 'pendingReports'
->;
+import type { AdminOpsOverviewResponse } from '@/services/types/domain';
 
 type OpsMetricItem = {
   label: string;
   description: string;
-  key: OpsMetricKey;
   icon: LucideIcon;
   href: string;
   tone: 'live' | 'money' | 'warn' | 'neutral';
-  format?: 'count';
+  getValue: (metrics: AdminOpsOverviewResponse) => string;
+  getHint?: (metrics: AdminOpsOverviewResponse) => string | null;
 };
 
-const OPS_METRICS: OpsMetricItem[] = [
-  {
-    label: 'Live rooms',
-    description: 'Sessions currently active on meet',
-    key: 'activeLiveSessions',
-    icon: Radio,
-    href: `${ROUTES.liveSessions}?status=ACTIVE`,
-    tone: 'live',
-  },
-  {
-    label: 'Collected revenue',
-    description: 'Sum of paid orders (sampled up to 200)',
-    key: 'paidOrders',
-    icon: CircleDollarSign,
-    href: `${ROUTES.payments}?status=PAID`,
-    tone: 'money',
-  },
-  {
-    label: 'Pending payments',
-    description: 'Orders awaiting checkout',
-    key: 'pendingPayments',
-    icon: Wallet,
-    href: `${ROUTES.payments}?status=PENDING`,
-    tone: 'neutral',
-  },
-  {
-    label: 'Pending reports',
-    description: 'Moderation queue needing review',
-    key: 'pendingReports',
-    icon: ShieldAlert,
-    href: ROUTES.moderation,
-    tone: 'warn',
-  },
-  {
-    label: 'Enrollment failures',
-    description: 'Paid orders that failed to enroll',
-    key: 'enrollmentFailures',
-    icon: AlertTriangle,
-    href: `${ROUTES.payments}?status=ENROLL_FAILED`,
-    tone: 'warn',
-  },
-];
-
-const TONE_STYLES: Record<OpsMetricItem['tone'], { well: string; icon: string; accent: string }> = {
+const TONE_STYLES: Record<
+  OpsMetricItem['tone'],
+  { well: string; icon: string; accent: string }
+> = {
   live: {
     well: 'bg-emerald-500/10',
     icon: 'text-emerald-600 dark:text-emerald-400',
@@ -107,8 +59,57 @@ const TONE_STYLES: Record<OpsMetricItem['tone'], { well: string; icon: string; a
   },
 };
 
+const OPS_METRICS: OpsMetricItem[] = [
+  {
+    label: 'Live rooms',
+    description: 'Sessions currently active on meet',
+    icon: Radio,
+    href: `${ROUTES.liveSessions}?status=ACTIVE`,
+    tone: 'live',
+    getValue: (m) => formatNumber(m.activeLiveSessions),
+  },
+  {
+    label: 'Revenue (30d)',
+    description: 'Collected payments in the last 30 days',
+    icon: CircleDollarSign,
+    href: ROUTES.revenue,
+    tone: 'money',
+    getValue: (m) => formatCurrencyAmounts(m.collectedRevenueLast30Days),
+    getHint: (m) => {
+      const primary = primaryCurrencyAmount(m.collectedRevenueLast30Days);
+      return primary
+        ? `${formatNumber(primary.orderCount)} paid orders`
+        : 'No paid orders yet';
+    },
+  },
+  {
+    label: 'Pending payments',
+    description: 'Orders awaiting checkout',
+    icon: Wallet,
+    href: `${ROUTES.payments}?status=PENDING`,
+    tone: 'neutral',
+    getValue: (m) => formatNumber(m.pendingPayments),
+  },
+  {
+    label: 'Pending reports',
+    description: 'Moderation queue needing review',
+    icon: ShieldAlert,
+    href: ROUTES.moderation,
+    tone: 'warn',
+    getValue: (m) => formatNumber(m.pendingReports),
+  },
+  {
+    label: 'Enrollment failures',
+    description: 'Paid orders that failed to enroll',
+    icon: AlertTriangle,
+    href: `${ROUTES.payments}?status=ENROLL_FAILED`,
+    tone: 'warn',
+    getValue: (m) => formatNumber(m.enrollmentFailures),
+  },
+];
+
 type StatsOverviewProps = {
-  metrics: DashboardOpsMetrics | undefined;
+  metrics: AdminOpsOverviewResponse | undefined;
   isLoading: boolean;
   isError: boolean;
   error: unknown;
@@ -122,25 +123,19 @@ function OpsMetricCard({
   isLoading,
 }: {
   item: OpsMetricItem;
-  metrics: DashboardOpsMetrics | undefined;
+  metrics: AdminOpsOverviewResponse | undefined;
   isLoading: boolean;
 }) {
   const Icon = item.icon;
   const tone = TONE_STYLES[item.tone];
-  const count = metrics?.[item.key] ?? 0;
-
-  let displayValue = isLoading ? null : formatNumber(count);
-  if (item.key === 'paidOrders' && metrics && !isLoading) {
-    displayValue = formatMoney(metrics.paidRevenue, metrics.paidRevenueCurrency);
-    if (metrics.paidRevenueSampled) {
-      displayValue = `${displayValue}+`;
-    }
-  }
 
   return (
     <Link to={item.href} className="group block min-w-0 no-underline">
       <div className="admin-metric-card relative flex h-full items-start gap-3 p-4">
-        <span aria-hidden className={cn('absolute inset-y-3 left-0 w-1 rounded-full', tone.accent)} />
+        <span
+          aria-hidden
+          className={cn('absolute inset-y-3 left-0 w-1 rounded-full', tone.accent)}
+        />
         <div
           className={cn(
             'ml-1 flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/50',
@@ -152,17 +147,17 @@ function OpsMetricCard({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-muted-foreground text-xs font-medium">{item.label}</p>
-          {displayValue === null ? (
+          {isLoading || !metrics ? (
             <AdminSkeletonBar className="mt-1.5 h-7 w-24" />
           ) : (
             <p className="text-foreground mt-1 text-xl font-semibold tracking-tight tabular-nums">
-              {displayValue}
+              {item.getValue(metrics)}
             </p>
           )}
           <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
             {item.description}
-            {item.key === 'paidOrders' && metrics && !isLoading ? (
-              <span className="block">{formatNumber(metrics.paidOrders)} paid orders</span>
+            {!isLoading && metrics && item.getHint?.(metrics) ? (
+              <span className="block">{item.getHint(metrics)}</span>
             ) : null}
           </p>
         </div>
@@ -198,7 +193,7 @@ export function StatsOverview({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {OPS_METRICS.map((item) => (
           <OpsMetricCard
-            key={item.key}
+            key={item.label}
             item={item}
             metrics={metrics}
             isLoading={isLoading}
@@ -206,52 +201,93 @@ export function StatsOverview({
         ))}
       </div>
 
-      <Card className="admin-panel shadow-none ring-0">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Payment pipeline</CardTitle>
-          <CardDescription>
-            Queue health across checkout, successful enrollments, and failures.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isLoading ? (
-            <AdminSkeletonBar className="h-10 w-full rounded-xl" />
-          ) : pipelineTotal === 0 ? (
-            <p className="text-muted-foreground text-sm">No payment records yet.</p>
-          ) : (
-            <>
-              <div className="flex h-3 overflow-hidden rounded-full border border-border/60 bg-muted/40">
-                {pending > 0 ? (
-                  <span
-                    className="bg-amber-400/90"
-                    style={{ width: `${(pending / pipelineTotal) * 100}%` }}
-                    title={`Pending: ${pending}`}
-                  />
-                ) : null}
-                {paid > 0 ? (
-                  <span
-                    className="bg-emerald-500/90"
-                    style={{ width: `${(paid / pipelineTotal) * 100}%` }}
-                    title={`Paid: ${paid}`}
-                  />
-                ) : null}
-                {failed > 0 ? (
-                  <span
-                    className="bg-destructive/85"
-                    style={{ width: `${(failed / pipelineTotal) * 100}%` }}
-                    title={`Failed: ${failed}`}
-                  />
-                ) : null}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <PipelineStat label="Awaiting payment" value={pending} tone="pending" />
-                <PipelineStat label="Paid orders" value={paid} tone="paid" />
-                <PipelineStat label="Enrollment failed" value={failed} tone="failed" />
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-12">
+        <Card className="admin-panel shadow-none ring-0 lg:col-span-8">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Payment pipeline</CardTitle>
+            <CardDescription>
+              Queue health across checkout, successful enrollments, and failures.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoading ? (
+              <AdminSkeletonBar className="h-10 w-full rounded-xl" />
+            ) : pipelineTotal === 0 ? (
+              <p className="text-muted-foreground text-sm">No payment records yet.</p>
+            ) : (
+              <>
+                <div className="flex h-3 overflow-hidden rounded-full border border-border/60 bg-muted/40">
+                  {pending > 0 ? (
+                    <span
+                      className="bg-amber-400/90"
+                      style={{ width: `${(pending / pipelineTotal) * 100}%` }}
+                      title={`Pending: ${pending}`}
+                    />
+                  ) : null}
+                  {paid > 0 ? (
+                    <span
+                      className="bg-emerald-500/90"
+                      style={{ width: `${(paid / pipelineTotal) * 100}%` }}
+                      title={`Paid: ${paid}`}
+                    />
+                  ) : null}
+                  {failed > 0 ? (
+                    <span
+                      className="bg-destructive/85"
+                      style={{ width: `${(failed / pipelineTotal) * 100}%` }}
+                      title={`Failed: ${failed}`}
+                    />
+                  ) : null}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <PipelineStat label="Awaiting payment" value={pending} tone="pending" />
+                  <PipelineStat label="Paid orders" value={paid} tone="paid" />
+                  <PipelineStat label="Enrollment failed" value={failed} tone="failed" />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="admin-panel shadow-none ring-0 lg:col-span-4">
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium">
+              <Users className="size-4" />
+              Platform snapshot
+            </CardTitle>
+            <CardDescription>Accounts and all-time collected revenue.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isLoading || !metrics ? (
+              <>
+                <AdminSkeletonBar className="h-12 w-full rounded-xl" />
+                <AdminSkeletonBar className="h-12 w-full rounded-xl" />
+              </>
+            ) : (
+              <>
+                <div className="admin-subtle-panel px-4 py-3">
+                  <p className="text-muted-foreground text-xs">Total users</p>
+                  <p className="text-foreground mt-1 text-xl font-semibold tabular-nums">
+                    {formatNumber(metrics.totalUsers)}
+                  </p>
+                </div>
+                <div className="admin-subtle-panel px-4 py-3">
+                  <p className="text-muted-foreground text-xs">All-time revenue</p>
+                  <p className="text-foreground mt-1 text-base font-semibold tabular-nums leading-snug">
+                    {formatCurrencyAmounts(metrics.collectedRevenue)}
+                  </p>
+                  <Link
+                    to={ROUTES.revenue}
+                    className="text-primary mt-2 inline-block text-xs font-medium hover:underline"
+                  >
+                    Open revenue dashboard
+                  </Link>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
@@ -278,7 +314,9 @@ function PipelineStat({
         <span className={cn('size-2 shrink-0 rounded-full', dotClass)} />
         <p className="text-muted-foreground truncate text-xs">{label}</p>
       </div>
-      <p className="text-foreground text-sm font-semibold tabular-nums">{formatNumber(value)}</p>
+      <p className="text-foreground text-sm font-semibold tabular-nums">
+        {formatNumber(value)}
+      </p>
     </div>
   );
 }

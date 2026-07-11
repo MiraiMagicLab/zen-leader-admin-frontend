@@ -18,6 +18,7 @@ import {
   Bell,
   BookOpen,
   CalendarDays,
+  CircleDollarSign,
   CreditCard,
   GraduationCap,
   Layers,
@@ -67,10 +68,16 @@ const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: 'Finance',
+    items: [
+      { title: 'Revenue', icon: CircleDollarSign, to: ROUTES.revenue },
+      { title: 'Payments', icon: CreditCard, to: ROUTES.payments },
+    ],
+  },
+  {
     label: 'Operations',
     items: [
       { title: 'Users', icon: Users, to: ROUTES.users },
-      { title: 'Payments', icon: CreditCard, to: ROUTES.payments },
       { title: 'Notifications', icon: Bell, to: ROUTES.notifications },
       { title: 'Moderation', icon: ShieldAlert, to: ROUTES.moderation },
       { title: 'Audit log', icon: ScrollText, to: ROUTES.auditLogs },

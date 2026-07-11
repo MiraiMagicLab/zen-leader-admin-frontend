@@ -9,6 +9,7 @@ const exactLabels: Record<string, string> = {
   [ROUTES.events]: 'Events',
   [ROUTES.liveSessions]: 'Live Sessions',
   [ROUTES.payments]: 'Payments',
+  [ROUTES.revenue]: 'Revenue',
   [ROUTES.notifications]: 'Notifications',
   [ROUTES.moderation]: 'Moderation',
   [ROUTES.auditLogs]: 'Audit log',

@@ -52,3 +52,19 @@ export function formatMoney(
 ): string {
   return `${formatNumber(amount)} ${currency}`;
 }
+
+/** Picks the primary currency amount for KPI display (prefers VND, else first). */
+export function primaryCurrencyAmount(
+  amounts: { currency: string; amount: number; orderCount: number }[] | undefined,
+): { currency: string; amount: number; orderCount: number } | null {
+  if (!amounts?.length) return null;
+  return amounts.find((row) => row.currency === 'VND') ?? amounts[0] ?? null;
+}
+
+/** Formats multi-currency totals into a compact display string. */
+export function formatCurrencyAmounts(
+  amounts: { currency: string; amount: number; orderCount: number }[] | undefined,
+): string {
+  if (!amounts?.length) return formatMoney(0, 'VND');
+  return amounts.map((row) => formatMoney(row.amount, row.currency)).join(' · ');
+}

@@ -84,6 +84,8 @@ export const queryKeys = {
     all: ['payments'] as const,
     list: (page: number, status?: string, keyword?: string) =>
       [...queryKeys.payments.all, 'list', page, status ?? 'all', keyword ?? ''] as const,
+    analytics: (params: Record<string, unknown>) =>
+      [...queryKeys.payments.all, 'analytics', params] as const,
   },
   safety: {
     all: ['safety'] as const,

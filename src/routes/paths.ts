@@ -23,6 +23,7 @@ export const ROUTES = {
   eventDetail: (eventId: string) => `/events/${eventId}`,
   liveSessions: '/live-sessions',
   payments: '/payments',
+  revenue: '/revenue',
   notifications: '/notifications',
   moderation: '/moderation',
   auditLogs: '/audit-logs',

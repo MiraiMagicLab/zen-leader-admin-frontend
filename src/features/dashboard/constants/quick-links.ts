@@ -1,6 +1,7 @@
 import {
   BookOpen,
   CalendarDays,
+  CircleDollarSign,
   CreditCard,
   ShieldAlert,
   Users,
@@ -40,6 +41,12 @@ export const DASHBOARD_QUICK_LINKS: QuickLinkItem[] = [
     description: 'Handle reports and community safety actions.',
     href: ROUTES.moderation,
     icon: ShieldAlert,
+  },
+  {
+    title: 'Revenue analytics',
+    description: 'Track collected revenue and top course runs.',
+    href: ROUTES.revenue,
+    icon: CircleDollarSign,
   },
   {
     title: 'Check payments',
