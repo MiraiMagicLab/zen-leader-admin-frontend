@@ -531,61 +531,41 @@ export function UsersListPage() {
           description={selectedLiveUser?.email}
           footer={
             selectedLiveUser && !isDeletedUser(selectedLiveUser) ? (
-              <div className="flex w-full flex-wrap items-center justify-end gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openRolesDialog(selectedLiveUser)}
-                >
+              <>
+                <Button variant="outline" size="sm" onClick={() => openRolesDialog(selectedLiveUser)}>
                   Edit role
                 </Button>
                 {selectedLiveUser.bannedUntil ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUnbanConfirmOpen(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setUnbanConfirmOpen(true)}>
                     <ShieldAlert className="mr-1.5 size-3.5" />
                     Unban
                   </Button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setBanConfirmOpen(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setBanConfirmOpen(true)}>
                     <ShieldAlert className="mr-1.5 size-3.5" />
                     Ban
                   </Button>
                 )}
                 {selectedLiveUser.isActive ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setLockConfirmOpen(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setLockConfirmOpen(true)}>
                     <Lock className="mr-1.5 size-3.5" />
                     Lock
                   </Button>
                 ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setUnlockConfirmOpen(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setUnlockConfirmOpen(true)}>
                     <Unlock className="mr-1.5 size-3.5" />
                     Unlock
                   </Button>
                 )}
                 <Button
-                  variant="destructive"
+                  variant="destructiveOutline"
                   size="sm"
                   onClick={() => setDeleteConfirmOpen(true)}
                 >
                   <Trash2 className="mr-1.5 size-3.5" />
                   Delete
                 </Button>
-              </div>
+              </>
             ) : null
           }
         >
@@ -742,7 +722,18 @@ export function UsersListPage() {
                 </SelectContent>
               </Select>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:flex-nowrap">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (confirmDiscard(createDirty)) {
+                    setCreateDialogOpen(false);
+                  }
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 type="submit"
                 disabled={
@@ -787,7 +778,10 @@ export function UsersListPage() {
               </Select>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:flex-nowrap">
+            <Button type="button" variant="outline" onClick={() => setRolesDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button
               onClick={() => {
                 if (!selectedUser) {

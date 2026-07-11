@@ -63,6 +63,10 @@ type TableRowActionMenuProps = {
 /**
  * Unified row actions: all actions live in one ⋯ dropdown menu.
  */
+/**
+ * @deprecated Prefer inline `AdminActionBar` buttons on dock footers and detail page headers.
+ * Row/list dropdown menus are no longer used in admin PC flows.
+ */
 export function TableRowActionMenu({ items, menuLabel = 'Actions' }: TableRowActionMenuProps) {
   const visibleItems = items.filter((item) => !item.hidden);
 

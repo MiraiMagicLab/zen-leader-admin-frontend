@@ -6,6 +6,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { AdminDockPanel } from '@/components/admin/admin-dock-panel';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
@@ -333,6 +334,8 @@ export function CourseRunEnrollmentsPanel({
           pageOffset={(enrollmentPage - 1) * ADMIN_LIST_PAGE_SIZE}
           showPagination={false}
           onRowClick={setViewEnrollment}
+          activeRowId={viewEnrollment?.id ?? null}
+          getRowId={(row) => row.id}
         />
         <div className="flex justify-end gap-2">
           <Button
@@ -411,7 +414,21 @@ export function CourseRunEnrollmentsPanel({
               label="Select learners"
             />
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:flex-nowrap">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (confirmDiscard(enrollDirty)) {
+                  setEnrollOpen(false);
+                  setEnrollUsers([]);
+                  setEnrollStatus('ACTIVE');
+                  setEnrollRole('STUDENT');
+                }
+              }}
+            >
+              Cancel
+            </Button>
             <Button
               onClick={() => enrollMutation.mutate()}
               disabled={enrollUsers.length === 0 || enrollMutation.isPending}
@@ -438,33 +455,37 @@ export function CourseRunEnrollmentsPanel({
         title="Import enrollments via Excel"
         size="lg"
         footer={
-          <>
-            <Button
-              variant="outline"
-              disabled={
-                !importFile ||
-                previewImportMutation.isPending ||
-                importMutation.isPending
-              }
-              onClick={() => previewImportMutation.mutate()}
-            >
-              <Eye className="mr-2 size-4" />
-              Preview
-            </Button>
-            <Button
-              disabled={
-                !importFile ||
-                !importPreview ||
-                importPreview.successCount === 0 ||
-                previewImportMutation.isPending ||
-                importMutation.isPending
-              }
-              onClick={() => importMutation.mutate()}
-            >
-              <Upload className="mr-2 size-4" />
-              Import Excel
-            </Button>
-          </>
+          <AdminFormDialogFooter
+            onCancel={() => {
+              setImportOpen(false);
+              setImportPreview(null);
+              setImportFile(null);
+              importFileBufferRef.current = null;
+            }}
+            secondaryActions={
+              <Button
+                type="button"
+                variant="outline"
+                disabled={
+                  !importFile ||
+                  previewImportMutation.isPending ||
+                  importMutation.isPending
+                }
+                onClick={() => previewImportMutation.mutate()}
+              >
+                <Eye className="mr-2 size-4" />
+                Preview
+              </Button>
+            }
+            submitLabel="Import Excel"
+            onSubmit={() => importMutation.mutate()}
+            pending={importMutation.isPending || previewImportMutation.isPending}
+            disabled={
+              !importFile ||
+              !importPreview ||
+              importPreview.successCount === 0
+            }
+          />
         }
       >
         <div className="space-y-4">
@@ -611,12 +632,8 @@ export function CourseRunEnrollmentsPanel({
         description={viewEnrollment?.userEmail ?? undefined}
         footer={
           viewEnrollment ? (
-            <div className="flex w-full flex-wrap items-center justify-end gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenProgress(viewEnrollment)}
-              >
+            <>
+              <Button variant="outline" size="sm" onClick={() => onOpenProgress(viewEnrollment)}>
                 <Eye className="mr-1.5 size-3.5" />
                 Progress
               </Button>
@@ -631,7 +648,7 @@ export function CourseRunEnrollmentsPanel({
                 Edit
               </Button>
               <Button
-                variant="destructive"
+                variant="destructiveOutline"
                 size="sm"
                 onClick={() =>
                   setPendingConfirm({
@@ -652,7 +669,7 @@ export function CourseRunEnrollmentsPanel({
                 <Trash2 className="mr-1.5 size-3.5" />
                 Delete
               </Button>
-            </div>
+            </>
           ) : null
         }
       >

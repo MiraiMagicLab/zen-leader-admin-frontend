@@ -17,14 +17,15 @@ import { adminToast as toast } from '@/lib/admin-toast';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminDetailSkeleton, AdminEmptyState, AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
+import { AdminActionBar } from '@/components/admin/admin-action-bar';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
-import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { RichTextPreview } from '@/components/rich-text-preview';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import {
   Dialog,
@@ -472,20 +473,15 @@ export function CourseDetailPage() {
             >
               {isReady ? 'Ready' : 'Draft'}
             </span>
-            <TableRowActionMenu
-              items={[
-                {
-                  label: 'Edit info',
-                  onClick: () => setEditCourseOpen(true),
-                },
-                {
-                  label: 'Delete',
-                  icon: Trash2,
-                  destructive: true,
-                  onClick: confirmDeleteCourse,
-                },
-              ]}
-            />
+            <AdminActionBar>
+              <Button size="sm" variant="outline" onClick={() => setEditCourseOpen(true)}>
+                Edit info
+              </Button>
+              <Button size="sm" variant="destructiveOutline" onClick={confirmDeleteCourse}>
+                <Trash2 className="mr-1.5 size-3.5" />
+                Delete
+              </Button>
+            </AdminActionBar>
           </div>
         ) : undefined
       }
@@ -553,12 +549,7 @@ export function CourseDetailPage() {
                     <dt className="text-muted-foreground">Program</dt>
                     <dd>
                       {course.programId ? (
-                        <Link
-                          to={ROUTES.programCourses(course.programId)}
-                          className="text-primary hover:underline"
-                        >
-                          {programDisplayName}
-                        </Link>
+                        <span>{programDisplayName}</span>
                       ) : (
                         <span className="text-muted-foreground">Not linked</span>
                       )}
@@ -671,12 +662,13 @@ export function CourseDetailPage() {
         title="Edit course"
         size="xl"
         footer={
-          <Button
-            onClick={() => updateCourseMutation.mutate()}
-            disabled={updateCourseMutation.isPending || !courseFormValid}
-          >
-            Save
-          </Button>
+          <AdminFormDialogFooter
+            onCancel={() => handleEditCourseOpenChange(false)}
+            submitLabel="Save"
+            onSubmit={() => updateCourseMutation.mutate()}
+            pending={updateCourseMutation.isPending}
+            disabled={!courseFormValid}
+          />
         }
       >
         <div className="space-y-4">
@@ -767,7 +759,10 @@ export function CourseDetailPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:flex-nowrap">
+            <Button type="button" variant="outline" onClick={() => handleEditIapOpenChange(false)}>
+              Cancel
+            </Button>
             <Button onClick={() => iapMutation.mutate()} disabled={iapMutation.isPending}>
               Save purchase IDs
             </Button>
@@ -781,12 +776,13 @@ export function CourseDetailPage() {
         title="Edit class"
         size="lg"
         footer={
-          <Button
-            onClick={() => updateRunMutation.mutate()}
-            disabled={updateRunMutation.isPending || !runFormValid}
-          >
-            Save
-          </Button>
+          <AdminFormDialogFooter
+            onCancel={() => handleEditRunOpenChange(false)}
+            submitLabel="Save"
+            onSubmit={() => updateRunMutation.mutate()}
+            pending={updateRunMutation.isPending}
+            disabled={!runFormValid}
+          />
         }
       >
         <div className="space-y-4">

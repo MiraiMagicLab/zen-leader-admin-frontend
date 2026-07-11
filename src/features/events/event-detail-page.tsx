@@ -7,11 +7,11 @@ import { adminToast as toast } from '@/lib/admin-toast';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
+import { AdminActionBar, AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminDetailSkeleton, AdminEmptyState, AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
-import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,17 +90,12 @@ function CommentItem({
             {formatDateTime(comment.createdAt)} • {comment.likesCount} likes
           </p>
         </div>
-        <div className="flex gap-1">
-          <Button variant="ghost" size="icon" onClick={() => onEdit(comment)}>
-            <Pencil className="size-4" />
+        <div className="flex shrink-0 gap-1.5">
+          <Button variant="outline" size="sm" onClick={() => onEdit(comment)}>
+            Edit
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive shrink-0"
-            onClick={() => onDelete(comment)}
-          >
-            <Trash2 className="size-4" />
+          <Button variant="destructiveOutline" size="sm" onClick={() => onDelete(comment)}>
+            Delete
           </Button>
         </div>
       </div>
@@ -357,38 +352,30 @@ export function EventDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
             {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
-            <TableRowActionMenu
-              items={[
-                {
-                  label: 'Edit',
-                  icon: Pencil,
-                  onClick: openEditSheet,
-                },
-                normalizeEventStatus(event.status) !== 'PUBLISHED'
-                  ? {
-                      label: 'Publish',
-                      onClick: () => openEventActionDialog('publish'),
-                    }
-                  : null,
-                normalizeEventStatus(event.status) !== 'DRAFT'
-                  ? {
-                      label: 'Move to draft',
-                      onClick: () => openEventActionDialog('unpublish'),
-                    }
-                  : null,
-                {
-                  label: 'Delete',
-                  icon: Trash2,
-                  destructive: true,
-                  onClick: () => openEventActionDialog('delete'),
-                },
-              ].filter(Boolean) as Array<{
-                label: string;
-                icon?: typeof Trash2;
-                destructive?: boolean;
-                onClick: () => void;
-              }>}
-            />
+            <AdminActionBar>
+              <Button size="sm" variant="outline" onClick={openEditSheet}>
+                <Pencil className="mr-1.5 size-3.5" />
+                Edit
+              </Button>
+              {normalizeEventStatus(event.status) !== 'PUBLISHED' ? (
+                <Button size="sm" variant="outline" onClick={() => openEventActionDialog('publish')}>
+                  Publish
+                </Button>
+              ) : null}
+              {normalizeEventStatus(event.status) !== 'DRAFT' ? (
+                <Button size="sm" variant="outline" onClick={() => openEventActionDialog('unpublish')}>
+                  Unpublish
+                </Button>
+              ) : null}
+              <Button
+                size="sm"
+                variant="destructiveOutline"
+                onClick={() => openEventActionDialog('delete')}
+              >
+                <Trash2 className="mr-1.5 size-3.5" />
+                Delete
+              </Button>
+            </AdminActionBar>
           </div>
         ) : undefined
       }
@@ -531,12 +518,13 @@ export function EventDetailPage() {
         title="Edit event"
         size="lg"
         footer={
-          <Button
-            onClick={() => updateMutation.mutate()}
-            disabled={editEventRequiredMissing || updateMutation.isPending}
-          >
-            Save changes
-          </Button>
+          <AdminFormDialogFooter
+            onCancel={() => closeEditEventSheet(false)}
+            submitLabel="Save changes"
+            onSubmit={() => updateMutation.mutate()}
+            pending={updateMutation.isPending}
+            disabled={editEventRequiredMissing}
+          />
         }
       >
         <div className="space-y-4">
@@ -674,7 +662,10 @@ export function EventDetailPage() {
               <p className="text-destructive text-sm">Comment text is required.</p>
             ) : null}
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:flex-nowrap">
+            <Button type="button" variant="outline" onClick={() => closeEditCommentDialog(false)}>
+              Cancel
+            </Button>
             <Button
               onClick={() => updateCommentMutation.mutate()}
               disabled={!editCommentContent.trim() || updateCommentMutation.isPending}

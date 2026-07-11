@@ -28,6 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -293,16 +294,7 @@ export function CoursesListPage() {
         id: 'program',
         header: 'Program',
         cell: ({ row }) => (
-          <Button
-            variant="link"
-            className="h-auto p-0"
-            asChild
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Link to={ROUTES.programCourses(row.original.programId)}>
-              {row.original.programCode ?? row.original.programId.slice(0, 8)}
-            </Link>
-          </Button>
+          <span className="truncate">{row.original.programCode ?? row.original.programId.slice(0, 8)}</span>
         ),
       });
     }
@@ -394,16 +386,16 @@ export function CoursesListPage() {
             }
             footer={
               selectedLiveCourse ? (
-                <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                <>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => openEditDialog(selectedLiveCourse)}
                   >
                     Edit
                   </Button>
                   <Button
-                    variant="destructive"
+                    variant="destructiveOutline"
                     size="sm"
                     onClick={() => setDeleteTarget(selectedLiveCourse)}
                   >
@@ -414,9 +406,9 @@ export function CoursesListPage() {
                     size="sm"
                     onClick={() => navigate(ROUTES.courseDetail(selectedLiveCourse.id))}
                   >
-                    Open workspace
+                    Go to manage
                   </Button>
-                </div>
+                </>
               ) : null
             }
           >
@@ -459,12 +451,13 @@ export function CoursesListPage() {
         }
         size="xl"
         footer={
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || !requiredFilled}
-          >
-            Save
-          </Button>
+          <AdminFormDialogFooter
+            onCancel={() => handleDialogOpenChange(false)}
+            submitLabel="Save"
+            onSubmit={() => saveMutation.mutate()}
+            pending={saveMutation.isPending}
+            disabled={!requiredFilled}
+          />
         }
       >
         <div className="space-y-4">
@@ -515,13 +508,7 @@ export function CoursesListPage() {
             {!isProgramScope && editing ? (
               <div className="space-y-2">
                 <Label>Program</Label>
-                <p className="text-sm">
-                  <Button variant="link" className="h-auto p-0" asChild>
-                    <Link to={ROUTES.programCourses(editing.programId)}>
-                      {editing.programCode ?? editing.programId}
-                    </Link>
-                  </Button>
-                </p>
+                <p className="text-sm">{editing.programCode ?? editing.programId}</p>
               </div>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">

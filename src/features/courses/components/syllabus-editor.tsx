@@ -25,7 +25,6 @@ import {
   FileText,
   GripVertical,
   Loader2,
-  MoreVertical,
   Pencil,
   PlayCircle,
   Plus,
@@ -45,12 +44,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { queryKeys } from '@/hooks/query-keys';
@@ -178,41 +171,26 @@ function SortableItem({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onEdit(section, item)}
-        >
+        <Button variant="outline" size="sm" onClick={() => onEdit(section, item)}>
           Edit
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="size-8">
-              <MoreVertical className="size-4" />
-              <span className="sr-only">Lesson actions</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-36">
-            <DropdownMenuItem
-              disabled={isDuplicatePending}
-              onClick={() => onDuplicate(item.id)}
-            >
-              {isDuplicatePending ? (
-                <Loader2 className="mr-2 size-4 animate-spin" />
-              ) : (
-                <CopyPlus className="mr-2 size-4" />
-              )}
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-              onClick={() => onDelete(item)}
-            >
-              <Trash2 className="mr-2 size-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isDuplicatePending}
+          onClick={() => onDuplicate(item.id)}
+        >
+          {isDuplicatePending ? (
+            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+          ) : (
+            <CopyPlus className="mr-1.5 size-3.5" />
+          )}
+          Duplicate
+        </Button>
+        <Button variant="destructiveOutline" size="sm" onClick={() => onDelete(item)}>
+          <Trash2 className="mr-1.5 size-3.5" />
+          Delete
+        </Button>
       </div>
     </div>
   );
@@ -319,43 +297,32 @@ function SortableSection({
             <p className="text-muted-foreground mt-1 text-sm">{items.length} lessons</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
           <Button variant="outline" size="sm" onClick={() => onAddItem(section)}>
             <Plus className="mr-1 size-4" />
             Add Lesson
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="size-8">
-                <MoreVertical className="size-4" />
-                <span className="sr-only">Chapter actions</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem
-                disabled={isDuplicateSectionPending}
-                onClick={() => onDuplicateSection(section.id)}
-              >
-                {isDuplicateSectionPending ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <CopyPlus className="mr-2 size-4" />
-                )}
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEditSection(section)}>
-                <Pencil className="mr-2 size-4" />
-                Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                onClick={() => onDeleteSection(section)}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isDuplicateSectionPending}
+            onClick={() => onDuplicateSection(section.id)}
+          >
+            {isDuplicateSectionPending ? (
+              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+            ) : (
+              <CopyPlus className="mr-1.5 size-3.5" />
+            )}
+            Duplicate
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onEditSection(section)}>
+            <Pencil className="mr-1.5 size-3.5" />
+            Rename
+          </Button>
+          <Button variant="destructiveOutline" size="sm" onClick={() => onDeleteSection(section)}>
+            <Trash2 className="mr-1.5 size-3.5" />
+            Delete
+          </Button>
         </div>
       </CardHeader>
       <div className="collapsible-content" data-state={collapsed ? 'closed' : 'open'}>
@@ -749,7 +716,7 @@ export function SyllabusEditor({
               <p className="text-destructive text-sm">Chapter name must be 100 characters or fewer.</p>
             ) : null}
           </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:flex-nowrap">
             <Button variant="outline" onClick={() => handleAddChapterOpenChange(false)}>
               Cancel
             </Button>
@@ -797,7 +764,7 @@ export function SyllabusEditor({
               ) : null}
             </div>
           ) : null}
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:flex-nowrap">
             <Button variant="outline" onClick={() => handleRenameChapterOpenChange(false)}>
               Cancel
             </Button>

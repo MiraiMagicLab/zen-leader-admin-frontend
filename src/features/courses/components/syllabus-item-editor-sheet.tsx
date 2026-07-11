@@ -10,7 +10,6 @@ import {
 import type { MultipartUploadProgress } from '@/lib/multipart-upload';
 
 import { RichTextEditor } from '@/components/rich-text-editor';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -20,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Switch } from '@/components/ui/switch';
 import { queryKeys } from '@/hooks/query-keys';
@@ -284,21 +284,16 @@ export function SyllabusItemEditorSheet({
       description={sectionTitle ? `Chapter: ${sectionTitle}` : undefined}
       size="lg"
       footer={
-        <>
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              setTouched({ title: true, video: true });
-              saveMutation.mutate();
-            }}
-            disabled={saveMutation.isPending || (isEdit && itemQuery.isLoading) || !requiredFilled}
-          >
-            {saveMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
-            {isEdit ? 'Save' : 'Create lesson'}
-          </Button>
-        </>
+        <AdminFormDialogFooter
+          onCancel={() => handleOpenChange(false)}
+          submitLabel={isEdit ? 'Save' : 'Create lesson'}
+          onSubmit={() => {
+            setTouched({ title: true, video: true });
+            saveMutation.mutate();
+          }}
+          pending={saveMutation.isPending}
+          disabled={(isEdit && itemQuery.isLoading) || !requiredFilled}
+        />
       }
     >
       <div className="space-y-6">

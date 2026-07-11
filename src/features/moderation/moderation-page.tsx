@@ -368,9 +368,9 @@ export function ModerationPage() {
           }
           footer={
             selectedLiveReport?.status === 'PENDING' ? (
-              <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   disabled={updateStatusMutation.isPending}
                   onClick={() =>
@@ -410,7 +410,7 @@ export function ModerationPage() {
                 >
                   Resolve
                 </Button>
-              </div>
+              </>
             ) : null
           }
         >

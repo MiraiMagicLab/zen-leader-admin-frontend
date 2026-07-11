@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 
+import { AdminActionBar } from '@/components/admin/admin-action-bar';
 import { AdminPanelSkeleton } from '@/components/admin/admin-loading';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -158,8 +159,8 @@ export function AdminDockPanel({
   );
 
   const footerBar = footer ? (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
-      {footer}
+    <div className="shrink-0 border-t px-3 py-2.5">
+      <AdminActionBar>{footer}</AdminActionBar>
     </div>
   ) : null;
 

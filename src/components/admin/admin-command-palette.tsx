@@ -69,12 +69,16 @@ export function AdminCommandPalette() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-muted-foreground hover:bg-muted hover:text-foreground hidden h-8 items-center gap-2 rounded-md border bg-card px-2.5 text-xs transition-colors md:inline-flex"
+        className="text-muted-foreground hover:text-foreground hidden h-9 w-52 items-center justify-between gap-2 rounded-md border border-border/70 bg-muted/35 px-3 text-sm transition-colors hover:bg-muted/55 md:flex"
         aria-label="Open command palette"
       >
-        <Search className="size-3.5" />
-        <span>Search</span>
-        <kbd className="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">⌘K</kbd>
+        <span className="flex min-w-0 items-center gap-2">
+          <Search className="size-4 shrink-0 opacity-60" />
+          <span className="truncate">Jump to page…</span>
+        </span>
+        <kbd className="bg-background text-muted-foreground hidden shrink-0 rounded border px-1.5 py-0.5 font-mono text-[10px] font-medium lg:inline-block">
+          ⌘K
+        </kbd>
       </button>
 
       <CommandDialog

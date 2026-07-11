@@ -4,10 +4,10 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
+import { AdminActionBar } from '@/components/admin/admin-action-bar';
 import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
-import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -135,33 +135,31 @@ export function CourseRunDetailPage() {
       }
       actions={
         run ? (
-          <div className="flex flex-wrap gap-2">
-            <TableRowActionMenu
-              items={[
-                {
-                  label: 'Run settings',
-                  onClick: openRunSettings,
-                },
-                {
-                  label: 'Delete',
-                  icon: Trash2,
-                  destructive: true,
-                  disabled: deleteRunMutation.isPending,
-                  onClick: () =>
-                    setPendingConfirm({
-                      title: 'Delete course run?',
-                      description: (
-                        <>
-                          Delete course run &quot;{run.code}&quot; along with its sessions. This
-                          cannot be undone.
-                        </>
-                      ),
-                      action: () => deleteRunMutation.mutate(),
-                    }),
-                },
-              ]}
-            />
-          </div>
+          <AdminActionBar>
+            <Button size="sm" variant="outline" onClick={openRunSettings}>
+              Run settings
+            </Button>
+            <Button
+              size="sm"
+              variant="destructiveOutline"
+              disabled={deleteRunMutation.isPending}
+              onClick={() =>
+                setPendingConfirm({
+                  title: 'Delete course run?',
+                  description: (
+                    <>
+                      Delete course run &quot;{run.code}&quot; along with its sessions. This
+                      cannot be undone.
+                    </>
+                  ),
+                  action: () => deleteRunMutation.mutate(),
+                })
+              }
+            >
+              <Trash2 className="mr-1.5 size-3.5" />
+              Delete
+            </Button>
+          </AdminActionBar>
         ) : undefined
       }
     >
@@ -184,12 +182,9 @@ export function CourseRunDetailPage() {
                       <dt className="text-muted-foreground">Course</dt>
                       <dd>
                         {course ? (
-                          <Link
-                            to={ROUTES.courseDetail(course.id)}
-                            className="font-medium text-primary hover:underline"
-                          >
+                          <span className="font-medium">
                             {course.code} — {course.title}
-                          </Link>
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 import { z } from 'zod';
 
@@ -29,6 +29,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -306,6 +307,8 @@ export function ProgramsListPage() {
               showPagination={false}
               emptyMessage='No programs yet. Click "Add program" to create one.'
               onRowClick={(program) => setSelectedProgram(program)}
+              activeRowId={selectedProgram?.id ?? null}
+              getRowId={(row) => row.id}
             />
 
             <ServerPagination
@@ -325,24 +328,23 @@ export function ProgramsListPage() {
         footer={
           selectedProgram && (
             <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => navigate(ROUTES.programCourses(selectedProgram.id))}
-              >
-                <BookOpen className="mr-1.5 size-3.5" />
-                View courses
-              </Button>
               <Button size="sm" variant="outline" onClick={() => openEditDialog(selectedProgram)}>
                 Edit
               </Button>
               <Button
                 size="sm"
-                variant="destructive"
+                variant="destructiveOutline"
                 onClick={() => setDeleteTarget(selectedProgram)}
               >
                 <Trash2 className="mr-1.5 size-3.5" />
                 Delete
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate(ROUTES.programCourses(selectedProgram.id))}
+              >
+                <ExternalLink className="mr-1.5 size-3.5" />
+                Go to manage
               </Button>
             </>
           )
@@ -379,12 +381,13 @@ export function ProgramsListPage() {
         title={editing ? 'Edit program' : 'Add program'}
         size="lg"
         footer={
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending || requiredMissing}
-          >
-            Save
-          </Button>
+          <AdminFormDialogFooter
+            onCancel={() => closeDialog(false)}
+            submitLabel="Save"
+            onSubmit={() => saveMutation.mutate()}
+            pending={saveMutation.isPending}
+            disabled={requiredMissing}
+          />
         }
       >
             <div className="space-y-4">

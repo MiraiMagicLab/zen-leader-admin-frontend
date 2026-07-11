@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Copy, RefreshCw } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
@@ -230,16 +230,7 @@ export function PaymentsPage() {
         accessorKey: 'courseRunCode',
         header: 'Course run',
         cell: ({ row }) => (
-          <Button
-            variant="link"
-            className="h-auto p-0"
-            asChild
-            onClick={(event) => event.stopPropagation()}
-          >
-            <Link to={ROUTES.courseRunDetail(row.original.courseRunId)}>
-              {row.original.courseRunCode}
-            </Link>
-          </Button>
+          <span className="font-medium">{row.original.courseRunCode}</span>
         ),
       },
       {
@@ -388,7 +379,7 @@ export function PaymentsPage() {
           }
           footer={
             selectedLiveOrder ? (
-              <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -400,15 +391,9 @@ export function PaymentsPage() {
                   <Copy className="mr-1.5 size-3.5" />
                   Copy ref
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(ROUTES.courseRunDetail(selectedLiveOrder.courseRunId))}
-                >
-                  Open course run
-                </Button>
                 {canRetryEnrollment(selectedLiveOrder) ? (
                   <Button
+                    variant="outline"
                     size="sm"
                     disabled={retryMutation.isPending}
                     onClick={() =>
@@ -424,10 +409,16 @@ export function PaymentsPage() {
                     }
                   >
                     <RefreshCw className="mr-1.5 size-3.5" />
-                    Retry enrollment
+                    Retry
                   </Button>
                 ) : null}
-              </div>
+                <Button
+                  size="sm"
+                  onClick={() => navigate(ROUTES.courseRunDetail(selectedLiveOrder.courseRunId))}
+                >
+                  Go to manage
+                </Button>
+              </>
             ) : null
           }
         >
@@ -460,14 +451,7 @@ export function PaymentsPage() {
                 />
                 <InspectorField
                   label="Course run"
-                  value={
-                    <Link
-                      className="text-primary hover:underline"
-                      to={ROUTES.courseRunDetail(selectedLiveOrder.courseRunId)}
-                    >
-                      {selectedLiveOrder.courseRunCode}
-                    </Link>
-                  }
+                  value={selectedLiveOrder.courseRunCode}
                   className="col-span-2"
                 />
                 <InspectorField

@@ -339,7 +339,7 @@ export function LiveSessionsPage() {
           }
           footer={
             selectedLiveSession ? (
-              <div className="flex w-full flex-wrap items-center justify-end gap-2">
+              <>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -369,7 +369,7 @@ export function LiveSessionsPage() {
                   </Button>
                 ) : null}
                 <Button
-                  variant="destructive"
+                  variant="destructiveOutline"
                   size="sm"
                   onClick={() =>
                     setPendingConfirm({
@@ -385,7 +385,7 @@ export function LiveSessionsPage() {
                   <Trash2 className="mr-1.5 size-3.5" />
                   Delete
                 </Button>
-              </div>
+              </>
             ) : null
           }
         >

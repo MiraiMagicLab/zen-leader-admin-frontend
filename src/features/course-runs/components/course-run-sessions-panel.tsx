@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
@@ -258,12 +259,18 @@ export function CourseRunSessionsPanel({
         title="Add session"
         size="lg"
         footer={
-          <Button
-            onClick={() => createSessionMutation.mutate()}
-            disabled={createSessionMutation.isPending || sessionForm.title.trim() === ''}
-          >
-            Save
-          </Button>
+          <AdminFormDialogFooter
+            onCancel={() => {
+              if (confirmDiscard(createSessionDirty)) {
+                setCreateSessionOpen(false);
+                setSessionForm(emptySessionForm);
+              }
+            }}
+            submitLabel="Save"
+            onSubmit={() => createSessionMutation.mutate()}
+            pending={createSessionMutation.isPending}
+            disabled={sessionForm.title.trim() === ''}
+          />
         }
       >
         <div className="space-y-4">
@@ -364,35 +371,41 @@ export function CourseRunSessionsPanel({
         size="lg"
         footer={
           editSession ? (
-            <div className="flex w-full flex-wrap items-center justify-end gap-2">
-              <Button
-                variant="destructive"
-                onClick={() =>
-                  setPendingConfirm({
-                    title: 'Delete session?',
-                    description: (
-                      <>
-                        Delete session &quot;{editSession.form.title}&quot;. This cannot be
-                        undone.
-                      </>
-                    ),
-                    action: () => {
-                      deleteSessionMutation.mutate(editSession.id);
-                      setEditSession(null);
-                    },
-                  })
+            <AdminFormDialogFooter
+              onCancel={() => {
+                if (confirmDiscard(editSessionDirty)) {
+                  setEditSession(null);
                 }
-              >
-                <Trash2 className="mr-1.5 size-3.5" />
-                Delete
-              </Button>
-              <Button
-                onClick={() => updateSessionMutation.mutate()}
-                disabled={updateSessionMutation.isPending || editSession.form.title.trim() === ''}
-              >
-                Save
-              </Button>
-            </div>
+              }}
+              submitLabel="Save"
+              onSubmit={() => updateSessionMutation.mutate()}
+              pending={updateSessionMutation.isPending}
+              disabled={editSession.form.title.trim() === ''}
+              dangerAction={
+                <Button
+                  type="button"
+                  variant="destructiveOutline"
+                  onClick={() =>
+                    setPendingConfirm({
+                      title: 'Delete session?',
+                      description: (
+                        <>
+                          Delete session &quot;{editSession.form.title}&quot;. This cannot be
+                          undone.
+                        </>
+                      ),
+                      action: () => {
+                        deleteSessionMutation.mutate(editSession.id);
+                        setEditSession(null);
+                      },
+                    })
+                  }
+                >
+                  <Trash2 className="mr-1.5 size-3.5" />
+                  Delete
+                </Button>
+              }
+            />
           ) : undefined
         }
       >

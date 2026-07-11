@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -13,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { queryKeys } from '@/hooks/query-keys';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
@@ -134,18 +134,18 @@ function CourseRunSettingsPanelBody({ open, onOpenChange, run }: CourseRunSettin
       title="Course run settings"
       size="lg"
       footer={
-        <Button
-          onClick={() => updateRunMutation.mutate()}
+        <AdminFormDialogFooter
+          onCancel={() => handleOpenChange(false)}
+          submitLabel="Save"
+          onSubmit={() => updateRunMutation.mutate()}
+          pending={updateRunMutation.isPending}
           disabled={
-            updateRunMutation.isPending ||
             runSettings.code.trim() === '' ||
             runSettings.status.trim() === '' ||
             runSettings.startsAt.trim() === '' ||
             runSettings.endsAt.trim() === ''
           }
-        >
-          Save
-        </Button>
+        />
       }
     >
       <div className="space-y-4">

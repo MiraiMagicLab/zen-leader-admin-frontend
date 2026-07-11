@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -377,6 +378,8 @@ export function EventsListPage() {
               showPagination={false}
               emptyMessage="No events yet."
               onRowClick={(event) => setSelectedEvent(event)}
+              activeRowId={selectedEvent?.id ?? null}
+              getRowId={(row) => row.id}
             />
 
             <ServerPagination
@@ -400,14 +403,6 @@ export function EventsListPage() {
         footer={
           selectedEvent && (
             <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => navigate(ROUTES.eventDetail(selectedEvent.id))}
-              >
-                <ExternalLink className="mr-1.5 size-3.5" />
-                Open workspace
-              </Button>
               {normalizeEventStatus(selectedEvent.status) !== 'PUBLISHED' ? (
                 <Button
                   size="sm"
@@ -431,13 +426,20 @@ export function EventsListPage() {
               )}
               <Button
                 size="sm"
-                variant="destructive"
+                variant="destructiveOutline"
                 onClick={() =>
                   openActionDialog(selectedEvent.id, selectedEvent.title, 'delete')
                 }
               >
                 <Trash2 className="mr-1.5 size-3.5" />
                 Delete
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate(ROUTES.eventDetail(selectedEvent.id))}
+              >
+                <ExternalLink className="mr-1.5 size-3.5" />
+                Go to manage
               </Button>
             </>
           )
@@ -480,12 +482,13 @@ export function EventsListPage() {
         description="Create the event details, schedule, and thumbnail before publishing."
         size="lg"
         footer={
-          <Button
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || requiredMissing}
-          >
-            Create event
-          </Button>
+          <AdminFormDialogFooter
+            onCancel={() => closeSheet(false)}
+            submitLabel="Create event"
+            onSubmit={() => createMutation.mutate()}
+            pending={createMutation.isPending}
+            disabled={requiredMissing}
+          />
         }
       >
         <div>

@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
@@ -212,16 +212,7 @@ export function CourseRunsListPage() {
               </span>
             );
           }
-          return (
-            <Button
-              variant="link"
-              className="h-auto max-w-[18rem] truncate p-0"
-              asChild
-              onClick={(event) => event.stopPropagation()}
-            >
-              <Link to={ROUTES.courseDetail(row.original.courseId, 'runs')}>{label}</Link>
-            </Button>
-          );
+          return <span className="max-w-[18rem] truncate">{label}</span>;
         },
       },
       {
@@ -364,9 +355,9 @@ export function CourseRunsListPage() {
             }
             footer={
               selectedRun ? (
-                <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                <>
                   <Button
-                    variant="destructive"
+                    variant="destructiveOutline"
                     size="sm"
                     onClick={() => setDeleteTarget(selectedRun)}
                   >
@@ -377,9 +368,9 @@ export function CourseRunsListPage() {
                     size="sm"
                     onClick={() => navigate(ROUTES.courseRunDetail(selectedRun.id))}
                   >
-                    Open workspace
+                    Go to manage
                   </Button>
-                </div>
+                </>
               ) : null
             }
           >

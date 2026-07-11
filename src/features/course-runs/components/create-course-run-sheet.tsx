@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminToast as toast } from '@/lib/admin-toast';
 
+import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -169,12 +169,13 @@ function CreateCourseRunSheetBody({
       title="Create new course run"
       size="lg"
       footer={
-        <Button
-          onClick={() => createMutation.mutate()}
-          disabled={!requiredFilled || createMutation.isPending}
-        >
-          Create
-        </Button>
+        <AdminFormDialogFooter
+          onCancel={() => handleOpenChange(false)}
+          submitLabel="Create"
+          onSubmit={() => createMutation.mutate()}
+          pending={createMutation.isPending}
+          disabled={!requiredFilled}
+        />
       }
     >
       <div className="space-y-4">

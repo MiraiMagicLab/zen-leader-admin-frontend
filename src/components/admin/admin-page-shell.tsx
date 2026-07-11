@@ -51,11 +51,7 @@ export function AdminPageShell({
           {description}
         </p>
       ) : null}
-      {toolbar ? (
-        <div className="admin-subtle-panel flex min-w-0 flex-col gap-3 p-3">
-          {toolbar}
-        </div>
-      ) : null}
+      {toolbar ? <div className="flex min-w-0 flex-col gap-3">{toolbar}</div> : null}
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   );

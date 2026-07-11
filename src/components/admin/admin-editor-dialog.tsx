@@ -53,7 +53,7 @@ export function AdminEditorDialog({
         </DialogHeader>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">{children}</div>
         {footer ? (
-          <DialogFooter className="shrink-0 border-t px-6 py-4 sm:justify-end">
+          <DialogFooter className="shrink-0 border-t px-6 py-4 sm:flex-nowrap sm:justify-end">
             {footer}
           </DialogFooter>
         ) : null}
