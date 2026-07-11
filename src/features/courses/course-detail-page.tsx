@@ -47,7 +47,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AdminPageTabs,
+  AdminTabsContent,
+  AdminTabsList,
+  AdminTabsTrigger,
+} from '@/components/admin/admin-tabs';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { SyllabusEditor } from '@/features/courses/components/syllabus-editor';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
@@ -499,12 +504,11 @@ export function CourseDetailPage() {
       ) : null}
 
       {course ? (
-        <Tabs
+        <AdminPageTabs
           value={activeTab}
           onValueChange={(value) => selectTab(value as CompletionAnchor)}
-          className="space-y-4"
         >
-          <TabsList className="grid h-10 w-full max-w-lg grid-cols-3">
+          <AdminTabsList columns={3} maxWidth="lg">
             {WORKSPACE_SECTIONS.map((section) => {
               const count =
                 section.id === 'syllabus'
@@ -513,15 +517,15 @@ export function CourseDetailPage() {
                     ? courseRuns.length
                     : null;
               return (
-                <TabsTrigger key={section.id} value={section.id} className="h-full">
+                <AdminTabsTrigger key={section.id} value={section.id}>
                   {section.label}
                   {count != null ? ` (${count})` : ''}
-                </TabsTrigger>
+                </AdminTabsTrigger>
               );
             })}
-          </TabsList>
+          </AdminTabsList>
 
-          <TabsContent value="info" className="space-y-4">
+          <AdminTabsContent value="info">
             <WorkspaceSection
               id="info"
               icon={<Info className="size-4" />}
@@ -602,9 +606,9 @@ export function CourseDetailPage() {
                 </div>
               </div>
             </WorkspaceSection>
-          </TabsContent>
+          </AdminTabsContent>
 
-          <TabsContent value="syllabus" className="space-y-4">
+          <AdminTabsContent value="syllabus">
             <WorkspaceSection id="syllabus" icon={<BookOpen className="size-4" />} title="Syllabus">
               <SyllabusEditor
                 courseId={courseId}
@@ -613,9 +617,9 @@ export function CourseDetailPage() {
                 onInitialItemHandled={clearDeepLinkItem}
               />
             </WorkspaceSection>
-          </TabsContent>
+          </AdminTabsContent>
 
-          <TabsContent value="runs" className="space-y-4">
+          <AdminTabsContent value="runs">
             <WorkspaceSection
               id="runs"
               icon={<CalendarDays className="size-4" />}
@@ -651,8 +655,8 @@ export function CourseDetailPage() {
                 />
               )}
             </WorkspaceSection>
-          </TabsContent>
-        </Tabs>
+          </AdminTabsContent>
+        </AdminPageTabs>
       ) : courseQuery.isLoading ? (
         <AdminDetailSkeleton />
       ) : null}

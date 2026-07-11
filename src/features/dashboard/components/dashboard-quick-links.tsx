@@ -14,7 +14,7 @@ type DashboardQuickLinksProps = {
  */
 export function DashboardQuickLinks({ items }: DashboardQuickLinksProps) {
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full flex-col border-border/70 shadow-none ring-0">
       <CardHeader className="pb-3">
         <h2 className="text-base font-medium">Quick actions</h2>
       </CardHeader>

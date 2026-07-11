@@ -124,7 +124,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className={cn('space-y-3', className)}>
-      <div className="overflow-hidden rounded-lg border">
+      <div className="admin-panel overflow-hidden rounded-2xl">
         <div className="relative max-h-[min(70vh,720px)] overflow-auto">
           <Table>
             <TableHeader className="bg-muted/30 sticky top-0 z-10 border-b">

@@ -15,7 +15,7 @@ type FilterChipGroupProps = {
 };
 
 /**
- * Compact inline filter control — replaces status/role Select boxes on list pages.
+ * Segmented inline filter control for admin list pages.
  */
 export function FilterChipGroup({
   value,
@@ -28,7 +28,7 @@ export function FilterChipGroup({
     <div
       role="group"
       aria-label={ariaLabel}
-      className={cn('flex flex-wrap items-center gap-1', className)}
+      className={cn('admin-segment flex flex-wrap items-center gap-1', className)}
     >
       {options.map((option) => {
         const active = value === option.value;
@@ -39,8 +39,8 @@ export function FilterChipGroup({
             size="sm"
             variant={active ? 'secondary' : 'ghost'}
             className={cn(
-              'h-8 rounded-full px-3 text-xs font-medium',
-              active && 'shadow-sm',
+              'h-8 rounded-lg px-3 text-xs font-medium',
+              active && 'border border-border/60 bg-background shadow-sm',
             )}
             aria-pressed={active}
             onClick={() => onChange(option.value)}

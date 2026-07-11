@@ -27,7 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AdminPageTabs,
+  AdminTabsContent,
+  AdminTabsList,
+  AdminTabsTrigger,
+} from '@/components/admin/admin-tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
@@ -168,33 +173,29 @@ export function NotificationsPage() {
               <CardDescription>Broadcast to everyone, or pick specific users.</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 pt-0">
-              <Tabs
+              <AdminPageTabs
                 value={recipientType}
                 onValueChange={(val) => setRecipientType(val as 'all' | 'specific')}
               >
-                <TabsList className="grid h-9 w-full grid-cols-2">
-                  <TabsTrigger value="all" className="h-full">
-                    All users
-                  </TabsTrigger>
-                  <TabsTrigger value="specific" className="h-full">
-                    Specific
-                  </TabsTrigger>
-                </TabsList>
-                <TabsContent value="all" className="mt-4">
-                  <div className="rounded-lg border border-dashed px-4 py-8 text-center">
+                <AdminTabsList columns={2} maxWidth="full">
+                  <AdminTabsTrigger value="all">All users</AdminTabsTrigger>
+                  <AdminTabsTrigger value="specific">Specific</AdminTabsTrigger>
+                </AdminTabsList>
+                <AdminTabsContent value="all">
+                  <div className="admin-subtle-panel border-dashed px-4 py-8 text-center">
                     <p className="text-muted-foreground text-sm">
                       This notification will be sent to every registered user.
                     </p>
                   </div>
-                </TabsContent>
-                <TabsContent value="specific" className="mt-3">
+                </AdminTabsContent>
+                <AdminTabsContent value="specific">
                   <UserPicker
                     selectedUsers={selectedUsers}
                     onSelectedUsersChange={setSelectedUsers}
                     label="Search users"
                   />
-                </TabsContent>
-              </Tabs>
+                </AdminTabsContent>
+              </AdminPageTabs>
             </CardContent>
             <CardFooter className="text-muted-foreground mt-auto flex items-center justify-between border-t bg-muted/20 py-4 text-xs">
               <span>

@@ -1,34 +1,15 @@
 import {
-  Activity,
-  BookOpen,
-  CalendarDays,
-  GraduationCap,
-  Users,
+  AlertTriangle,
+  CircleDollarSign,
+  Radio,
+  ShieldAlert,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Label,
-  Pie,
-  PieChart,
-  XAxis,
-  YAxis,
-} from 'recharts';
 
 import { AdminSkeletonBar } from '@/components/admin/admin-loading';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
-import {
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart';
 import {
   Card,
   CardContent,
@@ -36,145 +17,154 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { formatNumber } from '@/lib/format';
+import { formatMoney, formatNumber } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { ROUTES } from '@/routes/paths';
-import type { DashboardStats } from '../hooks/use-dashboard-data';
+import type { DashboardOpsMetrics } from '../hooks/use-dashboard-data';
 
-type StatKey = keyof DashboardStats;
+type OpsMetricKey = keyof Pick<
+  DashboardOpsMetrics,
+  | 'activeLiveSessions'
+  | 'pendingPayments'
+  | 'paidOrders'
+  | 'enrollmentFailures'
+  | 'pendingReports'
+>;
 
-type StatItem = {
+type OpsMetricItem = {
   label: string;
-  shortLabel: string;
-  key: StatKey;
+  description: string;
+  key: OpsMetricKey;
   icon: LucideIcon;
   href: string;
-  /** CSS var from theme --chart-N */
-  chartVar: `--chart-${1 | 2 | 3 | 4 | 5}`;
-  /** Soft tint for icon well */
-  wellClass: string;
-  iconClass: string;
+  tone: 'live' | 'money' | 'warn' | 'neutral';
+  format?: 'count';
 };
 
-const STAT_ITEMS: StatItem[] = [
+const OPS_METRICS: OpsMetricItem[] = [
   {
-    label: 'Users',
-    shortLabel: 'Users',
-    key: 'users',
-    icon: Users,
-    href: ROUTES.users,
-    chartVar: '--chart-1',
-    wellClass: 'bg-[color-mix(in_oklch,var(--chart-1)_16%,transparent)]',
-    iconClass: 'text-[var(--chart-1)]',
+    label: 'Live rooms',
+    description: 'Sessions currently active on meet',
+    key: 'activeLiveSessions',
+    icon: Radio,
+    href: `${ROUTES.liveSessions}?status=ACTIVE`,
+    tone: 'live',
   },
   {
-    label: 'Programs',
-    shortLabel: 'Programs',
-    key: 'programs',
-    icon: GraduationCap,
-    href: ROUTES.programs,
-    chartVar: '--chart-2',
-    wellClass: 'bg-[color-mix(in_oklch,var(--chart-2)_16%,transparent)]',
-    iconClass: 'text-[var(--chart-2)]',
+    label: 'Collected revenue',
+    description: 'Sum of paid orders (sampled up to 200)',
+    key: 'paidOrders',
+    icon: CircleDollarSign,
+    href: `${ROUTES.payments}?status=PAID`,
+    tone: 'money',
   },
   {
-    label: 'Courses',
-    shortLabel: 'Courses',
-    key: 'courses',
-    icon: BookOpen,
-    href: ROUTES.courses,
-    chartVar: '--chart-3',
-    wellClass: 'bg-[color-mix(in_oklch,var(--chart-3)_16%,transparent)]',
-    iconClass: 'text-[var(--chart-3)]',
+    label: 'Pending payments',
+    description: 'Orders awaiting checkout',
+    key: 'pendingPayments',
+    icon: Wallet,
+    href: `${ROUTES.payments}?status=PENDING`,
+    tone: 'neutral',
   },
   {
-    label: 'Course runs',
-    shortLabel: 'Runs',
-    key: 'runs',
-    icon: Activity,
-    href: ROUTES.courseRuns,
-    chartVar: '--chart-4',
-    wellClass: 'bg-[color-mix(in_oklch,var(--chart-4)_16%,transparent)]',
-    iconClass: 'text-[var(--chart-4)]',
+    label: 'Pending reports',
+    description: 'Moderation queue needing review',
+    key: 'pendingReports',
+    icon: ShieldAlert,
+    href: ROUTES.moderation,
+    tone: 'warn',
   },
   {
-    label: 'Events',
-    shortLabel: 'Events',
-    key: 'events',
-    icon: CalendarDays,
-    href: ROUTES.events,
-    chartVar: '--chart-5',
-    wellClass: 'bg-[color-mix(in_oklch,var(--chart-5)_16%,transparent)]',
-    iconClass: 'text-[var(--chart-5)]',
+    label: 'Enrollment failures',
+    description: 'Paid orders that failed to enroll',
+    key: 'enrollmentFailures',
+    icon: AlertTriangle,
+    href: `${ROUTES.payments}?status=ENROLL_FAILED`,
+    tone: 'warn',
   },
 ];
 
-const VOLUME_CHART_CONFIG: ChartConfig = Object.fromEntries(
-  STAT_ITEMS.map((item) => [
-    item.key,
-    { label: item.label, color: `var(${item.chartVar})` },
-  ]),
-) as ChartConfig;
-
-const CATALOG_KEYS = ['programs', 'courses', 'runs', 'events'] as const;
+const TONE_STYLES: Record<OpsMetricItem['tone'], { well: string; icon: string; accent: string }> = {
+  live: {
+    well: 'bg-emerald-500/10',
+    icon: 'text-emerald-600 dark:text-emerald-400',
+    accent: 'bg-emerald-500',
+  },
+  money: {
+    well: 'bg-sky-500/10',
+    icon: 'text-sky-600 dark:text-sky-400',
+    accent: 'bg-sky-500',
+  },
+  warn: {
+    well: 'bg-amber-500/10',
+    icon: 'text-amber-600 dark:text-amber-400',
+    accent: 'bg-amber-500',
+  },
+  neutral: {
+    well: 'bg-muted/70',
+    icon: 'text-muted-foreground',
+    accent: 'bg-primary',
+  },
+};
 
 type StatsOverviewProps = {
-  stats: DashboardStats | undefined;
+  metrics: DashboardOpsMetrics | undefined;
   isLoading: boolean;
   isError: boolean;
   error: unknown;
   onRetry: () => void;
 };
 
-function ratioLabel(numerator: number, denominator: number): string {
-  if (denominator <= 0) return '—';
-  return (numerator / denominator).toFixed(1);
-}
-
-/** Single stat card with category color and deep-link. */
-function StatCard({
+/** Single operational KPI card with deep-link to the relevant admin queue. */
+function OpsMetricCard({
   item,
-  value,
+  metrics,
   isLoading,
 }: {
-  item: StatItem;
-  value: number;
+  item: OpsMetricItem;
+  metrics: DashboardOpsMetrics | undefined;
   isLoading: boolean;
 }) {
   const Icon = item.icon;
+  const tone = TONE_STYLES[item.tone];
+  const count = metrics?.[item.key] ?? 0;
+
+  let displayValue = isLoading ? null : formatNumber(count);
+  if (item.key === 'paidOrders' && metrics && !isLoading) {
+    displayValue = formatMoney(metrics.paidRevenue, metrics.paidRevenueCurrency);
+    if (metrics.paidRevenueSampled) {
+      displayValue = `${displayValue}+`;
+    }
+  }
 
   return (
     <Link to={item.href} className="group block min-w-0 no-underline">
-      <div
-        className={cn(
-          'border-border/60 bg-card hover:border-border relative flex h-full items-center gap-3 overflow-hidden rounded-xl border p-4 transition-all hover:shadow-sm',
-        )}
-      >
-        <span
-          aria-hidden
-          className="absolute inset-y-0 left-0 w-1"
-          style={{ backgroundColor: `var(${item.chartVar})` }}
-        />
+      <div className="admin-metric-card relative flex h-full items-start gap-3 p-4">
+        <span aria-hidden className={cn('absolute inset-y-3 left-0 w-1 rounded-full', tone.accent)} />
         <div
           className={cn(
-            'ml-1 flex size-10 shrink-0 items-center justify-center rounded-lg',
-            item.wellClass,
-            item.iconClass,
+            'ml-1 flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/50',
+            tone.well,
+            tone.icon,
           )}
         >
           <Icon className="size-5" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-muted-foreground text-xs font-medium tracking-wide">
-            {item.label}
-          </p>
-          {isLoading ? (
-            <AdminSkeletonBar className="mt-1 h-7 w-16" />
+          <p className="text-muted-foreground text-xs font-medium">{item.label}</p>
+          {displayValue === null ? (
+            <AdminSkeletonBar className="mt-1.5 h-7 w-24" />
           ) : (
-            <p className="text-foreground text-2xl font-semibold tracking-tight tabular-nums">
-              {formatNumber(value)}
+            <p className="text-foreground mt-1 text-xl font-semibold tracking-tight tabular-nums">
+              {displayValue}
             </p>
           )}
+          <p className="text-muted-foreground mt-1 text-[11px] leading-snug">
+            {item.description}
+            {item.key === 'paidOrders' && metrics && !isLoading ? (
+              <span className="block">{formatNumber(metrics.paidOrders)} paid orders</span>
+            ) : null}
+          </p>
         </div>
       </div>
     </Link>
@@ -182,257 +172,113 @@ function StatCard({
 }
 
 /**
- * Platform KPI cards + admin charts:
- * - multi-color horizontal volume bars
- * - catalog mix donut (programs / courses / runs / events)
- * - derived density ratios for ops glance
+ * Operational snapshot for admins: live activity, revenue, queues needing action.
  */
 export function StatsOverview({
-  stats,
+  metrics,
   isLoading,
   isError,
   error,
   onRetry,
 }: StatsOverviewProps) {
-  const volumeData = STAT_ITEMS.map((item) => ({
-    key: item.key,
-    label: item.shortLabel,
-    fullLabel: item.label,
-    count: stats?.[item.key] ?? 0,
-    fill: `var(${item.chartVar})`,
-  }));
-
-  const catalogItems = STAT_ITEMS.filter((item) =>
-    (CATALOG_KEYS as readonly string[]).includes(item.key),
-  );
-  const catalogData = catalogItems.map((item) => ({
-    key: item.key,
-    name: item.shortLabel,
-    value: stats?.[item.key] ?? 0,
-    fill: `var(${item.chartVar})`,
-  }));
-  const catalogTotal = catalogData.reduce((sum, row) => sum + row.value, 0);
-
-  const catalogConfig: ChartConfig = Object.fromEntries(
-    catalogItems.map((item) => [
-      item.key,
-      { label: item.label, color: `var(${item.chartVar})` },
-    ]),
-  ) as ChartConfig;
-
-  const users = stats?.users ?? 0;
-  const programs = stats?.programs ?? 0;
-  const courses = stats?.courses ?? 0;
-  const runs = stats?.runs ?? 0;
+  const pending = metrics?.pendingPayments ?? 0;
+  const paid = metrics?.paidOrders ?? 0;
+  const failed = metrics?.enrollmentFailures ?? 0;
+  const pipelineTotal = pending + paid + failed;
 
   return (
     <div className="space-y-4">
       {isError ? (
         <AdminQueryError
-          message={(error as Error)?.message ?? 'Failed to load stats.'}
+          message={(error as Error)?.message ?? 'Failed to load dashboard metrics.'}
           onRetry={onRetry}
         />
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-        {STAT_ITEMS.map((item) => (
-          <StatCard
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {OPS_METRICS.map((item) => (
+          <OpsMetricCard
             key={item.key}
             item={item}
-            value={stats?.[item.key] ?? 0}
+            metrics={metrics}
             isLoading={isLoading}
           />
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-12">
-        <Card className="lg:col-span-7">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Platform volume
-            </CardTitle>
-            <CardDescription>
-              Absolute counts across users and learning inventory. Each bar uses
-              its own category color.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <AdminSkeletonBar className="h-[280px] w-full rounded-lg" />
-            ) : (
-              <ChartContainer
-                config={VOLUME_CHART_CONFIG}
-                className="aspect-auto h-[280px] w-full"
-              >
-                <BarChart
-                  data={volumeData}
-                  layout="vertical"
-                  margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
-                >
-                  <CartesianGrid
-                    horizontal={false}
-                    strokeDasharray="3 3"
-                    className="stroke-border/50"
+      <Card className="admin-panel shadow-none ring-0">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Payment pipeline</CardTitle>
+          <CardDescription>
+            Queue health across checkout, successful enrollments, and failures.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isLoading ? (
+            <AdminSkeletonBar className="h-10 w-full rounded-xl" />
+          ) : pipelineTotal === 0 ? (
+            <p className="text-muted-foreground text-sm">No payment records yet.</p>
+          ) : (
+            <>
+              <div className="flex h-3 overflow-hidden rounded-full border border-border/60 bg-muted/40">
+                {pending > 0 ? (
+                  <span
+                    className="bg-amber-400/90"
+                    style={{ width: `${(pending / pipelineTotal) * 100}%` }}
+                    title={`Pending: ${pending}`}
                   />
-                  <XAxis
-                    type="number"
-                    allowDecimals={false}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 12 }}
+                ) : null}
+                {paid > 0 ? (
+                  <span
+                    className="bg-emerald-500/90"
+                    style={{ width: `${(paid / pipelineTotal) * 100}%` }}
+                    title={`Paid: ${paid}`}
                   />
-                  <YAxis
-                    type="category"
-                    dataKey="label"
-                    width={72}
-                    tickLine={false}
-                    axisLine={false}
-                    tick={{ fontSize: 12 }}
+                ) : null}
+                {failed > 0 ? (
+                  <span
+                    className="bg-destructive/85"
+                    style={{ width: `${(failed / pipelineTotal) * 100}%` }}
+                    title={`Failed: ${failed}`}
                   />
-                  <ChartTooltip
-                    cursor={{ fill: 'var(--muted)', opacity: 0.35 }}
-                    content={<ChartTooltipContent />}
-                  />
-                  <Bar dataKey="count" radius={[0, 6, 6, 0]} maxBarSize={28}>
-                    {volumeData.map((row) => (
-                      <Cell key={row.key} fill={row.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Catalog mix</CardTitle>
-            <CardDescription>
-              Share of learning objects (programs, courses, runs, events). Users
-              are excluded so scale stays readable.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <AdminSkeletonBar className="h-[280px] w-full rounded-lg" />
-            ) : catalogTotal === 0 ? (
-              <div className="text-muted-foreground flex h-[280px] items-center justify-center text-sm">
-                No catalog records yet.
+                ) : null}
               </div>
-            ) : (
-              <ChartContainer
-                config={catalogConfig}
-                className="aspect-auto mx-auto h-[280px] w-full"
-              >
-                <PieChart>
-                  <ChartTooltip
-                    content={<ChartTooltipContent nameKey="key" hideLabel />}
-                  />
-                  <Pie
-                    data={catalogData}
-                    dataKey="value"
-                    nameKey="key"
-                    innerRadius={58}
-                    outerRadius={92}
-                    strokeWidth={2}
-                    stroke="var(--card)"
-                    paddingAngle={2}
-                  >
-                    {catalogData.map((row) => (
-                      <Cell key={row.key} fill={row.fill} />
-                    ))}
-                    <Label
-                      content={({ viewBox }) => {
-                        if (
-                          !viewBox ||
-                          !('cx' in viewBox) ||
-                          !('cy' in viewBox)
-                        ) {
-                          return null;
-                        }
-                        return (
-                          <text
-                            x={viewBox.cx}
-                            y={viewBox.cy}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                          >
-                            <tspan
-                              x={viewBox.cx}
-                              y={(viewBox.cy ?? 0) - 6}
-                              className="fill-foreground text-xl font-semibold"
-                            >
-                              {formatNumber(catalogTotal)}
-                            </tspan>
-                            <tspan
-                              x={viewBox.cx}
-                              y={(viewBox.cy ?? 0) + 14}
-                              className="fill-muted-foreground text-[11px]"
-                            >
-                              catalog items
-                            </tspan>
-                          </text>
-                        );
-                      }}
-                    />
-                  </Pie>
-                  <ChartLegend
-                    content={<ChartLegendContent nameKey="key" />}
-                    verticalAlign="bottom"
-                  />
-                </PieChart>
-              </ChartContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiTile
-          label="Courses / program"
-          value={isLoading ? null : ratioLabel(courses, programs)}
-          hint="Catalog depth"
-        />
-        <KpiTile
-          label="Runs / course"
-          value={isLoading ? null : ratioLabel(runs, courses)}
-          hint="Delivery density"
-        />
-        <KpiTile
-          label="Catalog total"
-          value={isLoading ? null : formatNumber(catalogTotal)}
-          hint="Programs + courses + runs + events"
-        />
-        <KpiTile
-          label="Users on platform"
-          value={isLoading ? null : formatNumber(users)}
-          hint="Accounts (all roles)"
-        />
-      </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <PipelineStat label="Awaiting payment" value={pending} tone="pending" />
+                <PipelineStat label="Paid orders" value={paid} tone="paid" />
+                <PipelineStat label="Enrollment failed" value={failed} tone="failed" />
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function KpiTile({
+function PipelineStat({
   label,
   value,
-  hint,
+  tone,
 }: {
   label: string;
-  value: string | null;
-  hint: string;
+  value: number;
+  tone: 'pending' | 'paid' | 'failed';
 }) {
+  const dotClass =
+    tone === 'pending'
+      ? 'bg-amber-400'
+      : tone === 'paid'
+        ? 'bg-emerald-500'
+        : 'bg-destructive';
+
   return (
-    <div className="border-border/60 bg-card rounded-xl border px-4 py-3">
-      <p className="text-muted-foreground text-xs font-medium">{label}</p>
-      {value === null ? (
-        <AdminSkeletonBar className="mt-2 h-6 w-14" />
-      ) : (
-        <p className="text-foreground mt-1 text-xl font-semibold tabular-nums tracking-tight">
-          {value}
-        </p>
-      )}
-      <p className="text-muted-foreground mt-1 text-[11px] leading-snug">{hint}</p>
+    <div className="admin-subtle-panel flex items-center justify-between gap-3 px-4 py-3">
+      <div className="flex min-w-0 items-center gap-2">
+        <span className={cn('size-2 shrink-0 rounded-full', dotClass)} />
+        <p className="text-muted-foreground truncate text-xs">{label}</p>
+      </div>
+      <p className="text-foreground text-sm font-semibold tabular-nums">{formatNumber(value)}</p>
     </div>
   );
 }

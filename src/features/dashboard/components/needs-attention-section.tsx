@@ -97,7 +97,7 @@ function AttentionQueue<T>({
           {items.map((item) => (
             <li
               key={keyExtractor(item)}
-              className="border-border/60 hover:border-border hover:bg-muted/30 rounded-lg border px-3 py-2 transition-colors"
+              className="border-border/60 hover:border-border hover:bg-muted/30 rounded-xl border px-3 py-2 transition-colors"
             >
               <p className="truncate text-sm font-medium">{renderPrimary(item)}</p>
               <p className="text-muted-foreground truncate text-xs">
@@ -124,7 +124,7 @@ export function NeedsAttentionSection<T>({
   const allEmpty = !isLoading && !hasError && totalItems === 0;
 
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full flex-col border-border/70 shadow-none ring-0">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <AlertTriangle className="text-amber-500 size-4 shrink-0" />
@@ -133,7 +133,7 @@ export function NeedsAttentionSection<T>({
       </CardHeader>
       <CardContent className="flex flex-1 flex-col">
         {allEmpty ? (
-          <div className="bg-muted/30 flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed px-4 py-8 text-center">
+          <div className="admin-subtle-panel flex flex-1 flex-col items-center justify-center border-dashed px-4 py-8 text-center">
             <CheckCircle2 className="text-emerald-600 dark:text-emerald-400 mb-2 size-8" />
             <p className="text-sm font-medium">All clear</p>
             <p className="text-muted-foreground mt-1 max-w-xs text-xs leading-relaxed">

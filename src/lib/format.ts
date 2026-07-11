@@ -44,3 +44,11 @@ export function formatDate(value: string | null | undefined): string {
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat('vi-VN').format(value);
 }
+
+/** Currency display for admin payment metrics. */
+export function formatMoney(
+  amount: number,
+  currency = 'VND',
+): string {
+  return `${formatNumber(amount)} ${currency}`;
+}

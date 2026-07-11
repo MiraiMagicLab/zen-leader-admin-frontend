@@ -2,43 +2,68 @@ import { useQuery } from '@tanstack/react-query';
 
 import { queryKeys } from '@/hooks/query-keys';
 import { auditLogsApi } from '@/services/audit-logs/audit-logs-api';
-import { courseRunsApi } from '@/services/course-runs/course-runs-api';
-import { coursesApi } from '@/services/courses/courses-api';
-import { eventsApi } from '@/services/events/events-api';
+import { liveSessionsApi } from '@/services/live-sessions/live-sessions-api';
 import { paymentsApi } from '@/services/payments/payments-api';
-import { programsApi } from '@/services/programs/programs-api';
 import { safetyApi } from '@/services/safety/safety-api';
-import { getUsersApi } from '@/services/users/users-api';
 
 const ATTENTION_PAGE_SIZE = 5;
+const REVENUE_SAMPLE_SIZE = 200;
 
-/** Platform-wide stats fetched in parallel from 5 endpoints. */
-export type DashboardStats = {
-  users: number;
-  programs: number;
-  courses: number;
-  runs: number;
-  events: number;
+/** Operational metrics surfaced on the admin dashboard. */
+export type DashboardOpsMetrics = {
+  activeLiveSessions: number;
+  pendingPayments: number;
+  paidOrders: number;
+  paidRevenue: number;
+  paidRevenueCurrency: string;
+  paidRevenueSampled: boolean;
+  enrollmentFailures: number;
+  pendingReports: number;
 };
+
+function sumPaidRevenue(
+  orders: { amount: number; currency: string }[],
+): { total: number; currency: string } {
+  if (orders.length === 0) {
+    return { total: 0, currency: 'VND' };
+  }
+
+  return {
+    total: orders.reduce((sum, order) => sum + order.amount, 0),
+    currency: orders[0]?.currency ?? 'VND',
+  };
+}
 
 /** Aggregated queries for the admin dashboard overview. */
 export function useDashboardData() {
-  const statsQuery = useQuery({
-    queryKey: queryKeys.dashboard.stats(),
-    queryFn: async (): Promise<DashboardStats> => {
-      const [users, programs, courses, runs, events] = await Promise.all([
-        getUsersApi({ page: 1, size: 1 }),
-        programsApi.getPage(0, 1),
-        coursesApi.getPage(0, 1),
-        courseRunsApi.getPage(0, 1),
-        eventsApi.getAll(0, 1, true),
+  const opsQuery = useQuery({
+    queryKey: queryKeys.dashboard.ops(),
+    queryFn: async (): Promise<DashboardOpsMetrics> => {
+      const [
+        activeLiveSessions,
+        pendingPayments,
+        paidOrdersPage,
+        enrollmentFailures,
+        pendingReports,
+      ] = await Promise.all([
+        liveSessionsApi.list(0, 1, 'ACTIVE'),
+        paymentsApi.listOrders(0, 1, 'PENDING'),
+        paymentsApi.listOrders(0, REVENUE_SAMPLE_SIZE, 'PAID'),
+        paymentsApi.listOrders(0, 1, 'ENROLL_FAILED'),
+        safetyApi.listReports(0, 1, 'PENDING'),
       ]);
+
+      const revenue = sumPaidRevenue(paidOrdersPage.data);
+
       return {
-        users: users.totalElement,
-        programs: programs.totalElement,
-        courses: courses.totalElement,
-        runs: runs.totalElement,
-        events: events.totalElement,
+        activeLiveSessions: activeLiveSessions.totalElement,
+        pendingPayments: pendingPayments.totalElement,
+        paidOrders: paidOrdersPage.totalElement,
+        paidRevenue: revenue.total,
+        paidRevenueCurrency: revenue.currency,
+        paidRevenueSampled: paidOrdersPage.totalElement > paidOrdersPage.data.length,
+        enrollmentFailures: enrollmentFailures.totalElement,
+        pendingReports: pendingReports.totalElement,
       };
     },
   });
@@ -61,7 +86,7 @@ export function useDashboardData() {
   });
 
   return {
-    statsQuery,
+    opsQuery,
     reportsQuery,
     failedPaymentsQuery,
     auditQuery,

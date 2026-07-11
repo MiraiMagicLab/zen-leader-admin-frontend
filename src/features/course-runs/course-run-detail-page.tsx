@@ -10,7 +10,12 @@ import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-d
 import { TableRowActionMenu } from '@/components/admin/table-row-actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AdminPageTabs,
+  AdminTabsContent,
+  AdminTabsList,
+  AdminTabsTrigger,
+} from '@/components/admin/admin-tabs';
 import { courseRunStatusLabel } from '@/lib/course-run-status';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
@@ -239,25 +244,25 @@ export function CourseRunDetailPage() {
                 </div>
             </section>
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid h-10 w-full max-w-md grid-cols-2">
-                <TabsTrigger value="sessions" className="h-full">
+            <AdminPageTabs value={activeTab} onValueChange={setActiveTab}>
+              <AdminTabsList columns={2} maxWidth="md">
+                <AdminTabsTrigger value="sessions">
                   Sessions ({sessions.length})
-                </TabsTrigger>
-                <TabsTrigger value="enrollments" className="h-full">
+                </AdminTabsTrigger>
+                <AdminTabsTrigger value="enrollments">
                   Enrollment ({enrollmentsQuery.data?.totalElement ?? 0})
-                </TabsTrigger>
-              </TabsList>
+                </AdminTabsTrigger>
+              </AdminTabsList>
 
-              <TabsContent value="sessions" className="space-y-4">
+              <AdminTabsContent value="sessions">
                 <CourseRunSessionsPanel
                   runId={runId}
                   sessions={sessions}
                   isLoading={sessionsQuery.isLoading}
                 />
-              </TabsContent>
+              </AdminTabsContent>
 
-              <TabsContent value="enrollments" className="space-y-4">
+              <AdminTabsContent value="enrollments">
                 <CourseRunEnrollmentsPanel
                   runId={runId}
                   enrollments={enrollments}
@@ -267,8 +272,8 @@ export function CourseRunDetailPage() {
                   onEnrollmentPageChange={setEnrollmentPage}
                   onOpenProgress={setProgressEnrollment}
                 />
-              </TabsContent>
-            </Tabs>
+              </AdminTabsContent>
+            </AdminPageTabs>
           </div>
         ) : runQuery.isError ? (
           <AdminQueryError

@@ -43,7 +43,7 @@ export function RecentActivitySection({
   onRetry,
 }: RecentActivitySectionProps) {
   return (
-    <Card className="flex h-full flex-col">
+    <Card className="flex h-full flex-col border-border/70 shadow-none ring-0">
       <CardHeader className="flex flex-row items-center justify-between gap-3 pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <History className="text-muted-foreground size-4 shrink-0" />

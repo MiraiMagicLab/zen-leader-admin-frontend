@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Copy, RefreshCw, Trash2 } from 'lucide-react';
@@ -43,8 +44,15 @@ export function LiveSessionsPage() {
   useAdminPageMeta(ADMIN_PAGE_META.liveSessions);
 
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [page, setPage] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = searchParams.get('status');
+    if (status && STATUS_OPTIONS.some((option) => option.value === status)) {
+      return status;
+    }
+    return 'all';
+  });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'end' | 'delete' | null>(null);
   const [bulkPending, setBulkPending] = useState(false);

@@ -6,6 +6,7 @@ export const queryKeys = {
   },
   dashboard: {
     stats: () => ['dashboard', 'stats'] as const,
+    ops: () => ['dashboard', 'ops'] as const,
   },
   users: {
     all: ['users'] as const,

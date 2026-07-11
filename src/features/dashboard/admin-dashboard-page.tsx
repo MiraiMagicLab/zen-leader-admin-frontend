@@ -30,7 +30,7 @@ export function AdminDashboardPage() {
   const user = useAuthStore((state) => state.user);
   const displayName = user?.name?.trim() || 'Admin';
 
-  const { statsQuery, reportsQuery, failedPaymentsQuery, auditQuery } =
+  const { opsQuery, reportsQuery, failedPaymentsQuery, auditQuery } =
     useDashboardData();
 
   const needsAttentionColumns: NeedsAttentionColumnConfig<
@@ -87,15 +87,15 @@ export function AdminDashboardPage() {
   return (
     <AdminPageShell
       title={`Hello, ${displayName}`}
-      description={`Overview of learners, content, events, and operations across ${BRAND.name}.`}
+      description={`Operational overview for live sessions, payments, moderation, and platform activity on ${BRAND.name}.`}
     >
       <div className="space-y-6">
         <StatsOverview
-          stats={statsQuery.data}
-          isLoading={statsQuery.isLoading}
-          isError={statsQuery.isError}
-          error={statsQuery.error}
-          onRetry={() => void statsQuery.refetch()}
+          metrics={opsQuery.data}
+          isLoading={opsQuery.isLoading}
+          isError={opsQuery.isError}
+          error={opsQuery.error}
+          onRetry={() => void opsQuery.refetch()}
         />
 
         <div className="grid gap-6 xl:grid-cols-12">

@@ -49,6 +49,7 @@
 }
 
 :root {
+    --radius: 0.75rem;
     --background: oklch(0.992 0.002 106.5);
     --foreground: oklch(0.153 0.006 107.1);
     --card: oklch(1 0 0);
@@ -170,5 +171,36 @@
   .cn-toast {
     border-radius: var(--radius-lg);
     font-family: var(--font-sans);
+  }
+
+  .admin-panel {
+    border-radius: var(--radius-2xl);
+    border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+    background: var(--card);
+  }
+
+  .admin-metric-card {
+    border-radius: var(--radius-2xl);
+    border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+    background: var(--card);
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  .admin-metric-card:hover {
+    border-color: var(--border);
+    box-shadow: 0 1px 2px color-mix(in oklch, var(--foreground) 6%, transparent);
+  }
+
+  .admin-subtle-panel {
+    border-radius: var(--radius-xl);
+    border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    background: color-mix(in oklch, var(--muted) 35%, transparent);
+  }
+
+  .admin-segment {
+    border-radius: var(--radius-xl);
+    border: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+    background: color-mix(in oklch, var(--muted) 40%, transparent);
+    padding: 0.25rem;
   }
 }

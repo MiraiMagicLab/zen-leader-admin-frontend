@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Copy, RefreshCw } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
@@ -84,8 +84,15 @@ export function PaymentsPage() {
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [page, setPage] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = searchParams.get('status');
+    if (status && STATUS_OPTIONS.some((option) => option.value === status)) {
+      return status;
+    }
+    return 'all';
+  });
   const [search, setSearch] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
