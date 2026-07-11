@@ -114,22 +114,23 @@ export function CourseRunDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <Button variant="ghost" size="sm" asChild className="-ml-2">
-        <Link to={run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns}>
-          <ArrowLeft className="mr-2 size-4" />
-          {run?.courseId ? 'Back to course' : 'Back to course runs'}
-        </Link>
-      </Button>
-
-      <AdminPageShell
-        title={run?.code ?? 'Course run'}
-        description={
-          run && course ? `Course: ${course.title}` : 'Manage sessions and enrollment.'
-        }
-        actions={
-          run ? (
-            <div className="flex flex-wrap gap-2">
+    <>
+    <AdminPageShell
+      title={run?.code ?? 'Course run'}
+      description={
+        run && course ? `Course: ${course.title}` : 'Manage sessions and enrollment.'
+      }
+      toolbar={
+        <Button variant="ghost" size="sm" asChild className="-ml-2 self-start">
+          <Link to={run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns}>
+            <ArrowLeft className="mr-2 size-4" />
+            {run?.courseId ? 'Back to course' : 'Back to course runs'}
+          </Link>
+        </Button>
+      }
+      actions={
+        run ? (
+          <div className="flex flex-wrap gap-2">
             <TableRowActionMenu
               items={[
                 {
@@ -155,12 +156,12 @@ export function CourseRunDetailPage() {
                 },
               ]}
             />
-            </div>
-          ) : undefined
-        }
-      >
-        {run ? (
-          <div className="space-y-6">
+          </div>
+        ) : undefined
+      }
+    >
+      {run ? (
+        <div className="space-y-6">
             <section className="overflow-hidden rounded-lg border">
                 <div className="grid lg:grid-cols-2 lg:divide-x">
                   <dl className="divide-y text-sm">
@@ -309,6 +310,6 @@ export function CourseRunDetailPage() {
         onConfirm={() => pendingConfirm?.action()}
         pending={deleteRunMutation.isPending}
       />
-    </div>
+    </>
   );
 }

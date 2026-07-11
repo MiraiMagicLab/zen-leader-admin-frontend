@@ -6,6 +6,7 @@ import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 import { z } from 'zod';
 
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
@@ -87,6 +88,7 @@ export function CoursesListPage() {
   const queryClient = useQueryClient();
   const isProgramScope = Boolean(programId);
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState('');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<CourseResponse | null>(null);
@@ -107,6 +109,18 @@ export function CoursesListPage() {
         ? coursesApi.getPage(page, ADMIN_LIST_PAGE_SIZE, programId)
         : coursesApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
   });
+
+  const filteredCourses = useMemo(() => {
+    const rows = coursesQuery.data?.data ?? [];
+    const q = search.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (course) =>
+        course.code.toLowerCase().includes(q) ||
+        course.title.toLowerCase().includes(q) ||
+        (course.programCode ?? '').toLowerCase().includes(q),
+    );
+  }, [coursesQuery.data?.data, search]);
 
   const programsQuery = useQuery({
     queryKey: queryKeys.programs.all,
@@ -330,20 +344,29 @@ export function CoursesListPage() {
           : 'All courses. Open a course to manage syllabus, course runs, pricing, and learning operations.'
       }
       actions={
-        <Button onClick={openCreateDialog} disabled={saveMutation.isPending}>
+        <Button size="sm" onClick={openCreateDialog} disabled={saveMutation.isPending}>
           <Plus className="mr-2 size-4" />
           Add course
         </Button>
       }
       toolbar={
-        isProgramScope ? (
-          <Button variant="ghost" size="sm" className="self-start" asChild>
-            <Link to={ROUTES.programs}>
-              <ArrowLeft className="mr-2 size-4" />
-              Back to programs
-            </Link>
-          </Button>
-        ) : null
+        <div className="flex w-full flex-col gap-3">
+          {isProgramScope ? (
+            <Button variant="ghost" size="sm" className="self-start" asChild>
+              <Link to={ROUTES.programs}>
+                <ArrowLeft className="mr-2 size-4" />
+                Back to programs
+              </Link>
+            </Button>
+          ) : null}
+          <AdminFilterBar
+            searchValue={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search by code, title, or program"
+            showClear={search.trim().length > 0}
+            onClear={() => setSearch('')}
+          />
+        </div>
       }
     >
       {coursesQuery.isError ? (
@@ -355,12 +378,13 @@ export function CoursesListPage() {
         <div className="space-y-4">
           <DataTable
             columns={columns}
-            data={coursesQuery.data?.data ?? []}
+            data={filteredCourses}
             isLoading={coursesQuery.isLoading}
             showRowIndex
             pageOffset={page * ADMIN_LIST_PAGE_SIZE}
             emptyMessage='No courses yet. Click "Add course" to create one.'
             showPagination={false}
+            onRowClick={(course) => navigate(ROUTES.courseDetail(course.id))}
           />
 
           <ServerPagination

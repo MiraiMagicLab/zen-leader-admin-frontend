@@ -15,7 +15,7 @@ import {
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
-import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
+import { AdminDetailSkeleton, AdminEmptyState, AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
@@ -47,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { SyllabusEditor } from '@/features/courses/components/syllabus-editor';
 import { CreateCourseRunSheet } from '@/features/course-runs/components/create-course-run-sheet';
@@ -163,7 +164,7 @@ export function CourseDetailPage() {
   const [activeTab, setActiveTabState] = useState<CompletionAnchor>(() =>
     resolveInitialTab(searchParams.get('section'), searchParams.get('tab'), Boolean(deepLinkItemId)),
   );
-  const selectTab = (tab: CompletionAnchor, shouldScroll = false) => {
+  const selectTab = (tab: CompletionAnchor) => {
     setActiveTabState(tab);
     const next = new URLSearchParams(searchParams);
     next.delete('tab');
@@ -173,14 +174,6 @@ export function CourseDetailPage() {
       next.set('section', tab);
     }
     setSearchParams(next, { replace: true });
-
-    if (shouldScroll) {
-      setTimeout(() => {
-        document
-          .getElementById(`section-${tab}`)
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
-    }
   };
 
   const [createRunOpen, setCreateRunOpen] = useState(false);
@@ -206,7 +199,6 @@ export function CourseDetailPage() {
   const paidRunCount = courseRuns.filter((run) => hasCourseRunPricing(run.metadata)).length;
 
   const syncedCourseIdRef = useRef<string | null>(null);
-  const tabsContainerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!course || syncedCourseIdRef.current === course.id) {
       return;
@@ -507,8 +499,12 @@ export function CourseDetailPage() {
       ) : null}
 
       {course ? (
-        <div className="space-y-6">
-          <div ref={tabsContainerRef} className="flex flex-wrap gap-2">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => selectTab(value as CompletionAnchor)}
+          className="space-y-4"
+        >
+          <TabsList className="grid h-10 w-full max-w-lg grid-cols-3">
             {WORKSPACE_SECTIONS.map((section) => {
               const count =
                 section.id === 'syllabus'
@@ -517,154 +513,146 @@ export function CourseDetailPage() {
                     ? courseRuns.length
                     : null;
               return (
-                <Button
-                  key={section.id}
-                  type="button"
-                  size="sm"
-                  variant={activeTab === section.id ? 'default' : 'outline'}
-                  onClick={() => selectTab(section.id, true)}
-                >
+                <TabsTrigger key={section.id} value={section.id} className="h-full">
                   {section.label}
                   {count != null ? ` (${count})` : ''}
-                </Button>
+                </TabsTrigger>
               );
             })}
-          </div>
+          </TabsList>
 
-          <div className="space-y-6">
-              <WorkspaceSection
-                id="info"
-                icon={<Info className="size-4" />}
-                title="Course information"
-                action={
-                  <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
-                    Edit info
-                  </Button>
-                }
-              >
-            <div className="grid gap-5 sm:grid-cols-[140px_minmax(0,1fr)]">
-              <div className="bg-muted/30 mx-auto aspect-square w-full max-w-[140px] overflow-hidden rounded-md border sm:mx-0">
-                {course.thumbnailUrl ? (
-                  <img
-                    src={course.thumbnailUrl}
-                    alt={course.title}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1.5 text-center text-xs">
-                    <ImageIcon className="size-7" />
-                    <span>No image</span>
+          <TabsContent value="info" className="space-y-4">
+            <WorkspaceSection
+              id="info"
+              icon={<Info className="size-4" />}
+              title="Course information"
+              action={
+                <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
+                  Edit info
+                </Button>
+              }
+            >
+              <div className="grid gap-5 sm:grid-cols-[140px_minmax(0,1fr)]">
+                <div className="bg-muted/30 mx-auto aspect-square w-full max-w-[140px] overflow-hidden rounded-md border sm:mx-0">
+                  {course.thumbnailUrl ? (
+                    <img
+                      src={course.thumbnailUrl}
+                      alt={course.title}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1.5 text-center text-xs">
+                      <ImageIcon className="size-7" />
+                      <span>No image</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
+                    <dt className="text-muted-foreground">Course code</dt>
+                    <dd className="font-mono">{course.code}</dd>
+                    <dt className="text-muted-foreground">Program</dt>
+                    <dd>
+                      {course.programId ? (
+                        <Link
+                          to={ROUTES.programCourses(course.programId)}
+                          className="text-primary hover:underline"
+                        >
+                          {programDisplayName}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">Not linked</span>
+                      )}
+                    </dd>
+                    <dt className="text-muted-foreground">Updated</dt>
+                    <dd>{formatDateTime(course.updatedAt)}</dd>
+                  </dl>
+                  <div>
+                    <p className="text-muted-foreground mb-1 text-sm">Description</p>
+                    <RichTextPreview value={course.description} />
                   </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
-                  <dt className="text-muted-foreground">Course code</dt>
-                  <dd className="font-mono">{course.code}</dd>
-                  <dt className="text-muted-foreground">Program</dt>
-                  <dd>
-                    {course.programId ? (
-                      <Link
-                        to={ROUTES.programCourses(course.programId)}
-                        className="text-primary hover:underline"
-                      >
-                        {programDisplayName}
-                      </Link>
-                    ) : (
-                      <span className="text-muted-foreground">Not linked</span>
-                    )}
-                  </dd>
-                  <dt className="text-muted-foreground">Updated</dt>
-                  <dd>{formatDateTime(course.updatedAt)}</dd>
-                </dl>
-                <div>
-                  <p className="text-muted-foreground mb-1 text-sm">Description</p>
-                  <RichTextPreview value={course.description} />
                 </div>
               </div>
-            </div>
 
-            <div className="mt-5 border-t pt-4">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="flex items-center gap-2 text-sm font-medium">
-                  <ShoppingBag className="text-muted-foreground size-4" />
-                  Mobile in-app purchase (optional)
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={iapMutation.isPending}
-                  onClick={() => setEditIapOpen(true)}
-                >
-                  Edit purchase IDs
-                </Button>
-              </div>
-              <div className="text-muted-foreground mt-3 grid gap-2 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
-                <span>Paid classes</span>
-                <span className="text-foreground tabular-nums">
-                  {paidRunCount} / {courseRuns.length}
-                </span>
-                <span>Apple Product ID</span>
-                <span className="text-foreground break-all">{appleProductId || 'Not set'}</span>
-                <span>Android Product ID</span>
-                <span className="text-foreground break-all">{androidProductId || 'Not set'}</span>
-              </div>
-            </div>
-              </WorkspaceSection>
-
-              <WorkspaceSection
-                id="syllabus"
-                icon={<BookOpen className="size-4" />}
-                title="Syllabus"
-              >
-                <SyllabusEditor
-                  courseId={courseId}
-                  courseTitle={course.title}
-                  initialItemId={deepLinkItemId}
-                  onInitialItemHandled={clearDeepLinkItem}
-                />
-              </WorkspaceSection>
-
-              <WorkspaceSection
-                id="runs"
-                icon={<CalendarDays className="size-4" />}
-                title="Classes"
-                action={
-                  <Button size="sm" onClick={() => setCreateRunOpen(true)}>
-                    <Plus className="mr-2 size-4" />
-                    Open a class
+              <div className="mt-5 border-t pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="flex items-center gap-2 text-sm font-medium">
+                    <ShoppingBag className="text-muted-foreground size-4" />
+                    Mobile in-app purchase (optional)
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={iapMutation.isPending}
+                    onClick={() => setEditIapOpen(true)}
+                  >
+                    Edit purchase IDs
                   </Button>
-                }
-              >
-                {courseRuns.length ? (
-                  <div className="space-y-3">
-                    {courseRuns.map((run) => (
-                      <CourseRunCard
-                        key={run.id}
-                        run={run}
-                        onEdit={() => openEditRun(run)}
-                        onDelete={() => confirmDeleteRun(run)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-lg border border-dashed p-8 text-center">
-                    <p className="text-sm font-medium">
-                      Open a class to schedule sessions and let students enroll
-                    </p>
-                    <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-                      Each class has its own schedule, sessions, and enrollment. The syllabus is shared.
-                    </p>
-                    <Button className="mt-4" size="sm" onClick={() => setCreateRunOpen(true)}>
+                </div>
+                <div className="text-muted-foreground mt-3 grid gap-2 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
+                  <span>Paid classes</span>
+                  <span className="text-foreground tabular-nums">
+                    {paidRunCount} / {courseRuns.length}
+                  </span>
+                  <span>Apple Product ID</span>
+                  <span className="text-foreground break-all">{appleProductId || 'Not set'}</span>
+                  <span>Android Product ID</span>
+                  <span className="text-foreground break-all">{androidProductId || 'Not set'}</span>
+                </div>
+              </div>
+            </WorkspaceSection>
+          </TabsContent>
+
+          <TabsContent value="syllabus" className="space-y-4">
+            <WorkspaceSection id="syllabus" icon={<BookOpen className="size-4" />} title="Syllabus">
+              <SyllabusEditor
+                courseId={courseId}
+                courseTitle={course.title}
+                initialItemId={deepLinkItemId}
+                onInitialItemHandled={clearDeepLinkItem}
+              />
+            </WorkspaceSection>
+          </TabsContent>
+
+          <TabsContent value="runs" className="space-y-4">
+            <WorkspaceSection
+              id="runs"
+              icon={<CalendarDays className="size-4" />}
+              title="Classes"
+              action={
+                <Button size="sm" onClick={() => setCreateRunOpen(true)}>
+                  <Plus className="mr-2 size-4" />
+                  Open a class
+                </Button>
+              }
+            >
+              {courseRuns.length ? (
+                <div className="space-y-3">
+                  {courseRuns.map((run) => (
+                    <CourseRunCard
+                      key={run.id}
+                      run={run}
+                      onEdit={() => openEditRun(run)}
+                      onDelete={() => confirmDeleteRun(run)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <AdminEmptyState
+                  title="No classes yet"
+                  description="Open a class to schedule sessions and let students enroll. Each class has its own schedule; the syllabus is shared."
+                  action={
+                    <Button size="sm" onClick={() => setCreateRunOpen(true)}>
                       <Plus className="mr-2 size-4" />
                       Open a class
                     </Button>
-                  </div>
-                )}
-              </WorkspaceSection>
-          </div>
-        </div>
+                  }
+                />
+              )}
+            </WorkspaceSection>
+          </TabsContent>
+        </Tabs>
       ) : courseQuery.isLoading ? (
         <AdminDetailSkeleton />
       ) : null}

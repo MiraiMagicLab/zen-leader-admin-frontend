@@ -7,7 +7,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
-import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
+import { AdminDetailSkeleton, AdminEmptyState, AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -410,115 +409,127 @@ export function EventDetailPage() {
       {!event && eventQuery.isLoading ? <AdminDetailSkeleton /> : null}
 
       {event ? (
-        <Card>
-          <CardContent className="grid gap-4 pt-6 sm:grid-cols-2">
+        <div className="space-y-6">
+          <section className="overflow-hidden rounded-lg border">
             {event.thumbnailUrl ? (
-              <div className="sm:col-span-2">
-                <p className="text-muted-foreground mb-2 text-sm">Thumbnail</p>
-                <img
-                  src={event.thumbnailUrl}
-                  alt={event.title}
-                  className="h-56 w-full rounded-lg border object-cover"
-                />
-              </div>
+              <img
+                src={event.thumbnailUrl}
+                alt={event.title}
+                className="h-48 w-full border-b object-cover sm:h-56"
+              />
             ) : null}
-            <div>
-              <p className="text-muted-foreground text-sm">Start time</p>
-              <p>{formatDateTime(event.startTime)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">End time</p>
-              <p>{formatDateTime(event.endTime)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Owner</p>
-              <p>{eventOwnerLabel}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Visibility</p>
-              <p>
-                {normalizeEventStatus(event.status) === 'PUBLISHED'
-                  ? 'Visible on public feed'
-                  : 'Hidden from public feed'}
-              </p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Meeting target</p>
-              <p>{event.roomCode ? `Room code: ${event.roomCode}` : 'Room details will appear after scheduling is completed.'}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Join target</p>
-              <p className="break-all">{event.liveLink ?? 'The access link will appear automatically when the event is ready.'}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Created</p>
-              <p>{formatDateTime(event.createdAt)}</p>
-            </div>
-            <div className="sm:col-span-2">
-              <p className="text-muted-foreground text-sm">Engagement</p>
-              <p>
-                {event.engagementStats.likes} likes • {event.engagementStats.interested} interested •{' '}
-                {event.engagementStats.comments ?? 0} comments
-              </p>
+            <div className="grid lg:grid-cols-2 lg:divide-x">
+              <dl className="divide-y text-sm">
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Start time</dt>
+                  <dd>{formatDateTime(event.startTime)}</dd>
+                </div>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">End time</dt>
+                  <dd>{formatDateTime(event.endTime)}</dd>
+                </div>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Owner</dt>
+                  <dd>{eventOwnerLabel}</dd>
+                </div>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Visibility</dt>
+                  <dd>
+                    {normalizeEventStatus(event.status) === 'PUBLISHED'
+                      ? 'Visible on public feed'
+                      : 'Hidden from public feed'}
+                  </dd>
+                </div>
+              </dl>
+              <dl className="divide-y text-sm">
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Meeting</dt>
+                  <dd>
+                    {event.roomCode
+                      ? `Room code: ${event.roomCode}`
+                      : 'Room details appear after scheduling.'}
+                  </dd>
+                </div>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-start sm:gap-4">
+                  <dt className="text-muted-foreground">Join link</dt>
+                  <dd className="break-all">
+                    {event.liveLink ?? 'Access link appears when the event is ready.'}
+                  </dd>
+                </div>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Created</dt>
+                  <dd>{formatDateTime(event.createdAt)}</dd>
+                </div>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Engagement</dt>
+                  <dd>
+                    {event.engagementStats.likes} likes · {event.engagementStats.interested}{' '}
+                    interested · {event.engagementStats.comments ?? 0} comments
+                  </dd>
+                </div>
+              </dl>
             </div>
             {event.content ? (
-              <div className="sm:col-span-2">
-                <p className="text-muted-foreground text-sm">Content</p>
-                <p className="whitespace-pre-wrap">{event.content}</p>
+              <div className="border-t px-4 py-4">
+                <p className="text-muted-foreground mb-2 text-sm">Content</p>
+                <p className="whitespace-pre-wrap text-sm">{event.content}</p>
               </div>
             ) : null}
             {metadataEntries.length > 0 ? (
-              <div className="sm:col-span-2">
-                <p className="text-muted-foreground mb-2 text-sm">Additional details</p>
-                <div className="grid gap-3 sm:grid-cols-2">
+              <div className="border-t px-4 py-4">
+                <p className="text-muted-foreground mb-3 text-sm">Additional details</p>
+                <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                   {metadataEntries.map(([key, value]) => (
-                    <div key={key} className="rounded-md border p-3">
-                      <p className="text-muted-foreground text-xs">{humanizeKey(key)}</p>
-                      <p className="mt-1 break-words text-sm">
+                    <div key={key} className="min-w-0">
+                      <dt className="text-muted-foreground text-xs">{humanizeKey(key)}</dt>
+                      <dd className="mt-0.5 break-words">
                         {typeof value === 'string' ? value : JSON.stringify(value)}
-                      </p>
+                      </dd>
                     </div>
                   ))}
-                </div>
+                </dl>
               </div>
             ) : null}
-          </CardContent>
-        </Card>
-      ) : null}
+          </section>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Comments ({commentsQuery.data?.totalElement ?? 0})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {(commentsQuery.data?.data ?? []).length === 0 ? (
-            <p className="text-muted-foreground text-sm">No comments yet.</p>
-          ) : (
-            commentsQuery.data?.data.map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                onDelete={(selectedComment) =>
-                  setPendingCommentDelete({
-                    commentId: selectedComment.id,
-                    authorName: selectedComment.userDisplayName,
-                  })
-                }
-                onEdit={(selectedComment) => {
-                  setEditComment(selectedComment);
-                  setEditCommentContent(selectedComment.content);
-                  setEditCommentOpen(true);
-                }}
+          <section className="space-y-4">
+            <h2 className="text-base font-semibold">
+              Comments ({commentsQuery.data?.totalElement ?? 0})
+            </h2>
+            {(commentsQuery.data?.data ?? []).length === 0 ? (
+              <AdminEmptyState
+                title="No comments yet"
+                description="Comments from the public feed will show up here."
               />
-            ))
-          )}
-          <ServerPagination
-            page={commentPage}
-            totalPages={commentsQuery.data?.totalPages ?? 1}
-            onPageChange={setCommentPage}
-          />
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="space-y-4">
+                {commentsQuery.data?.data.map((comment) => (
+                  <CommentItem
+                    key={comment.id}
+                    comment={comment}
+                    onDelete={(selectedComment) =>
+                      setPendingCommentDelete({
+                        commentId: selectedComment.id,
+                        authorName: selectedComment.userDisplayName,
+                      })
+                    }
+                    onEdit={(selectedComment) => {
+                      setEditComment(selectedComment);
+                      setEditCommentContent(selectedComment.content);
+                      setEditCommentOpen(true);
+                    }}
+                  />
+                ))}
+                <ServerPagination
+                  page={commentPage}
+                  totalPages={commentsQuery.data?.totalPages ?? 1}
+                  onPageChange={setCommentPage}
+                />
+              </div>
+            )}
+          </section>
+        </div>
+      ) : null}
 
       <Sheet open={editEventOpen} onOpenChange={closeEditEventSheet}>
         <SheetContent className="flex h-svh w-screen max-w-full flex-col gap-0 overflow-hidden p-0 sm:w-[560px] sm:max-w-[560px]">

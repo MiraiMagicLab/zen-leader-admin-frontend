@@ -353,6 +353,7 @@ export function EventsListPage() {
       description="Manage public events, schedule, and publishing status."
       actions={
         <Button
+          size="sm"
           onClick={() => {
             setForm(emptyForm);
             setTouched({ title: false, startTime: false, endTime: false });
@@ -420,6 +421,7 @@ export function EventsListPage() {
             pageOffset={(eventsQuery.data?.currentPage ?? page) * ADMIN_LIST_PAGE_SIZE}
             showPagination={false}
             emptyMessage="No events yet."
+            onRowClick={(event) => navigate(ROUTES.eventDetail(event.id))}
           />
 
           <ServerPagination

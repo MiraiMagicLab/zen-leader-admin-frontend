@@ -8,6 +8,8 @@ import { z } from 'zod';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
@@ -81,12 +83,20 @@ const emptyForm: FormState = {
   thumbnailFile: null,
 };
 
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'published', label: 'Published' },
+  { value: 'draft', label: 'Draft' },
+] as const;
+
 export function ProgramsListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.programs);
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ProgramResponse | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -131,6 +141,23 @@ export function ProgramsListPage() {
     queryKey: [...queryKeys.programs.list(), page],
     queryFn: () => programsApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
   });
+
+  const filteredPrograms = useMemo(() => {
+    const rows = programsQuery.data?.data ?? [];
+    const q = search.trim().toLowerCase();
+    return rows.filter((program) => {
+      if (statusFilter === 'published' && !program.isPublished) return false;
+      if (statusFilter === 'draft' && program.isPublished) return false;
+      if (!q) return true;
+      return (
+        program.code.toLowerCase().includes(q) ||
+        program.title.toLowerCase().includes(q) ||
+        (program.description ?? '').toLowerCase().includes(q)
+      );
+    });
+  }, [programsQuery.data?.data, search, statusFilter]);
+
+  const hasActiveFilters = search.trim().length > 0 || statusFilter !== 'all';
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -250,6 +277,7 @@ export function ProgramsListPage() {
       description="Manage training programs and related courses."
       actions={
         <Button
+          size="sm"
           onClick={() => {
             setEditing(null);
             setForm(emptyForm);
@@ -262,6 +290,27 @@ export function ProgramsListPage() {
           Add program
         </Button>
       }
+      toolbar={
+        <AdminFilterBar
+          searchValue={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+          }}
+          searchPlaceholder="Search by code or title"
+          showClear={hasActiveFilters}
+          onClear={() => {
+            setSearch('');
+            setStatusFilter('all');
+          }}
+        >
+          <FilterChipGroup
+            ariaLabel="Program status"
+            value={statusFilter}
+            options={STATUS_FILTER_OPTIONS}
+            onChange={setStatusFilter}
+          />
+        </AdminFilterBar>
+      }
     >
       {programsQuery.isError ? (
         <AdminQueryError
@@ -272,11 +321,13 @@ export function ProgramsListPage() {
         <div className="space-y-4">
           <DataTable
             columns={columns}
-            data={programsQuery.data?.data ?? []}
+            data={filteredPrograms}
             isLoading={programsQuery.isLoading}
             showRowIndex
             pageOffset={page * ADMIN_LIST_PAGE_SIZE}
             showPagination={false}
+            emptyMessage='No programs yet. Click "Add program" to create one.'
+            onRowClick={(program) => navigate(ROUTES.programCourses(program.id))}
           />
 
           <ServerPagination

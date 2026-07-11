@@ -5,7 +5,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminPanelSkeleton } from '@/components/admin/admin-loading';
-import { AdminQueryError } from '@/components/admin/admin-query-state';
+import { AdminEmptyState, AdminQueryError } from '@/components/admin/admin-query-state';
 import { UserPicker } from '@/components/admin/user-picker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -97,209 +97,211 @@ export function NotificationsPage() {
       description="Send a notification to selected users, or to all users, and review a user's history."
     >
       <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 items-start">
-        <Card className="shadow-xs lg:col-span-2 pb-0 flex flex-col">
-          <CardHeader>
-            <CardTitle>Compose Notification</CardTitle>
-            <CardDescription>
-              Write the notification title, message, and select its category type.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 flex-1">
-            <div className="space-y-2">
-              <Label htmlFor={titleInputId}>
-                Title <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id={titleInputId}
-                value={title}
-                placeholder="e.g. New course available"
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor={messageInputId}>
-                Message <span className="text-destructive">*</span>
-              </Label>
-              <Textarea
-                id={messageInputId}
-                value={message}
-                placeholder="Write the notification content…"
-                rows={6}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Type</Label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {NOTIFICATION_TYPES.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-end gap-3 border-t bg-muted/20 py-4 mt-auto">
-            <Button
-              disabled={
-                !title.trim() ||
-                !message.trim() ||
-                (recipientType === 'specific' && selectedUsers.length === 0) ||
-                broadcastMutation.isPending
-              }
-              onClick={() => setConfirmOpen(true)}
-            >
-              <Send className="mr-2 size-4" />
-              Send Notification
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card className="shadow-xs pb-0 flex flex-col">
-          <CardHeader>
-            <CardTitle>Recipients</CardTitle>
-            <CardDescription>
-              Select specific recipients, or choose all registered users.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0 flex-1">
-            <Tabs value={recipientType} onValueChange={(val) => setRecipientType(val as 'all' | 'specific')}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="all">All Users</TabsTrigger>
-                <TabsTrigger value="specific">Specific Users</TabsTrigger>
-              </TabsList>
-              <TabsContent value="all" className="mt-4">
-                <div className="rounded-lg border border-dashed p-6 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    This notification will be broadcast to all registered users.
-                  </p>
+        <div className="grid grid-cols-1 items-stretch gap-6 xl:grid-cols-5">
+          <Card className="flex flex-col shadow-xs xl:col-span-3">
+            <CardHeader className="pb-4">
+              <CardTitle>Compose</CardTitle>
+              <CardDescription>Title, message, and category for the notification.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+                <div className="space-y-2">
+                  <Label htmlFor={titleInputId}>
+                    Title <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={titleInputId}
+                    value={title}
+                    placeholder="e.g. New course available"
+                    onChange={(e) => setTitle(e.target.value)}
+                  />
                 </div>
-              </TabsContent>
-              <TabsContent value="specific" className="mt-3">
-                <UserPicker
-                  selectedUsers={selectedUsers}
-                  onSelectedUsersChange={setSelectedUsers}
-                  label="Search and filter users"
+                <div className="space-y-2">
+                  <Label>Type</Label>
+                  <Select value={type} onValueChange={setType}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {NOTIFICATION_TYPES.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={messageInputId}>
+                  Message <span className="text-destructive">*</span>
+                </Label>
+                <Textarea
+                  id={messageInputId}
+                  value={message}
+                  placeholder="Write the notification content…"
+                  rows={5}
+                  onChange={(e) => setMessage(e.target.value)}
                 />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          <CardFooter className="flex items-center justify-between border-t bg-muted/20 py-4 text-xs text-muted-foreground mt-auto">
-            <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-foreground">Target:</span>
-              <span>
-                {recipientType === 'all'
-                  ? 'All users (Broadcast)'
-                  : `${selectedUsers.length} selected user(s)`}
-              </span>
-            </div>
-          </CardFooter>
-        </Card>
-      </div>
+              </div>
+            </CardContent>
+            <CardFooter className="mt-auto flex justify-end gap-3 border-t bg-muted/20 py-4">
+              <Button
+                size="sm"
+                disabled={
+                  !title.trim() ||
+                  !message.trim() ||
+                  (recipientType === 'specific' && selectedUsers.length === 0) ||
+                  broadcastMutation.isPending
+                }
+                onClick={() => setConfirmOpen(true)}
+              >
+                <Send className="mr-2 size-4" />
+                Send notification
+              </Button>
+            </CardFooter>
+          </Card>
 
-      <Card className="shadow-xs">
-        <CardHeader>
-          <CardTitle>Notification history</CardTitle>
-          <CardDescription>
-            Pick a user to review the notifications they have received.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
+          <Card className="flex flex-col shadow-xs xl:col-span-2">
+            <CardHeader className="pb-4">
+              <CardTitle>Recipients</CardTitle>
+              <CardDescription>Broadcast to everyone, or pick specific users.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 pt-0">
+              <Tabs
+                value={recipientType}
+                onValueChange={(val) => setRecipientType(val as 'all' | 'specific')}
+              >
+                <TabsList className="grid h-9 w-full grid-cols-2">
+                  <TabsTrigger value="all" className="h-full">
+                    All users
+                  </TabsTrigger>
+                  <TabsTrigger value="specific" className="h-full">
+                    Specific
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="all" className="mt-4">
+                  <div className="rounded-lg border border-dashed px-4 py-8 text-center">
+                    <p className="text-muted-foreground text-sm">
+                      This notification will be sent to every registered user.
+                    </p>
+                  </div>
+                </TabsContent>
+                <TabsContent value="specific" className="mt-3">
+                  <UserPicker
+                    selectedUsers={selectedUsers}
+                    onSelectedUsersChange={setSelectedUsers}
+                    label="Search users"
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+            <CardFooter className="text-muted-foreground mt-auto flex items-center justify-between border-t bg-muted/20 py-4 text-xs">
+              <span>
+                <span className="text-foreground font-medium">Target:</span>{' '}
+                {recipientType === 'all'
+                  ? 'All users'
+                  : `${selectedUsers.length} selected`}
+              </span>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <Card className="shadow-xs">
+          <CardHeader className="pb-4">
+            <CardTitle>Notification history</CardTitle>
+            <CardDescription>
+              Pick a user to review the notifications they have received.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
             <UserPicker
               selectedUsers={historyUser ? [historyUser] : []}
               onSelectedUsersChange={(users) => setHistoryUser(users[users.length - 1] ?? null)}
               label="Pick a user"
             />
-          </div>
-          <div className="lg:col-span-2 space-y-3">
-            {!historyUser ? (
-              <p className="text-muted-foreground text-sm">
-                Select a user on the left to view their notification history.
-              </p>
-            ) : historyQuery.isError ? (
-              <AdminQueryError
-                message={getApiErrorMessage(historyQuery.error)}
-                onRetry={() => void historyQuery.refetch()}
-              />
-            ) : historyQuery.isLoading ? (
-              <AdminPanelSkeleton lines={3} />
-            ) : historyNotifications.length === 0 ? (
-              <p className="text-muted-foreground text-sm">
-                {historyUser.displayName} has no notifications yet.
-              </p>
-            ) : (
-              <ul className="max-h-[28rem] space-y-2 overflow-y-auto">
-                {historyNotifications.map((notification) => (
-                  <li key={notification.id} className="rounded-md border p-3 text-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-medium">{notification.title}</p>
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="outline">{typeLabel(notification.type)}</Badge>
-                        {!notification.isRead ? <Badge>Unread</Badge> : null}
-                      </div>
-                    </div>
-                    <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
-                      {notification.message}
-                    </p>
-                    <p className="text-muted-foreground mt-2 text-xs">
-                      {formatDateTime(notification.createdAt)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Confirm send</DialogTitle>
-            <DialogDescription>
-              {targetAll
-                ? 'This notification will be sent to ALL users. This action cannot be undone.'
-                : `This notification will be sent to ${selectedUsers.length} selected users.`}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 rounded-lg border p-4">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-medium">{title || '(no title)'}</span>
-              <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-xs">
-                {typeLabel(type)}
-              </span>
-            </div>
-            <p className="text-muted-foreground text-sm whitespace-pre-wrap">
-              {message || '(no message)'}
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => broadcastMutation.mutate()}
-              disabled={broadcastMutation.isPending}
-            >
-              {broadcastMutation.isPending ? (
-                <Loader2 className="mr-2 size-4 animate-spin" />
+            <div className="min-w-0 space-y-3">
+              {!historyUser ? (
+                <AdminEmptyState
+                  title="Select a user"
+                  description="Choose someone on the left to view their notification history."
+                />
+              ) : historyQuery.isError ? (
+                <AdminQueryError
+                  message={getApiErrorMessage(historyQuery.error)}
+                  onRetry={() => void historyQuery.refetch()}
+                />
+              ) : historyQuery.isLoading ? (
+                <AdminPanelSkeleton lines={3} />
+              ) : historyNotifications.length === 0 ? (
+                <AdminEmptyState
+                  title="No notifications"
+                  description={`${historyUser.displayName} has not received any notifications yet.`}
+                />
               ) : (
-                <Send className="mr-2 size-4" />
+                <ul className="max-h-[28rem] space-y-2 overflow-y-auto">
+                  {historyNotifications.map((notification) => (
+                    <li key={notification.id} className="rounded-md border p-3 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="font-medium">{notification.title}</p>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline">{typeLabel(notification.type)}</Badge>
+                          {!notification.isRead ? <Badge>Unread</Badge> : null}
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
+                        {notification.message}
+                      </p>
+                      <p className="text-muted-foreground mt-2 text-xs">
+                        {formatDateTime(notification.createdAt)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
               )}
-              {targetAll ? 'Send to all' : `Send to ${selectedUsers.length} users`}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Confirm send</DialogTitle>
+              <DialogDescription>
+                {targetAll
+                  ? 'This notification will be sent to ALL users. This action cannot be undone.'
+                  : `This notification will be sent to ${selectedUsers.length} selected users.`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 rounded-lg border p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-medium">{title || '(no title)'}</span>
+                <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-xs">
+                  {typeLabel(type)}
+                </span>
+              </div>
+              <p className="text-muted-foreground whitespace-pre-wrap text-sm">
+                {message || '(no message)'}
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => broadcastMutation.mutate()}
+                disabled={broadcastMutation.isPending}
+              >
+                {broadcastMutation.isPending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Send className="mr-2 size-4" />
+                )}
+                {targetAll ? 'Send to all' : `Send to ${selectedUsers.length} users`}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </AdminPageShell>
   );
