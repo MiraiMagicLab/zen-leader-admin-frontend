@@ -13,7 +13,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
-import { FilterChipGroup } from '@/components/admin/filter-chip-group';
+import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { TechnicalDetails } from '@/components/admin/technical-details';
@@ -265,6 +265,16 @@ export function UsersListPage() {
   };
 
   const rows = usersQuery.data?.data ?? [];
+  const selectedLiveUser =
+    (selectedUser && rows.find((user) => user.id === selectedUser.id)) || selectedUser;
+  const dockModalOpen =
+    rolesDialogOpen ||
+    banDialogOpen ||
+    banConfirmOpen ||
+    unbanConfirmOpen ||
+    lockConfirmOpen ||
+    unlockConfirmOpen ||
+    deleteConfirmOpen;
   // Only non-deleted users can be locked/unlocked.
   const selectableRows = rows.filter((user) => !isDeletedUser(user));
   const selectedRowsOnPage = selectableRows.filter((user) => selectedIds.includes(user.id));
@@ -509,14 +519,16 @@ export function UsersListPage() {
           clearLabel="Clear filters"
           onClear={handleClearFilters}
         >
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="User role"
+            placeholder="Role"
             value={roleFilter}
             options={ROLE_FILTER_OPTIONS}
             onChange={handleRoleFilterChange}
           />
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="User status"
+            placeholder="Status"
             value={statusFilter}
             options={STATUS_FILTER_OPTIONS}
             onChange={handleStatusFilterChange}
@@ -525,7 +537,7 @@ export function UsersListPage() {
       }
     >
       <>
-        <AdminDockLayout dockOpen={Boolean(selectedUser)}>
+        <AdminDockLayout dockOpen={Boolean(selectedLiveUser)}>
           <div className="flex flex-col gap-3">
             {usersQuery.isError ? (
               <AdminQueryError
@@ -566,7 +578,7 @@ export function UsersListPage() {
               showRowIndex
               pageOffset={(page - 1) * ADMIN_LIST_PAGE_SIZE}
               showPagination={false}
-              activeRowId={selectedUser?.id ?? null}
+              activeRowId={selectedLiveUser?.id ?? null}
               getRowId={(row) => row.id}
               onRowClick={openInspector}
             />
@@ -589,28 +601,60 @@ export function UsersListPage() {
         </AdminDockLayout>
 
         <AdminDockPanel
-          open={Boolean(selectedUser)}
+          open={Boolean(selectedLiveUser)}
           onClose={clearSelectedUser}
-          title={selectedUser?.displayName ?? 'User detail'}
-          description={selectedUser?.email}
+          stacked={dockModalOpen}
+          title={selectedLiveUser?.displayName ?? 'User detail'}
+          description={selectedLiveUser?.email}
           footer={
-            selectedUser && !isDeletedUser(selectedUser) ? (
-              <Button variant="ghost" size="sm" onClick={() => openRolesDialog(selectedUser)}>
-                Edit role
-              </Button>
+            selectedLiveUser && !isDeletedUser(selectedLiveUser) ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openRolesDialog(selectedLiveUser)}
+                >
+                  Edit role
+                </Button>
+                {selectedLiveUser.bannedUntil ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUnbanConfirmOpen(true)}
+                  >
+                    Unban
+                  </Button>
+                ) : selectedLiveUser.isActive ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLockConfirmOpen(true)}
+                  >
+                    Lock
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setUnlockConfirmOpen(true)}
+                  >
+                    Unlock
+                  </Button>
+                )}
+              </>
             ) : null
           }
         >
-          {selectedUser ? (
+          {selectedLiveUser ? (
             <div className="space-y-4">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                <InspectorField label="Display name" value={selectedUser.displayName} />
-                <InspectorField label="Email" value={selectedUser.email} />
+                <InspectorField label="Display name" value={selectedLiveUser.displayName} />
+                <InspectorField label="Email" value={selectedLiveUser.email} />
                 <InspectorField
                   label="Roles"
                   value={
                     <div className="flex flex-wrap gap-1">
-                      {getDisplayRoles(selectedUser).map((role) => (
+                      {getDisplayRoles(selectedLiveUser).map((role) => (
                         <Badge key={role} variant="secondary">
                           {ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role}
                         </Badge>
@@ -622,39 +666,39 @@ export function UsersListPage() {
                 <InspectorField
                   label="Status"
                   value={
-                    <Badge variant={renderStatus(selectedUser).variant}>
-                      {renderStatus(selectedUser).label}
+                    <Badge variant={renderStatus(selectedLiveUser).variant}>
+                      {renderStatus(selectedLiveUser).label}
                     </Badge>
                   }
                 />
                 <InspectorField
                   label="Verified"
-                  value={selectedUser.isVerified ? 'Yes' : 'No'}
+                  value={selectedLiveUser.isVerified ? 'Yes' : 'No'}
                 />
-                {selectedUser.bannedUntil ? (
+                {selectedLiveUser.bannedUntil ? (
                   <InspectorField
                     label="Banned until"
-                    value={formatDateTime(selectedUser.bannedUntil)}
+                    value={formatDateTime(selectedLiveUser.bannedUntil)}
                     className="col-span-2"
                   />
                 ) : null}
                 <InspectorField
                   label="Joined"
-                  value={formatDateTime(selectedUser.createdAt)}
+                  value={formatDateTime(selectedLiveUser.createdAt)}
                 />
-                {selectedUser.deletedAt ? (
+                {selectedLiveUser.deletedAt ? (
                   <InspectorField
                     label="Deleted"
-                    value={formatDateTime(selectedUser.deletedAt)}
+                    value={formatDateTime(selectedLiveUser.deletedAt)}
                   />
                 ) : null}
               </dl>
               <TechnicalDetails>
                 <dl className="grid grid-cols-1 gap-3">
-                  <InspectorField label="Account reference" value={selectedUser.id} mono />
+                  <InspectorField label="Account reference" value={selectedLiveUser.id} mono />
                   <InspectorField
                     label="Last updated"
-                    value={formatDateTime(selectedUser.updatedAt)}
+                    value={formatDateTime(selectedLiveUser.updatedAt)}
                   />
                 </dl>
               </TechnicalDetails>
@@ -772,13 +816,13 @@ export function UsersListPage() {
       </Dialog>
 
       <Dialog open={rolesDialogOpen} onOpenChange={setRolesDialogOpen}>
-        <DialogContent>
+        <DialogContent className="lg:left-[calc(50%-9rem)]">
           <DialogHeader>
             <DialogTitle>Update role</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              {selectedUser?.displayName} ({selectedUser?.email})
+              {selectedLiveUser?.displayName} ({selectedLiveUser?.email})
             </p>
             <div className="space-y-2">
               <Label>Primary role</Label>
@@ -819,13 +863,13 @@ export function UsersListPage() {
       </Dialog>
 
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
-        <DialogContent>
+        <DialogContent className="lg:left-[calc(50%-9rem)]">
           <DialogHeader>
             <DialogTitle>Ban user</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              {selectedUser?.displayName} ({selectedUser?.email})
+              {selectedLiveUser?.displayName} ({selectedLiveUser?.email})
             </p>
             <div className="flex items-center gap-2">
               <Checkbox

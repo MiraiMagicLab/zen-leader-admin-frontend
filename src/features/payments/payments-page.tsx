@@ -8,7 +8,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
-import { FilterChipGroup } from '@/components/admin/filter-chip-group';
+import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { TechnicalDetails } from '@/components/admin/technical-details';
@@ -361,8 +361,9 @@ export function PaymentsPage() {
             setStatusFilter('all');
           }}
         >
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Payment status"
+            placeholder="Status"
             value={statusFilter}
             options={STATUS_OPTIONS}
             onChange={(value) => {
@@ -425,6 +426,7 @@ export function PaymentsPage() {
         <AdminDockPanel
           open={Boolean(selectedLiveOrder)}
           onClose={clearSelectedOrder}
+          stacked={pendingConfirm !== null || bulkOpen}
           title={selectedLiveOrder?.userDisplayName ?? 'Order detail'}
           description={
             selectedLiveOrder

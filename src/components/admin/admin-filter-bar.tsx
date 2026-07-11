@@ -9,7 +9,7 @@ type AdminFilterBarProps = {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
-  /** Extra filters (Select, Switch, chips) rendered after search. */
+  /** Extra filters (Select / FilterSelect) rendered after search. */
   children?: ReactNode;
   /** Optional trailing actions (e.g. clear filters, export). */
   trailing?: ReactNode;

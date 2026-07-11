@@ -18,7 +18,7 @@ import { RefreshCw } from 'lucide-react';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { AdminSkeletonBar } from '@/components/admin/admin-loading';
-import { FilterChipGroup } from '@/components/admin/filter-chip-group';
+import { FilterSelect } from '@/components/admin/filter-select';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -201,14 +201,16 @@ export function RevenueDashboardPage() {
     >
       <div className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Date range"
+            placeholder="Range"
             value={rangeDays}
             onChange={setRangeDays}
             options={RANGE_OPTIONS}
           />
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Granularity"
+            placeholder="Granularity"
             value={granularity}
             onChange={(value) => setGranularity(value as 'day' | 'week')}
             options={GRANULARITY_OPTIONS}

@@ -7,7 +7,7 @@ import { Copy, RefreshCw, Trash2 } from 'lucide-react';
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
-import { FilterChipGroup } from '@/components/admin/filter-chip-group';
+import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
@@ -291,8 +291,9 @@ export function LiveSessionsPage() {
       }
       toolbar={
         <AdminFilterBar>
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Session status"
+            placeholder="Status"
             value={statusFilter}
             options={STATUS_OPTIONS}
             onChange={(value) => {

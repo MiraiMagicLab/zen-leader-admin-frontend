@@ -376,6 +376,7 @@ export function CourseRunsListPage() {
           <AdminDockPanel
             open={Boolean(selectedRun)}
             onClose={clearSelectedRun}
+            stacked={Boolean(deleteTarget) || bulkDeleteOpen}
             title={selectedRun?.code ?? 'Course run'}
             description={
               selectedRun

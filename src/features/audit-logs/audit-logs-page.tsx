@@ -4,7 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
-import { FilterChipGroup } from '@/components/admin/filter-chip-group';
+import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { TechnicalDetails } from '@/components/admin/technical-details';
@@ -134,19 +134,23 @@ export function AuditLogsPage() {
           clearLabel="Clear filters"
           onClear={resetFilters}
         >
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Audit action"
+            placeholder="Action"
             value={action}
             options={ACTION_FILTER_OPTIONS}
+            triggerClassName="w-[12rem]"
             onChange={(value) => {
               setAction(value);
               setPage(1);
             }}
           />
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Entity type"
+            placeholder="Entity"
             value={entityType}
             options={ENTITY_TYPE_FILTER_OPTIONS}
+            triggerClassName="w-[12rem]"
             onChange={(value) => {
               setEntityType(value);
               setPage(1);

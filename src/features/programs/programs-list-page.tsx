@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
-import { FilterChipGroup } from '@/components/admin/filter-chip-group';
+import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
@@ -303,8 +303,9 @@ export function ProgramsListPage() {
             setStatusFilter('all');
           }}
         >
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Program status"
+            placeholder="Status"
             value={statusFilter}
             options={STATUS_FILTER_OPTIONS}
             onChange={setStatusFilter}

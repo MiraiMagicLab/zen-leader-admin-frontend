@@ -652,6 +652,7 @@ export function CourseRunEnrollmentsPanel({
       <AdminDockPanel
         open={Boolean(viewEnrollment)}
         onClose={() => setViewEnrollment(null)}
+        stacked={Boolean(editEnrollment)}
         title={
           viewEnrollment?.userDisplayName ??
           viewEnrollment?.userEmail ??
@@ -668,7 +669,6 @@ export function CourseRunEnrollmentsPanel({
                 size="sm"
                 onClick={() => {
                   openEditEnrollment(viewEnrollment);
-                  setViewEnrollment(null);
                 }}
               >
                 Edit
@@ -691,7 +691,7 @@ export function CourseRunEnrollmentsPanel({
           }
         }}
       >
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg lg:left-[calc(50%-9rem)]">
           <DialogHeader>
             <DialogTitle>Edit enrollment</DialogTitle>
             {editEnrollment ? (
@@ -710,14 +710,14 @@ export function CourseRunEnrollmentsPanel({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
-                    <SelectItem value="COMPLETED">Completed</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <SelectContent>
+                  <SelectItem value="ACTIVE">Active</SelectItem>
+                  <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
               <div className="space-y-2">
                 <Label>Role</Label>
                 <Select value={editRole} onValueChange={setEditRole}>

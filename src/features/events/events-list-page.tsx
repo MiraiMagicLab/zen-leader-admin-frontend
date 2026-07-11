@@ -8,7 +8,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
-import { FilterChipGroup } from '@/components/admin/filter-chip-group';
+import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
@@ -385,8 +385,9 @@ export function EventsListPage() {
               setPage(0);
             }}
           />
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Event status"
+            placeholder="Status"
             value={status}
             options={EVENT_STATUS_OPTIONS}
             onChange={(value) => {
@@ -394,8 +395,9 @@ export function EventsListPage() {
               setPage(0);
             }}
           />
-          <FilterChipGroup
+          <FilterSelect
             ariaLabel="Event type"
+            placeholder="Type"
             value={typeFilter}
             options={EVENT_TYPE_OPTIONS}
             onChange={(value) => {
