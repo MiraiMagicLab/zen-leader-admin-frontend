@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { TableRowActionMenu } from '@/components/admin/table-row-actions';
@@ -31,8 +31,8 @@ import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { formatDateTime } from '@/lib/format';
+import { humanizeEnumValue } from '@/lib/humanize';
 import { sessionsApi } from '@/services/lms/lms-api';
-import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { SessionResponse } from '@/services/types/domain';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 
@@ -141,7 +141,7 @@ export function CourseRunSessionsPanel({
       setSessionForm(emptySessionForm);
       await invalidateSessions();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const updateSessionMutation = useMutation({
@@ -165,7 +165,7 @@ export function CourseRunSessionsPanel({
       setEditSession(null);
       await invalidateSessions();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const deleteSessionMutation = useMutation({
@@ -175,7 +175,7 @@ export function CourseRunSessionsPanel({
       setPendingConfirm(null);
       await invalidateSessions();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const openEditSession = (session: SessionResponse) => {
@@ -199,7 +199,7 @@ export function CourseRunSessionsPanel({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        cell: ({ row }) => <Badge variant="secondary">{humanizeEnumValue(row.original.status)}</Badge>,
       },
       {
         id: 'scheduled',
@@ -232,9 +232,11 @@ export function CourseRunSessionsPanel({
         size: 48,
         cell: ({ row }) => (
           <TableRowActionMenu
-            primaryLabel="Edit"
-            onPrimary={() => openEditSession(row.original)}
             items={[
+              {
+                label: 'Edit',
+                onClick: () => openEditSession(row.original),
+              },
               {
                 label: 'Delete',
                 icon: Trash2,
@@ -271,6 +273,7 @@ export function CourseRunSessionsPanel({
           data={sessions}
           isLoading={isLoading}
           emptyMessage="No sessions yet."
+          pageOffset={0}
           showPagination={false}
         />
       </section>
@@ -365,10 +368,10 @@ export function CourseRunSessionsPanel({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
-                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                  <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -499,10 +502,10 @@ export function CourseRunSessionsPanel({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SCHEDULED">SCHEDULED</SelectItem>
-                      <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                      <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                      <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                      <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                      <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                      <SelectItem value="COMPLETED">Completed</SelectItem>
+                      <SelectItem value="CANCELLED">Cancelled</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

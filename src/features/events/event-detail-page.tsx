@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
@@ -177,7 +177,7 @@ export function EventDetailPage() {
       setPendingCommentDelete(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const publishMutation = useMutation({
@@ -187,7 +187,7 @@ export function EventDetailPage() {
       setPendingEventAction(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const unpublishMutation = useMutation({
@@ -197,7 +197,7 @@ export function EventDetailPage() {
       setPendingEventAction(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const updateMutation = useMutation({
@@ -223,7 +223,7 @@ export function EventDetailPage() {
       setEditThumbnailFile(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const updateCommentMutation = useMutation({
@@ -234,7 +234,7 @@ export function EventDetailPage() {
       setEditCommentOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const deleteEventMutation = useMutation({
@@ -244,7 +244,7 @@ export function EventDetailPage() {
       setPendingEventAction(null);
       void navigate(ROUTES.events);
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const event = eventQuery.data;
@@ -365,9 +365,12 @@ export function EventDetailPage() {
             <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
             {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
             <TableRowActionMenu
-              primaryLabel="Edit"
-              onPrimary={openEditSheet}
               items={[
+                {
+                  label: 'Edit',
+                  icon: Pencil,
+                  onClick: openEditSheet,
+                },
                 normalizeEventStatus(event.status) !== 'PUBLISHED'
                   ? {
                       label: 'Publish',
@@ -446,10 +449,6 @@ export function EventDetailPage() {
             <div>
               <p className="text-muted-foreground text-sm">Join target</p>
               <p className="break-all">{event.liveLink ?? 'The access link will appear automatically when the event is ready.'}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground text-sm">Session type</p>
-              <p>{event.sessionType ?? 'Live meeting'}</p>
             </div>
             <div>
               <p className="text-muted-foreground text-sm">Created</p>

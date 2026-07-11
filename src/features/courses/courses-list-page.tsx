@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 import { z } from 'zod';
 
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
@@ -292,9 +292,11 @@ export function CoursesListPage() {
       ...tableActionsColumn<CourseResponse>(),
       cell: ({ row }) => (
         <TableRowActionMenu
-          primaryLabel="Open"
-          onPrimary={() => navigate(ROUTES.courseDetail(row.original.id))}
           items={[
+            {
+              label: 'Open',
+              onClick: () => navigate(ROUTES.courseDetail(row.original.id)),
+            },
             {
               label: 'Edit',
               onClick: () => openEditDialog(row.original),

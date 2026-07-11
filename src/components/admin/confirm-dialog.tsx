@@ -10,6 +10,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
+
+type ConfirmVariant = 'default' | 'destructive';
 
 type ConfirmDialogProps = {
   open: boolean;
@@ -20,17 +23,22 @@ type ConfirmDialogProps = {
   cancelLabel?: string;
   onConfirm: () => void;
   pending?: boolean;
+  variant?: ConfirmVariant;
 };
 
+/**
+ * Reusable confirmation dialog for destructive and non-destructive admin actions.
+ */
 export function ConfirmDialog({
   open,
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Delete',
+  confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   onConfirm,
   pending = false,
+  variant = 'destructive',
 }: ConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
@@ -42,11 +50,17 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
-            className="bg-destructive text-white hover:bg-destructive/90"
+            className={cn(
+              variant === 'destructive' &&
+                'bg-destructive text-white hover:bg-destructive/90',
+            )}
             disabled={pending}
-            onClick={onConfirm}
+            onClick={(event) => {
+              event.preventDefault();
+              onConfirm();
+            }}
           >
-            {confirmLabel}
+            {pending ? 'Working…' : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -57,6 +71,7 @@ export function ConfirmDialog({
 export type PendingConfirm = {
   title: string;
   description: ReactNode;
-  action: () => void;
+  action: () => void | Promise<void>;
   confirmLabel?: string;
+  variant?: ConfirmVariant;
 };

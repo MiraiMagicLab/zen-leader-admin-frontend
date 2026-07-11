@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Eye, FileSpreadsheet, Plus, Trash2, Upload, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { AdminDockPanel } from '@/components/admin/admin-dock-panel';
@@ -39,6 +39,7 @@ import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { formatDateTime } from '@/lib/format';
+import { humanizeEnumValue } from '@/lib/humanize';
 import {
   FILE_READ_ERROR_MESSAGE,
   snapshotUploadFile,
@@ -46,7 +47,6 @@ import {
   validateExcelFile,
 } from '@/lib/validate-excel-file';
 import { enrollmentsApi } from '@/services/lms/lms-api';
-import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { EnrollmentImportResponse, EnrollmentResponse, UserResponse } from '@/services/types/domain';
 
 function EnrollmentMetaTable({ enrollment }: { enrollment: EnrollmentResponse }) {
@@ -55,13 +55,13 @@ function EnrollmentMetaTable({ enrollment }: { enrollment: EnrollmentResponse })
     { label: 'Email', value: enrollment.userEmail ?? '—' },
     {
       label: 'Role',
-      value: <Badge variant="secondary">{enrollment.role ?? 'STUDENT'}</Badge>,
+      value: <Badge variant="secondary">{humanizeEnumValue(enrollment.role ?? 'STUDENT')}</Badge>,
     },
     {
       label: 'Status',
-      value: <Badge variant="secondary">{enrollment.status}</Badge>,
+      value: <Badge variant="secondary">{humanizeEnumValue(enrollment.status)}</Badge>,
     },
-    { label: 'Method', value: enrollment.enrolmentMethod ?? '—' },
+    { label: 'Method', value: humanizeEnumValue(enrollment.enrolmentMethod) ?? '—' },
     {
       label: 'Enrolled at',
       value: enrollment.enrolledAt ? formatDateTime(enrollment.enrolledAt) : '—',
@@ -215,7 +215,7 @@ export function CourseRunEnrollmentsPanel({
       setEnrollRole('STUDENT');
       await invalidateEnrollments();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const importMutation = useMutation({
@@ -241,7 +241,7 @@ export function CourseRunEnrollmentsPanel({
       setImportOpen(false);
       await invalidateEnrollments();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const previewImportMutation = useMutation({
@@ -252,7 +252,7 @@ export function CourseRunEnrollmentsPanel({
       setImportPreview(result);
       toast.success('Import previewed.');
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const updateEnrollmentMutation = useMutation({
@@ -266,7 +266,7 @@ export function CourseRunEnrollmentsPanel({
       setEditEnrollment(null);
       await invalidateEnrollments();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const deleteEnrollmentMutation = useMutation({
@@ -276,7 +276,7 @@ export function CourseRunEnrollmentsPanel({
       setPendingConfirm(null);
       await invalidateEnrollments();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const enrollmentColumns = useMemo<ColumnDef<EnrollmentResponse>[]>(
@@ -299,12 +299,12 @@ export function CourseRunEnrollmentsPanel({
       {
         accessorKey: 'role',
         header: 'Role',
-        cell: ({ row }) => row.original.role ?? 'STUDENT',
+        cell: ({ row }) => humanizeEnumValue(row.original.role ?? 'STUDENT'),
       },
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{row.original.status}</Badge>,
+        cell: ({ row }) => <Badge variant="secondary">{humanizeEnumValue(row.original.status)}</Badge>,
       },
       {
         id: 'enrolledAt',
@@ -315,9 +315,12 @@ export function CourseRunEnrollmentsPanel({
         ...tableActionsColumn<EnrollmentResponse>(),
         cell: ({ row }) => (
           <TableRowActionMenu
-            primaryLabel="Progress"
-            onPrimary={() => onOpenProgress(row.original)}
             items={[
+              {
+                label: 'Progress',
+                icon: Eye,
+                onClick: () => onOpenProgress(row.original),
+              },
               {
                 label: 'View detail',
                 onClick: () => setViewEnrollment(row.original),
@@ -429,10 +432,10 @@ export function CourseRunEnrollmentsPanel({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                    <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
-                    <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                    <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -443,8 +446,8 @@ export function CourseRunEnrollmentsPanel({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="STUDENT">STUDENT</SelectItem>
-                    <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
+                    <SelectItem value="STUDENT">Student</SelectItem>
+                    <SelectItem value="INSTRUCTOR">Instructor</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -506,7 +509,7 @@ export function CourseRunEnrollmentsPanel({
                     anchor.click();
                     URL.revokeObjectURL(url);
                   })
-                  .catch((error) => toast.error(getApiErrorMessage(error)));
+                  .catch((error) => toast.error(error));
               }}
             >
               <FileSpreadsheet className="mr-2 size-4" />
@@ -707,24 +710,24 @@ export function CourseRunEnrollmentsPanel({
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ACTIVE">ACTIVE</SelectItem>
-                  <SelectItem value="SUSPENDED">SUSPENDED</SelectItem>
-                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Role</Label>
-              <Select value={editRole} onValueChange={setEditRole}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="STUDENT">STUDENT</SelectItem>
-                  <SelectItem value="INSTRUCTOR">INSTRUCTOR</SelectItem>
-                </SelectContent>
+                  <SelectContent>
+                    <SelectItem value="ACTIVE">Active</SelectItem>
+                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                    <SelectItem value="COMPLETED">Completed</SelectItem>
+                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Role</Label>
+                <Select value={editRole} onValueChange={setEditRole}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="STUDENT">Student</SelectItem>
+                    <SelectItem value="INSTRUCTOR">Instructor</SelectItem>
+                  </SelectContent>
               </Select>
             </div>
           </div>

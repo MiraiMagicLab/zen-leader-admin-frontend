@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { RefreshCw, RotateCcw } from 'lucide-react';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
@@ -11,19 +12,13 @@ import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import {
   AUDIT_ACTION_OPTIONS,
   AUDIT_ENTITY_TYPE_OPTIONS,
   auditActionLabel,
+  auditActorTypeLabel,
   auditEntityTypeLabel,
 } from '@/lib/audit-labels';
 import { formatDateTime } from '@/lib/format';
@@ -34,6 +29,16 @@ import type { AuditLogResponse } from '@/services/types/domain';
 
 const ALL = 'all';
 const PAGE_SIZE = 20;
+
+const ACTION_FILTER_OPTIONS = [
+  { value: ALL, label: 'All' },
+  ...AUDIT_ACTION_OPTIONS,
+] as const;
+
+const ENTITY_TYPE_FILTER_OPTIONS = [
+  { value: ALL, label: 'All' },
+  ...AUDIT_ENTITY_TYPE_OPTIONS,
+] as const;
 
 export function AuditLogsPage() {
   useAdminPageMeta(ADMIN_PAGE_META.auditLogs);
@@ -127,45 +132,24 @@ export function AuditLogsPage() {
           clearLabel="Clear filters"
           onClear={resetFilters}
         >
-          <Select
+          <FilterChipGroup
+            ariaLabel="Audit action"
             value={action}
-            onValueChange={(value) => {
+            options={ACTION_FILTER_OPTIONS}
+            onChange={(value) => {
               setAction(value);
               setPage(1);
             }}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Action" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All actions</SelectItem>
-              {AUDIT_ACTION_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
+          />
+          <FilterChipGroup
+            ariaLabel="Entity type"
             value={entityType}
-            onValueChange={(value) => {
+            options={ENTITY_TYPE_FILTER_OPTIONS}
+            onChange={(value) => {
               setEntityType(value);
               setPage(1);
             }}
-          >
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Entity type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All types</SelectItem>
-              {AUDIT_ENTITY_TYPE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
         </AdminFilterBar>
       }
     >
@@ -230,7 +214,7 @@ export function AuditLogsPage() {
                   label="Actor"
                   value={selectedLog.actorDisplay ?? selectedLog.actorUserId}
                 />
-                <InspectorField label="Actor type" value={selectedLog.actorType} />
+                <InspectorField label="Actor type" value={auditActorTypeLabel(selectedLog.actorType)} />
                 <InspectorField label="Actor user ID" value={selectedLog.actorUserId} mono />
                 <InspectorField label="Request ID" value={selectedLog.requestId} mono />
                 <InspectorField label="IP address" value={selectedLog.ipAddress} mono />

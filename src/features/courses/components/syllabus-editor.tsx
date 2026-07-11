@@ -31,7 +31,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { SyllabusItemEditorSheet } from '@/features/courses/components/syllabus-item-editor-sheet';
 import { ConfirmDialog } from '@/components/admin/confirm-dialog';

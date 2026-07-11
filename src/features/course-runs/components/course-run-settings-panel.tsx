@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { Button } from '@/components/ui/button';

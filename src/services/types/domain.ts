@@ -157,7 +157,6 @@ export type EventResponse = {
   endTime: string;
   status: string;
   roomCode: string | null;
-  sessionType: string | null;
   isOngoing: boolean;
   isOfficial: boolean;
   author: {
@@ -422,7 +421,6 @@ export type CourseIapMappingRequest = {
 export type LiveSessionResponse = {
   id: string;
   roomCode: string;
-  type: string;
   status: string;
   ownerId: string;
   eventId: string | null;

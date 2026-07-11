@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
@@ -29,13 +30,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -88,6 +82,19 @@ const emptyForm: EventForm = {
   isOfficial: false,
   thumbnailFile: null,
 };
+
+const EVENT_STATUS_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'PUBLISHED', label: 'Published' },
+  { value: 'COMPLETED', label: 'Completed' },
+] as const;
+
+const EVENT_TYPE_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'official', label: 'System' },
+  { value: 'community', label: 'User' },
+] as const;
 
 export function EventsListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.events);
@@ -171,7 +178,7 @@ export function EventsListPage() {
       setForm(emptyForm);
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const publishMutation = useMutation({
@@ -180,7 +187,7 @@ export function EventsListPage() {
       toast.success('Event published.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const unpublishMutation = useMutation({
@@ -189,7 +196,7 @@ export function EventsListPage() {
       toast.success('Event moved to draft.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const deleteMutation = useMutation({
@@ -198,7 +205,7 @@ export function EventsListPage() {
       toast.success('Event deleted.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.events.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const isConfirmingAction =
@@ -312,9 +319,13 @@ export function EventsListPage() {
 
           return (
             <TableRowActionMenu
-              primaryLabel="Open"
-              onPrimary={() => navigate(ROUTES.eventDetail(row.original.id))}
-              items={items}
+              items={[
+                {
+                  label: 'Open',
+                  onClick: () => navigate(ROUTES.eventDetail(row.original.id)),
+                },
+                ...items,
+              ]}
             />
           );
         },
@@ -373,39 +384,24 @@ export function EventsListPage() {
               setPage(0);
             }}
           />
-          <Select
+          <FilterChipGroup
+            ariaLabel="Event status"
             value={status}
-            onValueChange={(value) => {
+            options={EVENT_STATUS_OPTIONS}
+            onChange={(value) => {
               setStatus(value);
               setPage(0);
             }}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="DRAFT">Draft</SelectItem>
-              <SelectItem value="PUBLISHED">Published</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
+          />
+          <FilterChipGroup
+            ariaLabel="Event type"
             value={typeFilter}
-            onValueChange={(value: EventTypeFilter) => {
-              setTypeFilter(value);
+            options={EVENT_TYPE_OPTIONS}
+            onChange={(value) => {
+              setTypeFilter(value as EventTypeFilter);
               setPage(0);
             }}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              <SelectItem value="official">System event</SelectItem>
-              <SelectItem value="community">User event</SelectItem>
-            </SelectContent>
-          </Select>
+          />
         </AdminFilterBar>
       }
     >

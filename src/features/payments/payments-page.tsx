@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate } from 'react-router-dom';
 import { Copy, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
+import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
@@ -27,17 +29,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
+import { humanizeEnumValue } from '@/lib/humanize';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
@@ -60,7 +56,20 @@ const STATUS_OPTIONS = [
 ];
 
 function paymentStatusLabel(status: string) {
-  return PAYMENT_STATUS_LABEL[status] ?? status;
+  return PAYMENT_STATUS_LABEL[status] ?? humanizeEnumValue(status);
+}
+
+const PROVIDER_LABEL: Record<string, string> = {
+  VNPAY: 'VNPay',
+  PAYPAL: 'PayPal',
+  MOMO: 'MoMo',
+  STRIPE: 'Stripe',
+  MANUAL: 'Manual',
+};
+
+function paymentProviderLabel(provider: string | null | undefined): string {
+  if (!provider?.trim()) return '—';
+  return PROVIDER_LABEL[provider.toUpperCase()] ?? humanizeEnumValue(provider);
 }
 
 function canRetryEnrollment(order: AdminPaymentOrderResponse): boolean {
@@ -82,6 +91,8 @@ export function PaymentsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkPending, setBulkPending] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [confirmPending, setConfirmPending] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<AdminPaymentOrderResponse | null>(null);
 
   const clearSelectedOrder = useCallback(() => setSelectedOrder(null), []);
@@ -111,7 +122,7 @@ export function PaymentsPage() {
       toast.success('Enrollment retry started.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const rows = ordersQuery.data?.data ?? [];
@@ -141,6 +152,17 @@ export function PaymentsPage() {
     [retryableIds],
   );
 
+  const runConfirm = async () => {
+    if (!pendingConfirm) return;
+    setConfirmPending(true);
+    try {
+      await pendingConfirm.action();
+      setPendingConfirm(null);
+    } finally {
+      setConfirmPending(false);
+    }
+  };
+
   const runBulkRetry = async () => {
     const targets = selectedRetryable.map((order) => order.orderId);
     setBulkPending(true);
@@ -156,7 +178,7 @@ export function PaymentsPage() {
       setSelectedIds([]);
       void queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
     } catch (error) {
-      toast.error(getApiErrorMessage(error));
+      toast.error(error);
     } finally {
       setBulkPending(false);
       setBulkOpen(false);
@@ -272,23 +294,35 @@ export function PaymentsPage() {
       },
       {
         ...tableActionsColumn<AdminPaymentOrderResponse>(),
-        cell: ({ row }) => (
-          <TableRowActionMenu
-            primaryLabel="Open"
-            onPrimary={() => navigate(ROUTES.courseRunDetail(row.original.courseRunId))}
-            items={
-              canRetryEnrollment(row.original)
-                ? [
-                    {
-                      label: 'Retry enrollment',
-                      icon: RefreshCw,
-                      onClick: () => retryMutation.mutate(row.original.orderId),
-                    },
-                  ]
-                : []
-            }
-          />
-        ),
+        cell: ({ row }) => {
+          const order = row.original;
+          const items = [
+            {
+              label: 'Open',
+              onClick: () => navigate(ROUTES.courseRunDetail(order.courseRunId)),
+            },
+            ...(canRetryEnrollment(order)
+              ? [
+                  {
+                    label: 'Retry enrollment',
+                    icon: RefreshCw,
+                    onClick: () =>
+                      setPendingConfirm({
+                        title: 'Retry enrollment for this order?',
+                        description: `Order ${order.orderId.slice(0, 8)}… will be re-enrolled.`,
+                        confirmLabel: 'Retry enrollment',
+                        variant: 'default' as const,
+                        action: async () => {
+                          await retryMutation.mutateAsync(order.orderId);
+                        },
+                      }),
+                  },
+                ]
+              : []),
+          ];
+
+          return <TableRowActionMenu items={items} />;
+        },
       },
     ],
     [navigate, retryMutation, selectedIds, allRetryableSelected, retryableRows, toggleAll, toggleRow],
@@ -318,18 +352,15 @@ export function PaymentsPage() {
             setStatusFilter('all');
           }}
         >
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterChipGroup
+            ariaLabel="Payment status"
+            value={statusFilter}
+            options={STATUS_OPTIONS}
+            onChange={(value) => {
+              setPage(0);
+              setStatusFilter(value);
+            }}
+          />
         </AdminFilterBar>
       }
     >
@@ -394,7 +425,17 @@ export function PaymentsPage() {
               <Button
                 size="sm"
                 disabled={retryMutation.isPending}
-                onClick={() => retryMutation.mutate(selectedLiveOrder.orderId)}
+                onClick={() =>
+                  setPendingConfirm({
+                    title: 'Retry enrollment for this order?',
+                    description: `Order ${selectedLiveOrder.orderId.slice(0, 8)}… will be re-enrolled.`,
+                    confirmLabel: 'Retry enrollment',
+                    variant: 'default',
+                    action: async () => {
+                      await retryMutation.mutateAsync(selectedLiveOrder.orderId);
+                    },
+                  })
+                }
               >
                 <RefreshCw className="mr-2 size-4" />
                 Retry enrollment
@@ -409,7 +450,7 @@ export function PaymentsPage() {
                 label="Status"
                 value={<Badge variant="secondary">{paymentStatusLabel(selectedLiveOrder.status)}</Badge>}
               />
-              <InspectorField label="Provider" value={selectedLiveOrder.provider} />
+              <InspectorField label="Provider" value={paymentProviderLabel(selectedLiveOrder.provider)} />
               <InspectorField
                 label="User"
                 value={
@@ -455,19 +496,31 @@ export function PaymentsPage() {
               />
               <InspectorField
                 label="Enrollment failure code"
-                value={selectedLiveOrder.enrollmentFailureCode}
-                mono
+                value={selectedLiveOrder.enrollmentFailureCode ? humanizeEnumValue(selectedLiveOrder.enrollmentFailureCode) : '—'}
                 className="col-span-2"
               />
               <InspectorField
                 label="Enrollment failure message"
-                value={selectedLiveOrder.enrollmentFailureMessage}
+                value={selectedLiveOrder.enrollmentFailureMessage ?? '—'}
                 className="col-span-2"
               />
             </dl>
           ) : null}
         </AdminDockPanel>
       </>
+
+      <ConfirmDialog
+        open={pendingConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open && !confirmPending) setPendingConfirm(null);
+        }}
+        title={pendingConfirm?.title ?? ''}
+        description={pendingConfirm?.description ?? ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant={pendingConfirm?.variant ?? 'destructive'}
+        pending={confirmPending}
+        onConfirm={() => void runConfirm()}
+      />
 
       <AlertDialog
         open={bulkOpen}

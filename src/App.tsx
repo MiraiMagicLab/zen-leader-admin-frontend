@@ -6,7 +6,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppRouterProvider />
-      <Toaster richColors position="top-right" />
+      <Toaster position="top-right" expand visibleToasts={4} />
     </AuthProvider>
   );
 }

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import {
@@ -110,7 +110,7 @@ export function CourseRunsListPage() {
       setDeleteTarget(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const visibleIds = useMemo(
@@ -260,9 +260,11 @@ export function CourseRunsListPage() {
         ...tableActionsColumn<CourseRunResponse>(),
         cell: ({ row }) => (
           <TableRowActionMenu
-            primaryLabel="Open"
-            onPrimary={() => navigate(ROUTES.courseRunDetail(row.original.id))}
             items={[
+              {
+                label: 'Open',
+                onClick: () => navigate(ROUTES.courseRunDetail(row.original.id)),
+              },
               {
                 label: 'Delete',
                 icon: Trash2,

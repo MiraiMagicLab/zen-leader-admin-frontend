@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
@@ -106,7 +106,7 @@ export function CourseRunDetailPage() {
       toast.success('Course run deleted.');
       navigate(run?.courseId ? ROUTES.courseDetail(run.courseId) : ROUTES.courseRuns);
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   if (!runId) {
@@ -131,9 +131,11 @@ export function CourseRunDetailPage() {
           run ? (
             <div className="flex flex-wrap gap-2">
             <TableRowActionMenu
-              primaryLabel="Run settings"
-              onPrimary={openRunSettings}
               items={[
+                {
+                  label: 'Run settings',
+                  onClick: openRunSettings,
+                },
                 {
                   label: 'Delete',
                   icon: Trash2,

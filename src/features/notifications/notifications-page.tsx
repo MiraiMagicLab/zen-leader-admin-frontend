@@ -1,7 +1,7 @@
 import { useState, useId } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Loader2, Send } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminPanelSkeleton } from '@/components/admin/admin-loading';

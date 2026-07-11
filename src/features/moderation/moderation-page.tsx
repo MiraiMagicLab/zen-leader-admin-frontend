@@ -3,10 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link } from 'react-router-dom';
 import { Copy, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
+import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
@@ -27,17 +29,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { queryKeys } from '@/hooks/query-keys';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
+import { humanizeEnumValue } from '@/lib/humanize';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
@@ -54,8 +50,19 @@ const CONTENT_TYPE_LABEL: Record<string, string> = {
   MESSAGE: 'Message',
   COMMENT: 'Comment',
   EVENT: 'Event',
-  USER: 'User',
+  USER: 'User profile',
+  POST: 'Post',
+  REVIEW: 'Review',
+  COURSE: 'Course',
 };
+
+function contentTypeLabel(value: string): string {
+  return CONTENT_TYPE_LABEL[value.toUpperCase()] ?? humanizeEnumValue(value);
+}
+
+function reportStatusLabel(value: string): string {
+  return STATUS_LABEL[value.toUpperCase()] ?? humanizeEnumValue(value);
+}
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All' },
@@ -91,6 +98,8 @@ export function ModerationPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'RESOLVED' | 'DISMISSED' | null>(null);
   const [bulkPending, setBulkPending] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
+  const [confirmPending, setConfirmPending] = useState(false);
   const [selectedReport, setSelectedReport] = useState<UgcReportResponse | null>(null);
 
   const clearSelectedReport = useCallback(() => setSelectedReport(null), []);
@@ -121,7 +130,7 @@ export function ModerationPage() {
       toast.success('Report updated.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.safety.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const rows = reportsQuery.data?.data ?? [];
@@ -150,6 +159,17 @@ export function ModerationPage() {
     [pendingIds],
   );
 
+  const runConfirm = async () => {
+    if (!pendingConfirm) return;
+    setConfirmPending(true);
+    try {
+      await pendingConfirm.action();
+      setPendingConfirm(null);
+    } finally {
+      setConfirmPending(false);
+    }
+  };
+
   const runBulkUpdate = async () => {
     if (!bulkAction) {
       return;
@@ -168,7 +188,7 @@ export function ModerationPage() {
       setSelectedIds([]);
       void queryClient.invalidateQueries({ queryKey: queryKeys.safety.all });
     } catch (error) {
-      toast.error(getApiErrorMessage(error));
+      toast.error(error);
     } finally {
       setBulkPending(false);
       setBulkAction(null);
@@ -215,8 +235,7 @@ export function ModerationPage() {
                 toast.success('Content ID copied.');
               }}
             >
-              {CONTENT_TYPE_LABEL[row.original.targetContentType] ??
-                row.original.targetContentType}{' '}
+              {contentTypeLabel(row.original.targetContentType)}{' '}
               · {row.original.targetContentId.slice(0, 8)}…
               <Copy className="size-3" />
             </button>
@@ -243,7 +262,7 @@ export function ModerationPage() {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => (
-          <Badge variant="secondary">{STATUS_LABEL[row.original.status] ?? row.original.status}</Badge>
+          <Badge variant="secondary">{reportStatusLabel(row.original.status)}</Badge>
         ),
       },
       {
@@ -257,20 +276,37 @@ export function ModerationPage() {
         cell: ({ row }) =>
           row.original.status === 'PENDING' ? (
             <TableRowActionMenu
-              primaryLabel="Resolve"
-              onPrimary={() =>
-                updateStatusMutation.mutate({
-                  reportId: row.original.id,
-                  status: 'RESOLVED',
-                })
-              }
               items={[
+                {
+                  label: 'Resolve',
+                  onClick: () =>
+                    setPendingConfirm({
+                      title: 'Resolve this report?',
+                      description: `"${row.original.reason}" will be marked as resolved.`,
+                      confirmLabel: 'Resolve',
+                      variant: 'default',
+                      action: async () => {
+                        await updateStatusMutation.mutateAsync({
+                          reportId: row.original.id,
+                          status: 'RESOLVED',
+                        });
+                      },
+                    }),
+                },
                 {
                   label: 'Dismiss',
                   onClick: () =>
-                    updateStatusMutation.mutate({
-                      reportId: row.original.id,
-                      status: 'DISMISSED',
+                    setPendingConfirm({
+                      title: 'Dismiss this report?',
+                      description: `"${row.original.reason}" will be marked as dismissed.`,
+                      confirmLabel: 'Dismiss',
+                      variant: 'default',
+                      action: async () => {
+                        await updateStatusMutation.mutateAsync({
+                          reportId: row.original.id,
+                          status: 'DISMISSED',
+                        });
+                      },
                     }),
                 },
               ]}
@@ -305,18 +341,15 @@ export function ModerationPage() {
             setStatusFilter('PENDING');
           }}
         >
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterChipGroup
+            ariaLabel="Report status"
+            value={statusFilter}
+            options={STATUS_OPTIONS}
+            onChange={(value) => {
+              setPage(0);
+              setStatusFilter(value);
+            }}
+          />
         </AdminFilterBar>
       }
     >
@@ -422,7 +455,7 @@ export function ModerationPage() {
                 label="Status"
                 value={
                   <Badge variant="secondary">
-                    {STATUS_LABEL[selectedLiveReport.status] ?? selectedLiveReport.status}
+                    {reportStatusLabel(selectedLiveReport.status)}
                   </Badge>
                 }
               />
@@ -444,10 +477,7 @@ export function ModerationPage() {
               />
               <InspectorField
                 label="Content type"
-                value={
-                  CONTENT_TYPE_LABEL[selectedLiveReport.targetContentType] ??
-                  selectedLiveReport.targetContentType
-                }
+                value={contentTypeLabel(selectedLiveReport.targetContentType)}
               />
               <InspectorField
                 label="Content ID"
@@ -471,6 +501,19 @@ export function ModerationPage() {
           ) : null}
         </AdminDockPanel>
       </>
+
+      <ConfirmDialog
+        open={pendingConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open && !confirmPending) setPendingConfirm(null);
+        }}
+        title={pendingConfirm?.title ?? ''}
+        description={pendingConfirm?.description ?? ''}
+        confirmLabel={pendingConfirm?.confirmLabel}
+        variant={pendingConfirm?.variant ?? 'destructive'}
+        pending={confirmPending}
+        onConfirm={() => void runConfirm()}
+      />
 
       <AlertDialog
         open={bulkAction !== null}

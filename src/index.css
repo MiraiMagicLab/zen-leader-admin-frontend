@@ -165,3 +165,10 @@
 .collapsible-content > * {
   overflow: hidden;
 }
+
+@layer components {
+  .cn-toast {
+    border-radius: var(--radius-lg);
+    font-family: var(--font-sans);
+  }
+}

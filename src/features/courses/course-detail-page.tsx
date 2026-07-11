@@ -12,7 +12,7 @@ import {
   ShoppingBag,
   Trash2,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminDetailSkeleton, AdminQueryError } from '@/components/admin/admin-query-state';
@@ -252,7 +252,7 @@ export function CourseDetailPage() {
       setEditIapOpen(false);
       await invalidateCourseQueries();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const updateRunMutation = useMutation({
@@ -279,7 +279,7 @@ export function CourseDetailPage() {
       setRunForm(emptyRunForm);
       await invalidateCourseQueries();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const deleteRunMutation = useMutation({
@@ -289,7 +289,7 @@ export function CourseDetailPage() {
       setPendingConfirm(null);
       await invalidateCourseQueries();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const updateCourseMutation = useMutation({
@@ -319,7 +319,7 @@ export function CourseDetailPage() {
       setEditCourseOpen(false);
       await invalidateCourseQueries();
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const deleteCourseMutation = useMutation({
@@ -328,7 +328,7 @@ export function CourseDetailPage() {
       toast.success('Course deleted.');
       void navigate(ROUTES.courses);
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const openEditRun = (run: CourseRunResponse) => {
@@ -482,9 +482,11 @@ export function CourseDetailPage() {
               {isReady ? 'Ready' : 'Draft'}
             </span>
             <TableRowActionMenu
-              primaryLabel="Edit info"
-              onPrimary={() => setEditCourseOpen(true)}
               items={[
+                {
+                  label: 'Edit info',
+                  onClick: () => setEditCourseOpen(true),
+                },
                 {
                   label: 'Delete',
                   icon: Trash2,
@@ -812,11 +814,11 @@ export function CourseDetailPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="DRAFT">DRAFT</SelectItem>
-                  <SelectItem value="OPEN">OPEN</SelectItem>
-                  <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
-                  <SelectItem value="COMPLETED">COMPLETED</SelectItem>
-                  <SelectItem value="CANCELLED">CANCELLED</SelectItem>
+                  <SelectItem value="DRAFT">Draft</SelectItem>
+                  <SelectItem value="OPEN">Open</SelectItem>
+                  <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                  <SelectItem value="COMPLETED">Completed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>

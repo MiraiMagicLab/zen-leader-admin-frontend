@@ -37,9 +37,8 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
           <Badge variant="secondary">{pricing}</Badge>
         </div>
         <TableRowActionMenu
-          primaryLabel="Manage"
-          onPrimary={() => navigate(ROUTES.courseRunDetail(run.id))}
           items={[
+            { label: 'Manage', onClick: () => navigate(ROUTES.courseRunDetail(run.id)) },
             { label: 'Edit', onClick: onEdit },
             { label: 'Delete', icon: Trash2, destructive: true, onClick: onDelete },
           ]}

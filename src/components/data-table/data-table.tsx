@@ -68,7 +68,7 @@ type DataTableProps<TData, TValue> = {
 function rowIndexColumn<TData>(pageOffset: number): ColumnDef<TData, unknown> {
   return {
     id: '__stt',
-    header: '#',
+    header: 'STT',
     size: 48,
     minSize: 48,
     maxSize: 64,
@@ -92,7 +92,7 @@ export function DataTable<TData, TValue>({
   emptyMessage = 'No data.',
   emptyTitle = 'No results',
   pageSize = 10,
-  showRowIndex = false,
+  showRowIndex = true,
   pageOffset = 0,
   showPagination = true,
   onRowClick,

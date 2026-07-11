@@ -9,10 +9,11 @@ import {
   Trash2,
   Unlock,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { FilterChipGroup } from '@/components/admin/filter-chip-group';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { InspectorField } from '@/components/admin/admin-inspector';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
@@ -67,7 +68,24 @@ import {
   updateUserStatusApi,
 } from '@/services/users/users-api';
 
-const ROLE_OPTIONS = ['admin', 'user'];
+const ROLE_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'user', label: 'User' },
+] as const;
+
+const STATUS_FILTER_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Locked' },
+  { value: 'banned', label: 'Banned' },
+  { value: 'deleted', label: 'Deleted' },
+] as const;
+
+const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'user', label: 'User' },
+];
 
 const EMPTY_CREATE_FORM = {
   email: '',
@@ -126,6 +144,7 @@ export function UsersListPage() {
   const [banConfirmOpen, setBanConfirmOpen] = useState(false);
   const [unbanConfirmOpen, setUnbanConfirmOpen] = useState(false);
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
+  const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const createDirty =
@@ -169,7 +188,7 @@ export function UsersListPage() {
       toast.success('User status updated.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const rolesMutation = useMutation({
@@ -180,7 +199,7 @@ export function UsersListPage() {
       setRolesDialogOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const createMutation = useMutation({
@@ -198,7 +217,7 @@ export function UsersListPage() {
       setCreateForm({ email: '', displayName: '', password: '', role: 'user' });
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const banMutation = useMutation({
@@ -209,7 +228,7 @@ export function UsersListPage() {
       setBanDialogOpen(false);
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const deleteMutation = useMutation({
@@ -220,7 +239,7 @@ export function UsersListPage() {
       clearSelectedUser();
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
-    onError: (error) => toast.error(getApiErrorMessage(error)),
+    onError: (error) => toast.error(error),
   });
 
   const openBanDialog = (user: UserResponse) => {
@@ -284,7 +303,7 @@ export function UsersListPage() {
       setSelectedIds([]);
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     } catch (error) {
-      toast.error(getApiErrorMessage(error));
+      toast.error(error);
     } finally {
       setBulkPending(false);
       setBulkAction(null);
@@ -362,7 +381,7 @@ export function UsersListPage() {
           <div className="flex flex-wrap gap-1">
             {getDisplayRoles(row.original).map((role) => (
               <Badge key={role} variant="secondary">
-                {role}
+                {ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role}
               </Badge>
             ))}
           </div>
@@ -407,8 +426,10 @@ export function UsersListPage() {
               items.push({
                 label: 'Unlock',
                 icon: Unlock,
-                onClick: () =>
-                  statusMutation.mutate({ userId: user.id, isActive: true }),
+                onClick: () => {
+                  setSelectedUser(user);
+                  setUnlockConfirmOpen(true);
+                },
               });
             }
             if (user.bannedUntil) {
@@ -487,28 +508,18 @@ export function UsersListPage() {
           clearLabel="Clear filters"
           onClear={handleClearFilters}
         >
-          <Select value={roleFilter} onValueChange={handleRoleFilterChange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All roles</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Locked</SelectItem>
-              <SelectItem value="banned">Banned</SelectItem>
-              <SelectItem value="deleted">Deleted</SelectItem>
-            </SelectContent>
-          </Select>
+          <FilterChipGroup
+            ariaLabel="User role"
+            value={roleFilter}
+            options={ROLE_FILTER_OPTIONS}
+            onChange={handleRoleFilterChange}
+          />
+          <FilterChipGroup
+            ariaLabel="User status"
+            value={statusFilter}
+            options={STATUS_FILTER_OPTIONS}
+            onChange={handleStatusFilterChange}
+          />
         </AdminFilterBar>
       }
     >
@@ -607,7 +618,7 @@ export function UsersListPage() {
                   <div className="flex flex-wrap gap-1">
                     {getDisplayRoles(selectedUser).map((role) => (
                       <Badge key={role} variant="secondary">
-                        {role}
+                        {ROLE_OPTIONS.find((r) => r.value === role)?.label ?? role}
                       </Badge>
                     ))}
                   </div>
@@ -722,8 +733,8 @@ export function UsersListPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {ROLE_OPTIONS.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -766,8 +777,8 @@ export function UsersListPage() {
                 </SelectTrigger>
                 <SelectContent>
                   {ROLE_OPTIONS.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {role}
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -970,6 +981,39 @@ export function UsersListPage() {
               }}
             >
               Lock
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={unlockConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setUnlockConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unlock this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser
+                ? `"${selectedUser.displayName}" will regain access to their account.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedUser) {
+                  statusMutation.mutate({ userId: selectedUser.id, isActive: true });
+                }
+                setUnlockConfirmOpen(false);
+              }}
+            >
+              Unlock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

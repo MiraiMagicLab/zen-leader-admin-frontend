@@ -14,10 +14,10 @@ import {
 import { cn } from '@/lib/utils';
 
 export const TABLE_ACTIONS_COLUMN_ID = 'actions';
-export const TABLE_ACTIONS_COLUMN_WIDTH = 112;
+export const TABLE_ACTIONS_COLUMN_WIDTH = 72;
 
 /**
- * Standard actions column — primary text action + overflow menu only.
+ * Standard actions column — single overflow menu per row.
  */
 export function tableActionsColumn<T>(): ColumnDef<T> {
   return {
@@ -38,10 +38,7 @@ type TableRowActionsProps = {
 export function TableRowActions({ children, className }: TableRowActionsProps) {
   return (
     <div
-      className={cn(
-        'flex w-full items-center justify-end gap-0.5 whitespace-nowrap',
-        className,
-      )}
+      className={cn('flex w-full items-center justify-end whitespace-nowrap', className)}
       onClick={(event) => event.stopPropagation()}
     >
       {children}
@@ -59,89 +56,71 @@ export type TableActionMenuItem = {
 };
 
 type TableRowActionMenuProps = {
-  primaryLabel?: string;
-  onPrimary?: () => void;
   items: TableActionMenuItem[];
   menuLabel?: string;
 };
 
 /**
- * Unified row actions: one subtle primary action + ⋯ overflow menu.
+ * Unified row actions: all actions live in one ⋯ dropdown menu.
  */
-export function TableRowActionMenu({
-  primaryLabel,
-  onPrimary,
-  items,
-  menuLabel = 'Row actions',
-}: TableRowActionMenuProps) {
+export function TableRowActionMenu({ items, menuLabel = 'Actions' }: TableRowActionMenuProps) {
   const visibleItems = items.filter((item) => !item.hidden);
-  const destructiveItems = visibleItems.filter((item) => item.destructive);
-  const regularItems = visibleItems.filter((item) => !item.destructive);
 
-  if (!onPrimary && visibleItems.length === 0) {
+  if (visibleItems.length === 0) {
     return null;
   }
 
+  const destructiveItems = visibleItems.filter((item) => item.destructive);
+  const regularItems = visibleItems.filter((item) => !item.destructive);
+
   return (
     <TableRowActions>
-      {onPrimary && primaryLabel ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-foreground h-8 px-2 font-medium"
-          onClick={onPrimary}
-        >
-          {primaryLabel}
-        </Button>
-      ) : null}
-      {visibleItems.length > 0 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="text-muted-foreground size-8"
-              aria-label={menuLabel}
-            >
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            {regularItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <DropdownMenuItem
-                  key={item.label}
-                  disabled={item.disabled}
-                  onClick={item.onClick}
-                >
-                  {Icon ? <Icon className="mr-2 size-4" /> : null}
-                  {item.label}
-                </DropdownMenuItem>
-              );
-            })}
-            {regularItems.length > 0 && destructiveItems.length > 0 ? (
-              <DropdownMenuSeparator />
-            ) : null}
-            {destructiveItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <DropdownMenuItem
-                  key={item.label}
-                  disabled={item.disabled}
-                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                  onClick={item.onClick}
-                >
-                  {Icon ? <Icon className="mr-2 size-4" /> : null}
-                  {item.label}
-                </DropdownMenuItem>
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="text-muted-foreground h-8 gap-1 px-2.5 text-xs font-medium"
+            aria-label={menuLabel}
+          >
+            <MoreHorizontal className="size-3.5" />
+            Actions
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {regularItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <DropdownMenuItem
+                key={item.label}
+                disabled={item.disabled}
+                onClick={item.onClick}
+              >
+                {Icon ? <Icon className="mr-2 size-4" /> : null}
+                {item.label}
+              </DropdownMenuItem>
+            );
+          })}
+          {regularItems.length > 0 && destructiveItems.length > 0 ? (
+            <DropdownMenuSeparator />
+          ) : null}
+          {destructiveItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <DropdownMenuItem
+                key={item.label}
+                disabled={item.disabled}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onClick={item.onClick}
+              >
+                {Icon ? <Icon className="mr-2 size-4" /> : null}
+                {item.label}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </TableRowActions>
   );
 }
