@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight } from 'lucide-react';
 
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { QuickLinkItem } from '../constants/quick-links';
 
@@ -10,13 +10,15 @@ type DashboardQuickLinksProps = {
 
 /**
  * Quick-action cards for navigating to common admin tasks.
- * Renders as a vertical stack with icon, title, description, and arrow.
+ * Rendered as a compact card aligned with dashboard activity panels.
  */
 export function DashboardQuickLinks({ items }: DashboardQuickLinksProps) {
   return (
-    <section className="space-y-3">
-      <h2 className="text-sm font-medium">Quick actions</h2>
-      <div className="space-y-1">
+    <Card className="flex h-full flex-col">
+      <CardHeader className="pb-3">
+        <h2 className="text-base font-medium">Quick actions</h2>
+      </CardHeader>
+      <CardContent className="space-y-1">
         {items.map((item) => {
           const Icon = item.icon;
           return (
@@ -24,7 +26,7 @@ export function DashboardQuickLinks({ items }: DashboardQuickLinksProps) {
               key={item.href}
               to={item.href}
               className={cn(
-                'group flex items-center gap-3 rounded-lg px-3 py-2.5 no-underline transition-colors',
+                'group flex items-center gap-3 rounded-lg px-2 py-2.5 no-underline transition-colors',
                 'hover:bg-muted/50',
               )}
             >
@@ -39,11 +41,10 @@ export function DashboardQuickLinks({ items }: DashboardQuickLinksProps) {
                   {item.description}
                 </p>
               </div>
-              <ArrowUpRight className="text-muted-foreground size-4 shrink-0 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:opacity-100" />
             </Link>
           );
         })}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

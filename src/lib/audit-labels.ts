@@ -71,10 +71,45 @@ const entityTypeLabelMap = Object.fromEntries(
   AUDIT_ENTITY_TYPE_OPTIONS.map((option) => [option.value, option.label]),
 );
 
+const AUDIT_ACTION_VERBS = [
+  'create',
+  'update',
+  'delete',
+  'publish',
+  'unpublish',
+  'ban',
+  'unban',
+  'send',
+  'request',
+  'accept',
+  'reject',
+  'cancel',
+  'unfriend',
+] as const;
+
+/** Normalize backend audit action variants to dotted keys used in the label map. */
+function normalizeAuditActionKey(action: string): string {
+  const trimmed = action.trim();
+  if (trimmed.includes('.')) return trimmed.toLowerCase();
+
+  const lower = trimmed.toLowerCase();
+  for (const verb of AUDIT_ACTION_VERBS) {
+    const suffix = `_${verb}`;
+    if (lower.endsWith(suffix)) {
+      return `${lower.slice(0, -suffix.length)}.${verb}`;
+    }
+  }
+
+  return lower;
+}
+
 /** Human-readable label for an audit action enum. Falls back to humanized raw value. */
 export function auditActionLabel(action: string | null | undefined): string {
   if (!action?.trim()) return '—';
-  return actionLabelMap[action] ?? humanizeEnumValue(action);
+
+  const trimmed = action.trim();
+  const normalized = normalizeAuditActionKey(trimmed);
+  return actionLabelMap[trimmed] ?? actionLabelMap[normalized] ?? humanizeEnumValue(trimmed);
 }
 
 /** Human-readable label for an audit entity type enum. Falls back to humanized raw value. */
