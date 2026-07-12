@@ -347,11 +347,17 @@ export function EventDetailPage() {
           </Link>
         </Button>
       }
+      titleAddon={
+        event ? (
+          <>
+            <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
+            {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
+          </>
+        ) : undefined
+      }
       actions={
         event ? (
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
-            {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
             <AdminActionBar>
               <Button size="sm" variant="outline" onClick={openEditSheet}>
                 <Pencil className="mr-1.5 size-3.5" />

@@ -197,6 +197,7 @@ export function SyllabusItemEditorSheet({
       };
 
       let savedId: string;
+      let createdNewId: string | null = null;
       if (isEdit && itemId) {
         payload.orderIndex = itemQuery.data?.orderIndex ?? 0;
         await syllabusItemsApi.update(itemId, payload);
@@ -207,10 +208,33 @@ export function SyllabusItemEditorSheet({
         payload.orderIndex = existingSection?.items?.length ?? 0;
         const created = await syllabusItemsApi.create(payload);
         savedId = created.id;
+        createdNewId = created.id;
       }
 
       if (itemType === 'VIDEO' && videoFile) {
-        await uploadSyllabusVideo(savedId, videoFile, setUploadProgress);
+        try {
+          await uploadSyllabusVideo(savedId, videoFile, setUploadProgress);
+        } catch (uploadError) {
+          // Avoid orphan VIDEO lessons with missing file after a failed upload.
+          if (createdNewId) {
+            try {
+              await syllabusItemsApi.remove(createdNewId);
+            } catch {
+              // Best-effort rollback; surface the original upload error below.
+            }
+          }
+          throw uploadError instanceof Error
+            ? new Error(
+                createdNewId
+                  ? `Video upload failed: ${uploadError.message}. The lesson was not kept.`
+                  : `Video upload failed: ${uploadError.message}`,
+              )
+            : new Error(
+                createdNewId
+                  ? 'Video upload failed. The lesson was not created.'
+                  : 'Video upload failed.',
+              );
+        }
       }
     },
     onSuccess: async () => {
@@ -222,6 +246,7 @@ export function SyllabusItemEditorSheet({
     onError: (error) => {
       setUploadProgress(null);
       toast.error(getApiErrorMessage(error));
+      void invalidate();
     },
   });
 

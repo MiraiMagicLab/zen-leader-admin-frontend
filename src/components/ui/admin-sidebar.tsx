@@ -101,14 +101,14 @@ export const AdminSidebar = memo(() => {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton size="lg" asChild tooltip={BRAND.adminTitle}>
               <NavLink to={ROUTES.home}>
                 <BrandLogo
-                  className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5"
-                  imageClassName="h-8 w-8 object-contain"
+                  className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5"
+                  imageClassName="h-6 w-6 object-contain"
                   alt={`${BRAND.adminTitle} logo`}
                 />
-                <div className="grid flex-1 text-left text-sm leading-tight">
+                <div className="grid min-w-0 flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                   <span className="truncate font-semibold">{BRAND.adminTitle}</span>
                   <span className="text-muted-foreground truncate text-xs">
                     {BRAND.adminSubtitle}

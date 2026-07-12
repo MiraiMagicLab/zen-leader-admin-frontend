@@ -435,6 +435,20 @@ export function CourseDetailPage() {
     <AdminPageShell
       title={course?.title ?? 'Course'}
       description="Manage information, syllabus, and classes for this course."
+      titleAddon={
+        course ? (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium',
+              isReady
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+            )}
+          >
+            {isReady ? 'Ready' : 'Draft'}
+          </span>
+        ) : undefined
+      }
       toolbar={
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" className="-ml-2" asChild>
@@ -462,27 +476,15 @@ export function CourseDetailPage() {
       }
       actions={
         course ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                'inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium',
-                isReady
-                  ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                  : 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-              )}
-            >
-              {isReady ? 'Ready' : 'Draft'}
-            </span>
-            <AdminActionBar>
-              <Button size="sm" variant="outline" onClick={() => setEditCourseOpen(true)}>
-                Edit info
-              </Button>
-              <Button size="sm" variant="destructiveOutline" onClick={confirmDeleteCourse}>
-                <Trash2 className="mr-1.5 size-3.5" />
-                Delete
-              </Button>
-            </AdminActionBar>
-          </div>
+          <AdminActionBar>
+            <Button size="sm" variant="outline" onClick={() => setEditCourseOpen(true)}>
+              Edit info
+            </Button>
+            <Button size="sm" variant="destructiveOutline" onClick={confirmDeleteCourse}>
+              <Trash2 className="mr-1.5 size-3.5" />
+              Delete
+            </Button>
+          </AdminActionBar>
         ) : undefined
       }
     >
