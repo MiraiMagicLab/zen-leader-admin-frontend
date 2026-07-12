@@ -150,21 +150,32 @@ async function uploadSinglePart(params: {
     throw new Error(`Missing presigned URL for part ${params.partNumber}.`);
   }
 
+  // Do not send Content-Type: UploadPart presigned URLs are not signed with it.
+  // An unsigned Content-Type header commonly causes R2 403 SignatureDoesNotMatch.
   const response = await fetch(uploadUrl, {
     method: 'PUT',
     body: chunk,
-    headers: {
-      'Content-Type': params.file.type || 'application/octet-stream',
-    },
   });
 
   if (!response.ok) {
-    throw new Error(`Chunk upload failed for part ${params.partNumber} (${response.status}).`);
+    let detail = '';
+    try {
+      detail = (await response.text()).trim();
+    } catch {
+      // Ignore body parse failures; status alone is enough to surface.
+    }
+    throw new Error(
+      detail
+        ? `Chunk upload failed for part ${params.partNumber} (${response.status}): ${detail.slice(0, 240)}`
+        : `Chunk upload failed for part ${params.partNumber} (${response.status}).`,
+    );
   }
 
   const etag = response.headers.get('ETag') ?? response.headers.get('etag');
   if (!etag) {
-    throw new Error(`Missing ETag for part ${params.partNumber}.`);
+    throw new Error(
+      `Missing ETag for part ${params.partNumber}. Check R2 bucket CORS ExposeHeaders includes ETag.`,
+    );
   }
 
   await storageObjectsApi.savePart(params.storageObjectId, {
