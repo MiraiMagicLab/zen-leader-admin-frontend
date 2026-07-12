@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils';
 type AdminPageShellProps = {
   title: string;
   description?: string;
+  /** Status badge or chip shown inline next to the page title. */
+  titleAddon?: ReactNode;
   actions?: ReactNode;
   toolbar?: ReactNode;
   children: ReactNode;
@@ -23,6 +25,7 @@ type AdminPageShellProps = {
 export function AdminPageShell({
   title,
   description,
+  titleAddon,
   actions,
   toolbar,
   children,
@@ -43,6 +46,7 @@ export function AdminPageShell({
       <PageHeader
         title={title}
         description={isList ? undefined : description}
+        titleAddon={titleAddon}
         actions={actions}
         size={isList ? 'sm' : 'default'}
       />

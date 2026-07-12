@@ -10,6 +10,13 @@ import {
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 type RichTextEditorProps = {
@@ -19,6 +26,15 @@ type RichTextEditorProps = {
   className?: string;
   minHeight?: string;
 };
+
+const FONT_SIZE_OPTIONS = [
+  { value: '12px', label: '12' },
+  { value: '14px', label: '14' },
+  { value: '16px', label: '16' },
+  { value: '18px', label: '18' },
+  { value: '24px', label: '24' },
+  { value: '32px', label: '32' },
+] as const;
 
 function exec(command: string, value?: string) {
   document.execCommand(command, false, value);
@@ -53,8 +69,8 @@ const ALLOWED_PASTE_TAGS = new Set([
 
 /**
  * Sanitize pasted HTML: keep semantic formatting (bold, italic, underline,
- * headings, lists, links) but strip all inline styles, class names,
- * and non-semantic wrapper tags (font, center, etc.).
+ * headings, lists, links, font-size spans) but strip unrelated styles,
+ * class names, and non-semantic wrapper tags (font, center, etc.).
  */
 function sanitizePastedHtml(rawHtml: string): string {
   const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
@@ -78,6 +94,8 @@ function sanitizePastedHtml(rawHtml: string): string {
       walk(child);
     }
 
+    const preservedFontSize = tag === 'SPAN' ? el.style.fontSize.trim() : '';
+
     // Strip presentation attributes
     el.removeAttribute('style');
     el.removeAttribute('class');
@@ -89,6 +107,10 @@ function sanitizePastedHtml(rawHtml: string): string {
     el.removeAttribute('width');
     el.removeAttribute('height');
     el.removeAttribute('align');
+
+    if (preservedFontSize) {
+      el.style.fontSize = preservedFontSize;
+    }
 
     // For <a> tags, keep only the href
     if (tag === 'A') {
@@ -140,6 +162,29 @@ function sanitizePastedHtml(rawHtml: string): string {
   return doc.body.innerHTML;
 }
 
+/**
+ * Applies a CSS font-size to the current selection via temporary fontSize
+ * execCommand, then normalizes <font> wrappers into semantic <span style>.
+ */
+function applyFontSize(size: string, editor: HTMLDivElement | null) {
+  if (!editor) {
+    return;
+  }
+
+  editor.focus();
+  exec('fontSize', '7');
+
+  const fonts = editor.querySelectorAll('font[size="7"]');
+  fonts.forEach((font) => {
+    const span = document.createElement('span');
+    span.style.fontSize = size;
+    while (font.firstChild) {
+      span.appendChild(font.firstChild);
+    }
+    font.parentNode?.replaceChild(span, font);
+  });
+}
+
 export function RichTextEditor({
   value,
   onChange,
@@ -179,9 +224,31 @@ export function RichTextEditor({
     }
   };
 
+  const handleFontSize = (size: string) => {
+    applyFontSize(size, editorRef.current);
+    emitChange();
+  };
+
   return (
-    <div className={cn('overflow-hidden rounded-md border bg-background', className)}>
-      <div className="flex flex-wrap gap-1 border-b bg-muted/40 p-1">
+    <div className={cn('rounded-md border bg-background', className)}>
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b bg-muted/95 p-1 backdrop-blur supports-backdrop-filter:bg-muted/80">
+        <Select onValueChange={handleFontSize}>
+          <SelectTrigger
+            size="sm"
+            className="h-8 w-[4.5rem] shrink-0 border-transparent bg-transparent shadow-none"
+            aria-label="Font size"
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <SelectValue placeholder="Size" />
+          </SelectTrigger>
+          <SelectContent>
+            {FONT_SIZE_OPTIONS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button
           type="button"
           variant="ghost"
