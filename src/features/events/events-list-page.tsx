@@ -439,7 +439,7 @@ export function EventsListPage() {
                 onClick={() => navigate(ROUTES.eventDetail(selectedEvent.id))}
               >
                 <ExternalLink className="mr-1.5 size-3.5" />
-                Go to manage
+                Manage
               </Button>
             </>
           )

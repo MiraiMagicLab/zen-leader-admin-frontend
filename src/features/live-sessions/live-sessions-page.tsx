@@ -339,7 +339,7 @@ export function LiveSessionsPage() {
           }
           footer={
             selectedLiveSession ? (
-              <>
+              <div className="flex w-full items-center justify-between">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -347,45 +347,49 @@ export function LiveSessionsPage() {
                   onClick={() => joinMutation.mutate(selectedLiveSession.roomCode)}
                 >
                   <Copy className="mr-1.5 size-3.5" />
-                  Copy join token
+                  Copy token
                 </Button>
-                {selectedLiveSession.status !== 'ENDED' ? (
+                <div className="flex items-center gap-1.5">
+                  {selectedLiveSession.status !== 'ENDED' ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        setPendingConfirm({
+                          title: 'End this live session?',
+                          description: `Room ${selectedLiveSession.roomCode} will be marked as ended.`,
+                          confirmLabel: 'End session',
+                          variant: 'default',
+                          action: async () => {
+                            await endMutation.mutateAsync(selectedLiveSession.id);
+                          },
+                        })
+                      }
+                    >
+                      End room
+                    </Button>
+                  ) : null}
                   <Button
-                    variant="outline"
+                    variant="destructiveOutline"
                     size="sm"
+                    className="px-2.5"
+                    title="Delete session"
+                    aria-label="Delete session"
                     onClick={() =>
                       setPendingConfirm({
-                        title: 'End this live session?',
-                        description: `Room ${selectedLiveSession.roomCode} will be marked as ended.`,
-                        confirmLabel: 'End session',
-                        variant: 'default',
+                        title: 'Delete this session?',
+                        description: `Room ${selectedLiveSession.roomCode} will be permanently removed.`,
+                        confirmLabel: 'Delete',
                         action: async () => {
-                          await endMutation.mutateAsync(selectedLiveSession.id);
+                          await deleteMutation.mutateAsync(selectedLiveSession.id);
                         },
                       })
                     }
                   >
-                    End session
+                    <Trash2 className="size-3.5" />
                   </Button>
-                ) : null}
-                <Button
-                  variant="destructiveOutline"
-                  size="sm"
-                  onClick={() =>
-                    setPendingConfirm({
-                      title: 'Delete this session?',
-                      description: `Room ${selectedLiveSession.roomCode} will be permanently removed.`,
-                      confirmLabel: 'Delete',
-                      action: async () => {
-                        await deleteMutation.mutateAsync(selectedLiveSession.id);
-                      },
-                    })
-                  }
-                >
-                  <Trash2 className="mr-1.5 size-3.5" />
-                  Delete
-                </Button>
-              </>
+                </div>
+              </div>
             ) : null
           }
         >

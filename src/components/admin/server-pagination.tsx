@@ -29,7 +29,18 @@ export function ServerPagination({
   pageBase = 0,
   className,
 }: ServerPaginationProps) {
-  const safeTotal = Math.max(1, totalPages);
+  const [lastTotalPages, setLastTotalPages] = useState(totalPages);
+
+  useEffect(() => {
+    if (totalPages > 1) {
+      setLastTotalPages(totalPages);
+    }
+  }, [totalPages]);
+
+  const safeTotal = Math.max(
+    1,
+    totalPages === 1 && page > 0 ? lastTotalPages : totalPages,
+  );
   const displayPage = toDisplayPage(page, pageBase);
   const [pageInput, setPageInput] = useState(String(displayPage));
 
@@ -69,7 +80,6 @@ export function ServerPagination({
         <Input
           type="number"
           min={1}
-          max={safeTotal}
           value={pageInput}
           aria-label="Page number"
           className="h-8 w-16 px-2 text-center"
