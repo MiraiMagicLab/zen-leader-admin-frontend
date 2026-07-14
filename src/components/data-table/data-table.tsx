@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useState } from 'react';
-import { Inbox } from 'lucide-react';
+import { Inbox, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -125,16 +125,15 @@ export function DataTable<TData, TValue>({
   return (
     <div className={cn('space-y-3', className)}>
       <div className="admin-panel overflow-hidden">
-        <div className="relative max-h-[min(70vh,720px)] overflow-auto">
-          <Table>
-            <TableHeader className="bg-muted/30 sticky top-0 z-10 border-b">
+        <Table containerClassName="relative max-h-[min(70vh,720px)] overflow-auto">
+            <TableHeader className="sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id} className="hover:bg-transparent border-b-0">
                   {headerGroup.headers.map((header) => (
                     <TableHead
                       key={header.id}
                       className={cn(
-                        'bg-muted/50',
+                        'sticky top-0 bg-muted/95 backdrop-blur-xs border-b border-border/80',
                         header.column.columnDef.meta?.className,
                         header.column.id === TABLE_ACTIONS_COLUMN_ID && 'text-right',
                       )}
@@ -240,17 +239,18 @@ export function DataTable<TData, TValue>({
               )}
             </TableBody>
           </Table>
-        </div>
       </div>
       {showPagination ? (
         <div className="flex items-center justify-end gap-2">
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="h-8 w-8 p-0"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
+            aria-label="Previous page"
           >
-            Previous
+            <ChevronLeft className="size-4" />
           </Button>
           <span className="text-muted-foreground text-sm tabular-nums">
             Page {table.getState().pagination.pageIndex + 1} /{' '}
@@ -258,11 +258,13 @@ export function DataTable<TData, TValue>({
           </span>
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="h-8 w-8 p-0"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
+            aria-label="Next page"
           >
-            Next
+            <ChevronRight className="size-4" />
           </Button>
         </div>
       ) : null}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2, Settings } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminActionBar } from '@/components/admin/admin-action-bar';
@@ -137,6 +137,7 @@ export function CourseRunDetailPage() {
         run ? (
           <AdminActionBar>
             <Button size="sm" variant="outline" onClick={openRunSettings}>
+              <Settings className="mr-2 size-4" />
               Run settings
             </Button>
             <Button

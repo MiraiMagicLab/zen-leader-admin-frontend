@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
@@ -8,10 +8,10 @@ import {
   ShieldAlert,
   Trash2,
   Unlock,
+  Shield,
 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
-import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
@@ -138,9 +138,6 @@ export function UsersListPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [bulkAction, setBulkAction] = useState<'lock' | 'unlock' | null>(null);
-  const [bulkPending, setBulkPending] = useState(false);
   const [banConfirmOpen, setBanConfirmOpen] = useState(false);
   const [unbanConfirmOpen, setUnbanConfirmOpen] = useState(false);
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
@@ -275,51 +272,7 @@ export function UsersListPage() {
     unlockConfirmOpen ||
     deleteConfirmOpen;
   const dockOpen = Boolean(selectedLiveUser) && !dockModalOpen;
-  // Only non-deleted users can be locked/unlocked.
-  const selectableRows = rows.filter((user) => !isDeletedUser(user));
-  const selectedRowsOnPage = selectableRows.filter((user) => selectedIds.includes(user.id));
-  const allSelectableSelected =
-    selectableRows.length > 0 && selectedRowsOnPage.length === selectableRows.length;
 
-  const toggleRow = useCallback((userId: string, checked: boolean) => {
-    setSelectedIds((current) =>
-      checked ? [...new Set([...current, userId])] : current.filter((id) => id !== userId),
-    );
-  }, []);
-
-  const selectableIds = selectableRows.map((user) => user.id).join(',');
-  const toggleAll = useCallback(
-    (checked: boolean) => {
-      setSelectedIds(checked ? (selectableIds ? selectableIds.split(',') : []) : []);
-    },
-    [selectableIds],
-  );
-
-  const runBulkStatus = async () => {
-    if (!bulkAction) {
-      return;
-    }
-    const isActive = bulkAction === 'unlock';
-    const targets = selectedRowsOnPage.map((user) => user.id);
-    setBulkPending(true);
-    try {
-      for (const userId of targets) {
-        await updateUserStatusApi(userId, { isActive });
-      }
-      toast.success(
-        `${targets.length} ${targets.length === 1 ? 'user' : 'users'} ${
-          isActive ? 'unlocked' : 'locked'
-        }.`,
-      );
-      setSelectedIds([]);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
-    } catch (error) {
-      toast.error(error);
-    } finally {
-      setBulkPending(false);
-      setBulkAction(null);
-    }
-  };
 
   const handleBanSubmit = () => {
     if (!selectedUser) {
@@ -354,26 +307,6 @@ export function UsersListPage() {
 
   const columns = useMemo<ColumnDef<UserResponse>[]>(
     () => [
-      {
-        id: 'select',
-        header: () => (
-          <Checkbox
-            aria-label="Select all users on this page"
-            checked={allSelectableSelected}
-            disabled={selectableRows.length === 0}
-            onCheckedChange={(checked) => toggleAll(checked === true)}
-          />
-        ),
-        cell: ({ row }) =>
-          isDeletedUser(row.original) ? null : (
-            <Checkbox
-              aria-label="Select user"
-              checked={selectedIds.includes(row.original.id)}
-              onCheckedChange={(checked) => toggleRow(row.original.id, checked === true)}
-            />
-          ),
-        enableSorting: false,
-      },
       {
         accessorKey: 'displayName',
         header: 'User',
@@ -413,7 +346,7 @@ export function UsersListPage() {
         },
       },
     ],
-    [selectedIds, allSelectableSelected, selectableRows, toggleAll, toggleRow],
+    [],
   );
 
   return (
@@ -470,29 +403,7 @@ export function UsersListPage() {
               />
             ) : null}
 
-            <AdminBulkBar count={selectedRowsOnPage.length}>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={bulkPending}
-                onClick={() => setBulkAction('lock')}
-              >
-                <Lock className="mr-2 size-4" />
-                Lock
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={bulkPending}
-                onClick={() => setBulkAction('unlock')}
-              >
-                <Unlock className="mr-2 size-4" />
-                Unlock
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-                Clear
-              </Button>
-            </AdminBulkBar>
+
 
             <DataTable
               columns={columns}
@@ -532,27 +443,53 @@ export function UsersListPage() {
           footer={
             selectedLiveUser && !isDeletedUser(selectedLiveUser) ? (
               <>
-                <Button variant="outline" size="sm" onClick={() => openRolesDialog(selectedLiveUser)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2.5"
+                  onClick={() => openRolesDialog(selectedLiveUser)}
+                >
+                  <Shield className="mr-1.5 size-3.5" />
                   Edit role
                 </Button>
                 {selectedLiveUser.bannedUntil ? (
-                  <Button variant="outline" size="sm" onClick={() => setUnbanConfirmOpen(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-2.5"
+                    onClick={() => setUnbanConfirmOpen(true)}
+                  >
                     <ShieldAlert className="mr-1.5 size-3.5" />
                     Unban
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => setBanConfirmOpen(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-2.5"
+                    onClick={() => setBanConfirmOpen(true)}
+                  >
                     <ShieldAlert className="mr-1.5 size-3.5" />
                     Ban
                   </Button>
                 )}
                 {selectedLiveUser.isActive ? (
-                  <Button variant="outline" size="sm" onClick={() => setLockConfirmOpen(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-2.5"
+                    onClick={() => setLockConfirmOpen(true)}
+                  >
                     <Lock className="mr-1.5 size-3.5" />
                     Lock
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => setUnlockConfirmOpen(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-2.5"
+                    onClick={() => setUnlockConfirmOpen(true)}
+                  >
                     <Unlock className="mr-1.5 size-3.5" />
                     Unlock
                   </Button>
@@ -560,10 +497,12 @@ export function UsersListPage() {
                 <Button
                   variant="destructiveOutline"
                   size="sm"
+                  className="px-2.5"
+                  title="Delete user"
+                  aria-label="Delete user"
                   onClick={() => setDeleteConfirmOpen(true)}
                 >
-                  <Trash2 className="mr-1.5 size-3.5" />
-                  Delete
+                  <Trash2 className="size-3.5" />
                 </Button>
               </>
             ) : null
@@ -851,38 +790,7 @@ export function UsersListPage() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog
-        open={bulkAction !== null}
-        onOpenChange={(open) => {
-          if (!open && !bulkPending) {
-            setBulkAction(null);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {bulkAction === 'unlock' ? 'Unlock selected users?' : 'Lock selected users?'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will {bulkAction === 'unlock' ? 'unlock' : 'lock'} {selectedRowsOnPage.length}{' '}
-              {selectedRowsOnPage.length === 1 ? 'account' : 'accounts'}.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkPending}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={bulkPending}
-              onClick={(event) => {
-                event.preventDefault();
-                void runBulkStatus();
-              }}
-            >
-              {bulkPending ? 'Working…' : 'Confirm'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
 
       <AlertDialog
         open={banConfirmOpen}

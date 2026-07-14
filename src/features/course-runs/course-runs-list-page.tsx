@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ExternalLink } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
@@ -29,7 +29,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -63,9 +62,6 @@ export function CourseRunsListPage() {
   const [courseFilter, setCourseFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CourseRunResponse | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
-  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [selectedRun, setSelectedRun] = useState<CourseRunResponse | null>(null);
 
   const selectRun = useCallback((run: CourseRunResponse) => {
@@ -112,93 +108,10 @@ export function CourseRunsListPage() {
     onError: (error) => toast.error(error),
   });
 
-  const visibleIds = useMemo(
-    () => tableData.map((run) => run.id),
-    [tableData],
-  );
-
-  const selectedVisibleCount = useMemo(
-    () => visibleIds.filter((id) => selectedIds.has(id)).length,
-    [visibleIds, selectedIds],
-  );
-
-  const allVisibleSelected =
-    visibleIds.length > 0 && selectedVisibleCount === visibleIds.length;
-
-  const toggleOne = useCallback((id: string, checked: boolean) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(id);
-      } else {
-        next.delete(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleAllVisible = useCallback(
-    (checked: boolean) => {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        for (const id of visibleIds) {
-          if (checked) {
-            next.add(id);
-          } else {
-            next.delete(id);
-          }
-        }
-        return next;
-      });
-    },
-    [visibleIds],
-  );
-
-  const runBulkDelete = async () => {
-    const ids = visibleIds.filter((id) => selectedIds.has(id));
-    if (ids.length === 0) {
-      return;
-    }
-    setBulkDeleting(true);
-    const results = await Promise.allSettled(ids.map((id) => courseRunsApi.remove(id)));
-    setBulkDeleting(false);
-    const failed = results.filter((result) => result.status === 'rejected').length;
-    const succeeded = ids.length - failed;
-    if (succeeded > 0) {
-      toast.success(`Deleted ${succeeded} course run${succeeded === 1 ? '' : 's'}.`);
-    }
-    if (failed > 0) {
-      toast.error(`Could not delete ${failed} course run${failed === 1 ? '' : 's'}.`);
-    }
-    setBulkDeleteOpen(false);
-    setSelectedIds(new Set());
-    void queryClient.invalidateQueries({ queryKey: queryKeys.courseRuns.all });
-  };
+  // Selection and bulk delete callbacks removed
 
   const columns = useMemo<ColumnDef<CourseRunResponse>[]>(
     () => [
-      {
-        id: 'select',
-        size: 40,
-        enableSorting: false,
-        enableHiding: false,
-        header: () => (
-          <Checkbox
-            checked={allVisibleSelected}
-            aria-label="Select all course runs on this page"
-            onClick={(event) => event.stopPropagation()}
-            onCheckedChange={(value) => toggleAllVisible(value === true)}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={selectedIds.has(row.original.id)}
-            aria-label={`Select course run ${row.original.code}`}
-            onClick={(event) => event.stopPropagation()}
-            onCheckedChange={(value) => toggleOne(row.original.id, value === true)}
-          />
-        ),
-      },
       { accessorKey: 'code', header: 'Class code' },
       {
         id: 'course',
@@ -247,7 +160,7 @@ export function CourseRunsListPage() {
         cell: ({ row }) => formatDateTime(row.original.startsAt),
       },
     ],
-    [allVisibleSelected, courseTitleById, selectedIds, toggleAllVisible, toggleOne],
+    [courseTitleById],
   );
 
   return (
@@ -264,19 +177,6 @@ export function CourseRunsListPage() {
       }
       toolbar={
         <AdminFilterBar
-          trailing={
-            selectedVisibleCount > 0 ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-destructive hover:text-destructive"
-                onClick={() => setBulkDeleteOpen(true)}
-              >
-                <Trash2 className="mr-2 size-4" />
-                Delete selected ({selectedVisibleCount})
-              </Button>
-            ) : null
-          }
           showClear={courseFilter !== 'all'}
           onClear={() => {
             setCourseFilter('all');
@@ -312,7 +212,7 @@ export function CourseRunsListPage() {
         />
       ) : (
         <>
-          <AdminDockLayout dockOpen={Boolean(selectedRun) && !deleteTarget && !bulkDeleteOpen}>
+          <AdminDockLayout dockOpen={Boolean(selectedRun) && !deleteTarget}>
             <div className="space-y-3">
               {!selectedRun && tableData.length > 0 ? (
                 <p className="text-muted-foreground text-xs">
@@ -345,7 +245,7 @@ export function CourseRunsListPage() {
           </AdminDockLayout>
 
           <AdminDockPanel
-            open={Boolean(selectedRun) && !deleteTarget && !bulkDeleteOpen}
+            open={Boolean(selectedRun) && !deleteTarget}
             onClose={clearSelectedRun}
             title={selectedRun?.code ?? 'Course run'}
             description={
@@ -368,6 +268,7 @@ export function CourseRunsListPage() {
                     size="sm"
                     onClick={() => navigate(ROUTES.courseRunDetail(selectedRun.id))}
                   >
+                    <ExternalLink className="mr-1.5 size-3.5" />
                     Go to manage
                   </Button>
                 </>
@@ -437,37 +338,7 @@ export function CourseRunsListPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog
-        open={bulkDeleteOpen}
-        onOpenChange={(open) => {
-          if (!bulkDeleting) {
-            setBulkDeleteOpen(open);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedVisibleCount} course runs?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Delete {selectedVisibleCount} selected course run
-              {selectedVisibleCount === 1 ? '' : 's'}. This cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={bulkDeleting}
-              onClick={(event) => {
-                event.preventDefault();
-                void runBulkDelete();
-              }}
-            >
-              {bulkDeleting ? 'Deleting…' : 'Delete'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Bulk delete dialog removed */}
     </AdminPageShell>
   );
 }

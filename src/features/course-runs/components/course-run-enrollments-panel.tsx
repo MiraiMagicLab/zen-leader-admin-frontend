@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Eye, FileSpreadsheet, Plus, Trash2, Upload, X } from 'lucide-react';
+import { Eye, FileSpreadsheet, Plus, Trash2, Upload, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
@@ -340,22 +340,26 @@ export function CourseRunEnrollmentsPanel({
         <div className="flex justify-end gap-2">
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="h-8 w-8 p-0"
             disabled={enrollmentPage <= 1}
             onClick={() => onEnrollmentPageChange(enrollmentPage - 1)}
+            aria-label="Previous page"
           >
-            Previous
+            <ChevronLeft className="size-4" />
           </Button>
           <span className="text-muted-foreground self-center text-sm">
             Page {enrollmentPage} / {totalPages}
           </span>
           <Button
             variant="outline"
-            size="sm"
+            size="icon"
+            className="h-8 w-8 p-0"
             disabled={enrollmentPage >= totalPages}
             onClick={() => onEnrollmentPageChange(enrollmentPage + 1)}
+            aria-label="Next page"
           >
-            Next
+            <ChevronRight className="size-4" />
           </Button>
         </div>
       </section>

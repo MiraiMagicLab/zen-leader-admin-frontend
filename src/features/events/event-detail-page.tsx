@@ -399,11 +399,13 @@ export function EventDetailPage() {
         <div className="space-y-6">
           <section className="overflow-hidden rounded-lg border">
             {event.thumbnailUrl ? (
-              <img
-                src={event.thumbnailUrl}
-                alt={event.title}
-                className="h-48 w-full border-b object-cover sm:h-56"
-              />
+              <div className="flex justify-center bg-muted/10 py-6 border-b px-4">
+                <img
+                  src={event.thumbnailUrl}
+                  alt={event.title}
+                  className="max-h-[220px] w-auto rounded-lg border bg-background shadow-sm object-contain sm:max-h-[320px]"
+                />
+              </div>
             ) : null}
             <div className="grid lg:grid-cols-2 lg:divide-x">
               <dl className="divide-y text-sm">

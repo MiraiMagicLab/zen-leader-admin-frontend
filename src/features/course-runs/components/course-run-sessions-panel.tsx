@@ -82,11 +82,13 @@ export function CourseRunSessionsPanel({
 
   const [createSessionOpen, setCreateSessionOpen] = useState(false);
   const [sessionForm, setSessionForm] = useState<SessionForm>(emptySessionForm);
+  const [titleTouched, setTitleTouched] = useState(false);
   const [editSession, setEditSession] = useState<{
     id: string;
     orderIndex: number;
     form: SessionForm;
   } | null>(null);
+  const [editTitleTouched, setEditTitleTouched] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
   const createSessionDirty = (Object.keys(emptySessionForm) as Array<keyof SessionForm>).some(
@@ -181,6 +183,7 @@ export function CourseRunSessionsPanel({
   });
 
   const openEditSession = (session: SessionResponse) => {
+    setEditTitleTouched(false);
     setEditSession({
       id: session.id,
       orderIndex: session.orderIndex,
@@ -241,7 +244,10 @@ export function CourseRunSessionsPanel({
         id: 'description',
         header: 'Description',
         cell: ({ row }) => (
-          <span className="text-muted-foreground line-clamp-2 block max-w-[240px] text-sm">
+          <span
+            className="text-muted-foreground block max-w-[240px] truncate text-sm"
+            title={row.original.description?.trim() || undefined}
+          >
             {row.original.description?.trim() || '—'}
           </span>
         ),
@@ -255,7 +261,10 @@ export function CourseRunSessionsPanel({
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-base font-semibold">Online sessions</h3>
-          <Button size="sm" onClick={() => setCreateSessionOpen(true)}>
+          <Button size="sm" onClick={() => {
+            setTitleTouched(false);
+            setCreateSessionOpen(true);
+          }}>
             <Plus className="mr-2 size-4" />
             Add session
           </Button>
@@ -280,6 +289,7 @@ export function CourseRunSessionsPanel({
           setCreateSessionOpen(open);
           if (!open) {
             setSessionForm(emptySessionForm);
+            setTitleTouched(false);
           }
         }}
         title="Add session"
@@ -290,6 +300,7 @@ export function CourseRunSessionsPanel({
               if (confirmDiscard(createSessionDirty)) {
                 setCreateSessionOpen(false);
                 setSessionForm(emptySessionForm);
+                setTitleTouched(false);
               }
             }}
             submitLabel="Save"
@@ -306,12 +317,13 @@ export function CourseRunSessionsPanel({
             </Label>
             <Input
               value={sessionForm.title}
-              aria-invalid={sessionForm.title.trim() === ''}
+              aria-invalid={titleTouched && sessionForm.title.trim() === ''}
               onChange={(event) =>
                 setSessionForm((current) => ({ ...current, title: event.target.value }))
               }
+              onBlur={() => setTitleTouched(true)}
             />
-            {sessionForm.title.trim() === '' ? (
+            {titleTouched && sessionForm.title.trim() === '' ? (
               <p className="text-destructive text-sm">Title is required.</p>
             ) : null}
           </div>
@@ -410,6 +422,7 @@ export function CourseRunSessionsPanel({
               return;
             }
             setEditSession(null);
+            setEditTitleTouched(false);
           }
         }}
         title="Edit session"
@@ -420,6 +433,7 @@ export function CourseRunSessionsPanel({
               onCancel={() => {
                 if (confirmDiscard(editSessionDirty)) {
                   setEditSession(null);
+                  setEditTitleTouched(false);
                 }
               }}
               submitLabel="Save"
@@ -462,7 +476,7 @@ export function CourseRunSessionsPanel({
               </Label>
               <Input
                 value={editSession.form.title}
-                aria-invalid={editSession.form.title.trim() === ''}
+                aria-invalid={editTitleTouched && editSession.form.title.trim() === ''}
                 onChange={(event) =>
                   setEditSession((current) =>
                     current && {
@@ -471,8 +485,9 @@ export function CourseRunSessionsPanel({
                     },
                   )
                 }
+                onBlur={() => setEditTitleTouched(true)}
               />
-              {editSession.form.title.trim() === '' ? (
+              {editTitleTouched && editSession.form.title.trim() === '' ? (
                 <p className="text-destructive text-sm">Title is required.</p>
               ) : null}
             </div>

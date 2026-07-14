@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +30,18 @@ export function ServerPagination({
   pageBase = 0,
   className,
 }: ServerPaginationProps) {
-  const safeTotal = Math.max(1, totalPages);
+  const [lastTotalPages, setLastTotalPages] = useState(totalPages);
+
+  useEffect(() => {
+    if (totalPages > 1) {
+      setLastTotalPages(totalPages);
+    }
+  }, [totalPages]);
+
+  const safeTotal = Math.max(
+    1,
+    totalPages === 1 && page > 0 ? lastTotalPages : totalPages,
+  );
   const displayPage = toDisplayPage(page, pageBase);
   const [pageInput, setPageInput] = useState(String(displayPage));
 
@@ -57,11 +69,13 @@ export function ServerPagination({
     <div className={cn('flex flex-wrap items-center justify-end gap-2', className)}>
       <Button
         variant="outline"
-        size="sm"
+        size="icon"
+        className="h-8 w-8 p-0"
         disabled={displayPage <= 1}
         onClick={() => goToDisplayPage(displayPage - 1)}
+        aria-label="Previous page"
       >
-        Previous page
+        <IconChevronLeft className="size-4" />
       </Button>
 
       <form className="flex items-center gap-2" onSubmit={handleSubmit}>
@@ -69,7 +83,6 @@ export function ServerPagination({
         <Input
           type="number"
           min={1}
-          max={safeTotal}
           value={pageInput}
           aria-label="Page number"
           className="h-8 w-16 px-2 text-center"
@@ -91,11 +104,13 @@ export function ServerPagination({
 
       <Button
         variant="outline"
-        size="sm"
+        size="icon"
+        className="h-8 w-8 p-0"
         disabled={displayPage >= safeTotal}
         onClick={() => goToDisplayPage(displayPage + 1)}
+        aria-label="Next page"
       >
-        Next page
+        <IconChevronRight className="size-4" />
       </Button>
     </div>
   );

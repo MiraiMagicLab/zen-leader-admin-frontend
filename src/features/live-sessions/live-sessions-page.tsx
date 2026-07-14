@@ -1,10 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Copy, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, RefreshCw, Trash2, Power } from 'lucide-react';
 
-import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { FilterSelect } from '@/components/admin/filter-select';
@@ -20,7 +19,6 @@ import { ServerPagination } from '@/components/admin/server-pagination';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { queryKeys } from '@/hooks/query-keys';
 import { adminToast as toast } from '@/lib/admin-toast';
@@ -68,10 +66,7 @@ export function LiveSessionsPage() {
     }
     return 'all';
   });
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectedSession, setSelectedSession] = useState<LiveSessionResponse | null>(null);
-  const [bulkAction, setBulkAction] = useState<'end' | 'delete' | null>(null);
-  const [bulkPending, setBulkPending] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
   const [confirmPending, setConfirmPending] = useState(false);
 
@@ -119,25 +114,7 @@ export function LiveSessionsPage() {
     (selectedSession && rows.find((session) => session.id === selectedSession.id)) ||
     selectedSession;
   const dockOpen =
-    Boolean(selectedLiveSession) && pendingConfirm === null && bulkAction === null;
-
-  const selectedRows = rows.filter((session) => selectedIds.includes(session.id));
-  const selectedActiveRows = selectedRows.filter((session) => session.status !== 'ENDED');
-  const allSelected = rows.length > 0 && selectedRows.length === rows.length;
-
-  const toggleRow = useCallback((sessionId: string, checked: boolean) => {
-    setSelectedIds((current) =>
-      checked ? [...new Set([...current, sessionId])] : current.filter((id) => id !== sessionId),
-    );
-  }, []);
-
-  const sessionIds = rows.map((session) => session.id).join(',');
-  const toggleAll = useCallback(
-    (checked: boolean) => {
-      setSelectedIds(checked ? (sessionIds ? sessionIds.split(',') : []) : []);
-    },
-    [sessionIds],
-  );
+    Boolean(selectedLiveSession) && pendingConfirm === null;
 
   const runConfirm = async () => {
     if (!pendingConfirm) return;
@@ -150,57 +127,8 @@ export function LiveSessionsPage() {
     }
   };
 
-  const runBulkAction = async () => {
-    if (!bulkAction) return;
-    const targets = bulkAction === 'end' ? selectedActiveRows : selectedRows;
-    const ids = targets.map((session) => session.id);
-    setBulkPending(true);
-    try {
-      for (const sessionId of ids) {
-        if (bulkAction === 'end') {
-          await liveSessionsApi.end(sessionId);
-        } else {
-          await liveSessionsApi.remove(sessionId);
-        }
-      }
-      toast.success(
-        `${ids.length} ${ids.length === 1 ? 'session' : 'sessions'} ${
-          bulkAction === 'end' ? 'ended' : 'deleted'
-        }.`,
-      );
-      setSelectedIds([]);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.liveSessions.all });
-    } catch (error) {
-      toast.error(error);
-    } finally {
-      setBulkPending(false);
-      setBulkAction(null);
-    }
-  };
-
   const columns = useMemo<ColumnDef<LiveSessionResponse>[]>(
     () => [
-      {
-        id: 'select',
-        header: () => (
-          <Checkbox
-            aria-label="Select all sessions on this page"
-            checked={allSelected}
-            disabled={rows.length === 0}
-            onCheckedChange={(checked) => toggleAll(checked === true)}
-          />
-        ),
-        cell: ({ row }) => (
-          <div onClick={(event) => event.stopPropagation()}>
-            <Checkbox
-              aria-label="Select session"
-              checked={selectedIds.includes(row.original.id)}
-              onCheckedChange={(checked) => toggleRow(row.original.id, checked === true)}
-            />
-          </div>
-        ),
-        enableSorting: false,
-      },
       {
         accessorKey: 'roomCode',
         header: 'Room',
@@ -239,7 +167,7 @@ export function LiveSessionsPage() {
         cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
     ],
-    [selectedIds, allSelected, rows.length, toggleAll, toggleRow],
+    [],
   );
 
   return (
@@ -279,30 +207,7 @@ export function LiveSessionsPage() {
               />
             ) : null}
 
-            {selectedRows.length > 0 ? (
-              <AdminBulkBar count={selectedRows.length}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={bulkPending || selectedActiveRows.length === 0}
-                  onClick={() => setBulkAction('end')}
-                >
-                  End
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive"
-                  disabled={bulkPending}
-                  onClick={() => setBulkAction('delete')}
-                >
-                  Delete
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => setSelectedIds([])}>
-                  Clear
-                </Button>
-              </AdminBulkBar>
-            ) : null}
+            {/* Bulk actions removed */}
 
             <DataTable
               columns={columns}
@@ -341,18 +246,20 @@ export function LiveSessionsPage() {
             selectedLiveSession ? (
               <>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
+                  className="px-2.5"
                   disabled={joinMutation.isPending}
                   onClick={() => joinMutation.mutate(selectedLiveSession.roomCode)}
                 >
                   <Copy className="mr-1.5 size-3.5" />
-                  Copy join token
+                  Copy token
                 </Button>
                 {selectedLiveSession.status !== 'ENDED' ? (
                   <Button
                     variant="outline"
                     size="sm"
+                    className="px-2.5"
                     onClick={() =>
                       setPendingConfirm({
                         title: 'End this live session?',
@@ -365,12 +272,16 @@ export function LiveSessionsPage() {
                       })
                     }
                   >
-                    End session
+                    <Power className="mr-1.5 size-3.5" />
+                    End room
                   </Button>
                 ) : null}
                 <Button
                   variant="destructiveOutline"
                   size="sm"
+                  className="px-2.5"
+                  title="Delete session"
+                  aria-label="Delete session"
                   onClick={() =>
                     setPendingConfirm({
                       title: 'Delete this session?',
@@ -382,8 +293,7 @@ export function LiveSessionsPage() {
                     })
                   }
                 >
-                  <Trash2 className="mr-1.5 size-3.5" />
-                  Delete
+                  <Trash2 className="size-3.5" />
                 </Button>
               </>
             ) : null
@@ -449,28 +359,7 @@ export function LiveSessionsPage() {
         onConfirm={() => void runConfirm()}
       />
 
-      <ConfirmDialog
-        open={bulkAction !== null}
-        onOpenChange={(open) => {
-          if (!open && !bulkPending) setBulkAction(null);
-        }}
-        title={
-          bulkAction === 'delete' ? 'Delete selected sessions?' : 'End selected sessions?'
-        }
-        description={
-          bulkAction === 'delete'
-            ? `This will permanently delete ${selectedRows.length} ${
-                selectedRows.length === 1 ? 'session' : 'sessions'
-              }.`
-            : `This will end ${selectedActiveRows.length} live ${
-                selectedActiveRows.length === 1 ? 'session' : 'sessions'
-              }.`
-        }
-        confirmLabel={bulkAction === 'delete' ? 'Delete' : 'End sessions'}
-        variant={bulkAction === 'delete' ? 'destructive' : 'default'}
-        pending={bulkPending}
-        onConfirm={() => void runBulkAction()}
-      />
+      {/* Bulk action ConfirmDialog removed */}
     </AdminPageShell>
   );
 }

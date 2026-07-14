@@ -23,8 +23,8 @@ export function AdminActionBar({
   return (
     <div
       className={cn(
-        'flex w-full min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto',
-        align === 'between' ? 'justify-between' : 'justify-end',
+        'flex w-full min-w-0 flex-nowrap items-center gap-1.5 overflow-x-auto scrollbar-none',
+        align === 'between' ? 'justify-between' : 'before:content-[""] before:ml-auto',
         className,
       )}
     >

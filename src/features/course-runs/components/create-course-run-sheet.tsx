@@ -121,7 +121,7 @@ function CreateCourseRunSheetBody({
 
   const coursesQuery = useQuery({
     queryKey: queryKeys.courses.list(),
-    queryFn: () => coursesApi.getPage(0, 100),
+    queryFn: () => coursesApi.getAll(),
     enabled: open && !courseId,
   });
 
@@ -198,7 +198,7 @@ function CreateCourseRunSheetBody({
                   <SelectValue placeholder="Select course" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(coursesQuery.data?.data ?? []).map((course) => (
+                  {(coursesQuery.data ?? []).map((course) => (
                     <SelectItem key={course.id} value={course.id}>
                       {course.code} — {course.title}
                     </SelectItem>

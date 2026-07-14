@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Plus, Trash2, Globe, EyeOff } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
@@ -100,7 +100,6 @@ export function EventsListPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [keyword, setKeyword] = useState('');
-  const [authorKeyword, setAuthorKeyword] = useState('');
   const [status, setStatus] = useState('all');
   const [typeFilter, setTypeFilter] = useState<EventTypeFilter>('all');
   const [pendingAction, setPendingAction] = useState<PendingEventAction | null>(null);
@@ -142,9 +141,8 @@ export function EventsListPage() {
       status: status === 'all' ? undefined : status,
       isOfficial:
         typeFilter === 'all' ? undefined : typeFilter === 'official',
-      authorKeyword: authorKeyword.trim() || undefined,
     }),
-    [authorKeyword, keyword, page, status, typeFilter],
+    [keyword, page, status, typeFilter],
   );
 
   const eventsQuery = useQuery({
@@ -288,11 +286,10 @@ export function EventsListPage() {
   );
 
   const hasActiveFilters =
-    Boolean(keyword) || Boolean(authorKeyword) || status !== 'all' || typeFilter !== 'all';
+    Boolean(keyword) || status !== 'all' || typeFilter !== 'all';
 
   const clearFilters = () => {
     setKeyword('');
-    setAuthorKeyword('');
     setStatus('all');
     setTypeFilter('all');
     setPage(0);
@@ -324,20 +321,11 @@ export function EventsListPage() {
             setKeyword(value);
             setPage(0);
           }}
-          searchPlaceholder="Search by title or description"
+          searchPlaceholder="Search by title, description, or creator"
           showClear={hasActiveFilters}
           onClear={clearFilters}
           clearLabel="Clear filters"
         >
-          <Input
-            className="w-56"
-            placeholder="Filter by creator name or email"
-            value={authorKeyword}
-            onChange={(event) => {
-              setAuthorKeyword(event.target.value);
-              setPage(0);
-            }}
-          />
           <FilterSelect
             label="Status"
             placeholder="All statuses"
@@ -407,26 +395,31 @@ export function EventsListPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  className="px-2.5"
                   onClick={() =>
                     openActionDialog(selectedEvent.id, selectedEvent.title, 'publish')
                   }
                 >
+                  <Globe className="mr-1.5 size-3.5" />
                   Publish
                 </Button>
               ) : (
                 <Button
                   size="sm"
                   variant="outline"
+                  className="px-2.5"
                   onClick={() =>
                     openActionDialog(selectedEvent.id, selectedEvent.title, 'unpublish')
                   }
                 >
+                  <EyeOff className="mr-1.5 size-3.5" />
                   Unpublish
                 </Button>
               )}
               <Button
                 size="sm"
                 variant="destructiveOutline"
+                className="px-2.5"
                 onClick={() =>
                   openActionDialog(selectedEvent.id, selectedEvent.title, 'delete')
                 }
@@ -436,10 +429,11 @@ export function EventsListPage() {
               </Button>
               <Button
                 size="sm"
+                className="px-2.5"
                 onClick={() => navigate(ROUTES.eventDetail(selectedEvent.id))}
               >
                 <ExternalLink className="mr-1.5 size-3.5" />
-                Go to manage
+                Manage
               </Button>
             </>
           )

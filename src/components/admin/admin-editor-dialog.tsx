@@ -46,6 +46,7 @@ export function AdminEditorDialog({
           size === 'xl' && 'sm:max-w-4xl',
           className,
         )}
+        closeButtonClassName="top-2 right-6"
       >
         <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 text-left">
           <DialogTitle>{title}</DialogTitle>
