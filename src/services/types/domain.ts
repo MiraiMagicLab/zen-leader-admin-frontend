@@ -106,6 +106,7 @@ export type SessionResponse = {
   scheduledAt: string | null;
   durationMinutes: number | null;
   meetingRoomId: string | null;
+  waitingRoomEnabled?: boolean | null;
   status: string;
   recordingUrl: string | null;
   createdAt: string;
@@ -266,6 +267,7 @@ export type SessionUpsertRequest = {
   scheduledAt?: string | null;
   durationMinutes?: number | null;
   meetingRoomId?: string | null;
+  waitingRoomEnabled?: boolean | null;
   status?: string;
 };
 
