@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { ZenBreathingLoader, ZenPageLoading } from '@/components/admin/zen-breathing-loader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -52,18 +53,26 @@ type AdminPageLoadingProps = {
   title?: boolean;
   description?: boolean;
   table?: boolean;
+  /** When true, show branded zen loader instead of gray skeleton layout. */
+  branded?: boolean;
   className?: string;
 };
 
 /**
  * Full page first-paint skeleton while lazy route chunks load.
+ * Pass `branded` for auth / cold-start surfaces that need the zen loader.
  */
 export function AdminPageLoading({
   title = true,
   description = true,
   table = true,
+  branded = false,
   className,
 }: AdminPageLoadingProps) {
+  if (branded) {
+    return <ZenPageLoading className={cn('py-16', className)} />;
+  }
+
   return (
     <div className={cn('space-y-6', className)}>
       {title ? <AdminSkeletonBar className="h-8 w-56" /> : null}
@@ -78,7 +87,7 @@ type AdminInlineLoadingProps = {
   className?: string;
 };
 
-/** Small inline spinner row for mutations inside panels. */
+/** Small inline zen breathing loader for mutations inside panels. */
 export function AdminInlineLoading({
   label = 'Loading…',
   className,
@@ -90,7 +99,7 @@ export function AdminInlineLoading({
         className,
       )}
     >
-      <span className="border-muted-foreground/30 border-t-muted-foreground inline-block size-4 animate-spin rounded-full border-2" />
+      <ZenBreathingLoader size={18} compact label={label} />
       {label}
     </div>
   );

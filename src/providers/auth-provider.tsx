@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 
+import { ZenPageLoading } from '@/components/admin/zen-breathing-loader';
 import { clearAdminSessionAndRedirect } from '@/lib/auth/session-lifecycle';
 import { assertAdminUser, mapAuthUser } from '@/lib/auth/session';
 import { getUserMeApi } from '@/services/auth';
@@ -65,11 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [hasHydrated]);
 
   if (!hasHydrated || isCheckingSession) {
-    return (
-      <div className="bg-background flex min-h-svh items-center justify-center">
-        <div className="text-muted-foreground text-sm">Loading...</div>
-      </div>
-    );
+    return <ZenPageLoading fullScreen message="Preparing your workspace…" />;
   }
 
   return children;
