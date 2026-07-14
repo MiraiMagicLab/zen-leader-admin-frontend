@@ -1,6 +1,19 @@
+/** Parses ZenLeader API Instant/ISO values as UTC, then formats in local TZ. */
+function parseApiUtc(value: string): Date {
+  const raw = value.trim();
+  if (/([zZ]|[+-]\d{2}:?\d{2})$/.test(raw)) {
+    return new Date(raw);
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return new Date(`${raw}T00:00:00.000Z`);
+  }
+  const withT = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  return new Date(`${withT}Z`);
+}
+
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
-  return new Date(value).toLocaleString('vi-VN');
+  return parseApiUtc(value).toLocaleString('vi-VN');
 }
 
 /** Collapse duplicate actor labels such as `email (email)` from audit logs. */
@@ -20,7 +33,7 @@ export function formatAuditActorDisplay(value: string | null | undefined): strin
 export function formatRelativeDateTime(value: string | null | undefined): string {
   if (!value) return '—';
 
-  const date = new Date(value);
+  const date = parseApiUtc(value);
   const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.floor(diffMs / 60_000);
 
@@ -38,7 +51,7 @@ export function formatRelativeDateTime(value: string | null | undefined): string
 
 export function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('vi-VN');
+  return parseApiUtc(value).toLocaleDateString('vi-VN');
 }
 
 export function formatNumber(value: number): string {

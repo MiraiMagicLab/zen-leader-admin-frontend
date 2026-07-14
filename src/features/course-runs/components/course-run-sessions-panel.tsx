@@ -9,6 +9,7 @@ import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -37,6 +38,7 @@ type SessionForm = {
   scheduledAt: string;
   durationMinutes: string;
   status: string;
+  waitingRoomEnabled: boolean;
 };
 
 const emptySessionForm: SessionForm = {
@@ -46,6 +48,7 @@ const emptySessionForm: SessionForm = {
   scheduledAt: '',
   durationMinutes: '60',
   status: 'SCHEDULED',
+  waitingRoomEnabled: true,
 };
 
 function toSessionForm(session: SessionResponse): SessionForm {
@@ -56,6 +59,7 @@ function toSessionForm(session: SessionResponse): SessionForm {
     scheduledAt: session.scheduledAt ? toLocalDateTimeFromIso(session.scheduledAt) : '',
     durationMinutes: session.durationMinutes != null ? String(session.durationMinutes) : '',
     status: session.status,
+    waitingRoomEnabled: session.waitingRoomEnabled !== false,
   };
 }
 
@@ -128,6 +132,7 @@ export function CourseRunSessionsPanel({
           ? Number(sessionForm.durationMinutes)
           : undefined,
         status: sessionForm.status,
+        waitingRoomEnabled: sessionForm.waitingRoomEnabled,
       }),
     onSuccess: async () => {
       toast.success('Session added.');
@@ -153,6 +158,9 @@ export function CourseRunSessionsPanel({
           ? Number(editSession!.form.durationMinutes)
           : undefined,
         status: editSession!.form.status,
+        waitingRoomEnabled: editSession!.form.waitingRoomEnabled,
+        meetingRoomId:
+          sessions.find((session) => session.id === editSession!.id)?.meetingRoomId ?? undefined,
       }),
     onSuccess: async () => {
       toast.success('Session updated.');
@@ -210,6 +218,24 @@ export function CourseRunSessionsPanel({
           row.original.durationMinutes != null
             ? `${row.original.durationMinutes} min`
             : '—',
+      },
+      {
+        id: 'meetingRoom',
+        header: 'Room code',
+        cell: ({ row }) => (
+          <span className="font-mono text-sm tabular-nums">
+            {row.original.meetingRoomId?.trim() || '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'waitingRoom',
+        header: 'Waiting room',
+        cell: ({ row }) => (
+          <Badge variant="secondary">
+            {row.original.waitingRoomEnabled === false ? 'Off' : 'On'}
+          </Badge>
+        ),
       },
       {
         id: 'description',
@@ -353,6 +379,25 @@ export function CourseRunSessionsPanel({
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-start gap-3 rounded-lg border p-3">
+            <Checkbox
+              id="create-waiting-room"
+              checked={sessionForm.waitingRoomEnabled}
+              onCheckedChange={(checked) =>
+                setSessionForm((current) => ({
+                  ...current,
+                  waitingRoomEnabled: checked === true,
+                }))
+              }
+            />
+            <div className="space-y-1">
+              <Label htmlFor="create-waiting-room">Require waiting room approval</Label>
+              <p className="text-muted-foreground text-sm">
+                Learners wait for the host to approve before joining. Recommended for paid course
+                live classes. A room code is auto-generated on save.
+              </p>
+            </div>
           </div>
         </div>
       </AdminEditorDialog>
@@ -514,6 +559,42 @@ export function CourseRunSessionsPanel({
                   <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Room code</Label>
+              <Input
+                readOnly
+                value={
+                  sessions.find((session) => session.id === editSession.id)?.meetingRoomId ??
+                  'Auto-generated on first save'
+                }
+                className="font-mono"
+              />
+            </div>
+            <div className="flex items-start gap-3 rounded-lg border p-3">
+              <Checkbox
+                id="edit-waiting-room"
+                checked={editSession.form.waitingRoomEnabled}
+                onCheckedChange={(checked) =>
+                  setEditSession((current) =>
+                    current
+                      ? {
+                          ...current,
+                          form: {
+                            ...current.form,
+                            waitingRoomEnabled: checked === true,
+                          },
+                        }
+                      : current,
+                  )
+                }
+              />
+              <div className="space-y-1">
+                <Label htmlFor="edit-waiting-room">Require waiting room approval</Label>
+                <p className="text-muted-foreground text-sm">
+                  Applies the next time the PlugNMeet room is created (first host join).
+                </p>
+              </div>
             </div>
           </div>
         ) : null}
