@@ -159,7 +159,7 @@ export function AdminDockPanel({
   );
 
   const footerBar = footer ? (
-    <div className="shrink-0 border-t px-3 py-2.5">
+    <div className="shrink-0 border-t px-2 py-2">
       <AdminActionBar>{footer}</AdminActionBar>
     </div>
   ) : null;

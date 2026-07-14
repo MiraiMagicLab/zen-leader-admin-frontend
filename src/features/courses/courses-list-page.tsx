@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Pencil, ExternalLink } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 import { z } from 'zod';
 
@@ -390,13 +390,16 @@ export function CoursesListPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="px-2.5"
                     onClick={() => openEditDialog(selectedLiveCourse)}
                   >
+                    <Pencil className="mr-1.5 size-3.5" />
                     Edit
                   </Button>
                   <Button
                     variant="destructiveOutline"
                     size="sm"
+                    className="px-2.5"
                     onClick={() => setDeleteTarget(selectedLiveCourse)}
                   >
                     <Trash2 className="mr-1.5 size-3.5" />
@@ -404,8 +407,10 @@ export function CoursesListPage() {
                   </Button>
                   <Button
                     size="sm"
+                    className="px-2.5"
                     onClick={() => navigate(ROUTES.courseDetail(selectedLiveCourse.id))}
                   >
+                    <ExternalLink className="mr-1.5 size-3.5" />
                     Go to manage
                   </Button>
                 </>

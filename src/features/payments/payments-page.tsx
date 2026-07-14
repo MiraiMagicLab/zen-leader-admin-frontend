@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Copy, RefreshCw } from 'lucide-react';
+import { Copy, RefreshCw, ExternalLink } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
@@ -381,8 +381,9 @@ export function PaymentsPage() {
             selectedLiveOrder ? (
               <>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
+                  className="px-2.5"
                   onClick={() => {
                     void navigator.clipboard?.writeText(selectedLiveOrder.orderId);
                     toast.success('Order reference copied.');
@@ -395,6 +396,7 @@ export function PaymentsPage() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="px-2.5"
                     disabled={retryMutation.isPending}
                     onClick={() =>
                       setPendingConfirm({
@@ -414,8 +416,10 @@ export function PaymentsPage() {
                 ) : null}
                 <Button
                   size="sm"
+                  className="px-2.5"
                   onClick={() => navigate(ROUTES.courseRunDetail(selectedLiveOrder.courseRunId))}
                 >
+                  <ExternalLink className="mr-1.5 size-3.5" />
                   Go to manage
                 </Button>
               </>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
-import { ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Plus, Trash2, Pencil } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 import { z } from 'zod';
 
@@ -328,12 +328,19 @@ export function ProgramsListPage() {
         footer={
           selectedProgram && (
             <>
-              <Button size="sm" variant="outline" onClick={() => openEditDialog(selectedProgram)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="px-2.5"
+                onClick={() => openEditDialog(selectedProgram)}
+              >
+                <Pencil className="mr-1.5 size-3.5" />
                 Edit
               </Button>
               <Button
                 size="sm"
                 variant="destructiveOutline"
+                className="px-2.5"
                 onClick={() => setDeleteTarget(selectedProgram)}
               >
                 <Trash2 className="mr-1.5 size-3.5" />
@@ -341,6 +348,7 @@ export function ProgramsListPage() {
               </Button>
               <Button
                 size="sm"
+                className="px-2.5"
                 onClick={() => navigate(ROUTES.programCourses(selectedProgram.id))}
               >
                 <ExternalLink className="mr-1.5 size-3.5" />
