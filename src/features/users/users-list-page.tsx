@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
+  BadgeCheck,
   Lock,
   Plus,
   RefreshCw,
+  RotateCcw,
   ShieldAlert,
   Trash2,
   Unlock,
@@ -55,8 +57,14 @@ import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
-import { formatDateTime } from '@/lib/format';
+import { isBanActive } from '@/lib/domain-labels';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
+import { cn } from '@/lib/utils';
+import {
+  resolveUserAccountStatus,
+  userVerificationMeta,
+} from '@/lib/user-status';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { UserResponse } from '@/services/types/domain';
 import {
@@ -64,8 +72,10 @@ import {
   createUserApi,
   deleteUserApi,
   getUsersApi,
+  restoreUserApi,
   updateUserRolesApi,
   updateUserStatusApi,
+  verifyUserApi,
 } from '@/services/users/users-api';
 
 const ROLE_FILTER_OPTIONS = [
@@ -108,19 +118,6 @@ function isDeletedUser(user: UserResponse): boolean {
   return Boolean(user.deletedAt);
 }
 
-function renderStatus(user: UserResponse) {
-  if (isDeletedUser(user)) {
-    return { label: 'Deleted', variant: 'destructive' as const };
-  }
-  if (user.bannedUntil) {
-    return { label: 'Banned', variant: 'destructive' as const };
-  }
-  if (user.isActive) {
-    return { label: 'Active', variant: 'default' as const };
-  }
-  return { label: 'Locked', variant: 'outline' as const };
-}
-
 export function UsersListPage() {
   useAdminPageMeta(ADMIN_PAGE_META.users);
 
@@ -143,6 +140,8 @@ export function UsersListPage() {
   const [lockConfirmOpen, setLockConfirmOpen] = useState(false);
   const [unlockConfirmOpen, setUnlockConfirmOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
+  const [verifyConfirmOpen, setVerifyConfirmOpen] = useState(false);
 
   const createDirty =
     createForm.email.trim() !== '' ||
@@ -239,6 +238,26 @@ export function UsersListPage() {
     onError: (error) => toast.error(error),
   });
 
+  const restoreMutation = useMutation({
+    mutationFn: (userId: string) => restoreUserApi(userId),
+    onSuccess: () => {
+      toast.success('User restored.');
+      setRestoreConfirmOpen(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+    },
+    onError: (error) => toast.error(error),
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: (userId: string) => verifyUserApi(userId),
+    onSuccess: () => {
+      toast.success('User marked as verified.');
+      setVerifyConfirmOpen(false);
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
+    },
+    onError: (error) => toast.error(error),
+  });
+
   const openBanDialog = (user: UserResponse) => {
     setSelectedUser(user);
     setBanPermanent(false);
@@ -270,7 +289,9 @@ export function UsersListPage() {
     unbanConfirmOpen ||
     lockConfirmOpen ||
     unlockConfirmOpen ||
-    deleteConfirmOpen;
+    deleteConfirmOpen ||
+    restoreConfirmOpen ||
+    verifyConfirmOpen;
   const dockOpen = Boolean(selectedLiveUser) && !dockModalOpen;
 
 
@@ -332,18 +353,39 @@ export function UsersListPage() {
         ),
       },
       {
-        id: 'status',
-        header: 'Status',
+        id: 'accountStatus',
+        header: 'Account',
         cell: ({ row }) => {
-          const user = row.original;
-          const status = renderStatus(user);
+          const status = resolveUserAccountStatus(row.original);
           return (
-            <div className="flex flex-wrap gap-1">
-              <Badge variant={status.variant}>{status.label}</Badge>
-              {!user.isVerified ? <Badge variant="outline">Unverified</Badge> : null}
-            </div>
+            <Badge variant="outline" className={cn(status.className)}>
+              {status.label}
+            </Badge>
           );
         },
+      },
+      {
+        id: 'verification',
+        header: 'Verification',
+        meta: { className: 'hidden lg:table-cell' },
+        cell: ({ row }) => {
+          const verification = userVerificationMeta(row.original);
+          return (
+            <Badge variant="outline" className={cn(verification.className)}>
+              {verification.label}
+            </Badge>
+          );
+        },
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Created at',
+        meta: { className: 'hidden md:table-cell' },
+        cell: ({ row }) => (
+          <span className="text-muted-foreground whitespace-nowrap text-sm">
+            {formatDate(row.original.createdAt)}
+          </span>
+        ),
       },
     ],
     [],
@@ -441,7 +483,18 @@ export function UsersListPage() {
           title={selectedLiveUser?.displayName ?? 'User detail'}
           description={selectedLiveUser?.email}
           footer={
-            selectedLiveUser && !isDeletedUser(selectedLiveUser) ? (
+            selectedLiveUser ? (
+              isDeletedUser(selectedLiveUser) ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2.5"
+                  onClick={() => setRestoreConfirmOpen(true)}
+                >
+                  <RotateCcw className="mr-1.5 size-3.5" />
+                  Restore
+                </Button>
+              ) : (
               <>
                 <Button
                   variant="outline"
@@ -452,7 +505,18 @@ export function UsersListPage() {
                   <Shield className="mr-1.5 size-3.5" />
                   Edit role
                 </Button>
-                {selectedLiveUser.bannedUntil ? (
+                {!selectedLiveUser.isVerified ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="px-2.5"
+                    onClick={() => setVerifyConfirmOpen(true)}
+                  >
+                    <BadgeCheck className="mr-1.5 size-3.5" />
+                    Verify
+                  </Button>
+                ) : null}
+                {isBanActive(selectedLiveUser.bannedUntil) ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -505,6 +569,7 @@ export function UsersListPage() {
                   <Trash2 className="size-3.5" />
                 </Button>
               </>
+              )
             ) : null
           }
         >
@@ -527,18 +592,28 @@ export function UsersListPage() {
                   className="col-span-2"
                 />
                 <InspectorField
-                  label="Status"
+                  label="Account"
                   value={
-                    <Badge variant={renderStatus(selectedLiveUser).variant}>
-                      {renderStatus(selectedLiveUser).label}
+                    <Badge
+                      variant="outline"
+                      className={cn(resolveUserAccountStatus(selectedLiveUser).className)}
+                    >
+                      {resolveUserAccountStatus(selectedLiveUser).label}
                     </Badge>
                   }
                 />
                 <InspectorField
-                  label="Verified"
-                  value={selectedLiveUser.isVerified ? 'Yes' : 'No'}
+                  label="Verification"
+                  value={
+                    <Badge
+                      variant="outline"
+                      className={cn(userVerificationMeta(selectedLiveUser).className)}
+                    >
+                      {userVerificationMeta(selectedLiveUser).label}
+                    </Badge>
+                  }
                 />
-                {selectedLiveUser.bannedUntil ? (
+                {isBanActive(selectedLiveUser.bannedUntil) ? (
                   <InspectorField
                     label="Banned until"
                     value={formatDateTime(selectedLiveUser.bannedUntil)}
@@ -546,13 +621,18 @@ export function UsersListPage() {
                   />
                 ) : null}
                 <InspectorField
-                  label="Joined"
+                  label="Created at"
                   value={formatDateTime(selectedLiveUser.createdAt)}
+                />
+                <InspectorField
+                  label="Last sign-in"
+                  value={formatDateTime(selectedLiveUser.lastSignInAt)}
                 />
                 {selectedLiveUser.deletedAt ? (
                   <InspectorField
-                    label="Deleted"
+                    label="Deleted at"
                     value={formatDateTime(selectedLiveUser.deletedAt)}
+                    className="col-span-2"
                   />
                 ) : null}
               </dl>
@@ -936,7 +1016,7 @@ export function UsersListPage() {
             <AlertDialogTitle>Soft delete this user?</AlertDialogTitle>
             <AlertDialogDescription>
               {selectedUser
-                ? `"${selectedUser.displayName}" will be marked as deleted and lose access to the platform. This can be reversed by an administrator.`
+                ? `"${selectedUser.displayName}" will be marked as deleted and lose access. You can restore the account from the Deleted filter before the retention purge runs.`
                 : ''}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -953,6 +1033,74 @@ export function UsersListPage() {
               }}
             >
               {deleteMutation.isPending ? 'Deleting…' : 'Soft delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={restoreConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !restoreMutation.isPending) {
+            setRestoreConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore this user?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser
+                ? `"${selectedUser.displayName}" will regain access as an active account.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={restoreMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={restoreMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (selectedUser) {
+                  restoreMutation.mutate(selectedUser.id);
+                }
+              }}
+            >
+              {restoreMutation.isPending ? 'Restoring…' : 'Restore'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={verifyConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !verifyMutation.isPending) {
+            setVerifyConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark this user as verified?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedUser
+                ? `"${selectedUser.displayName}" will be treated as email-verified without OTP.`
+                : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={verifyMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={verifyMutation.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                if (selectedUser) {
+                  verifyMutation.mutate(selectedUser.id);
+                }
+              }}
+            >
+              {verifyMutation.isPending ? 'Verifying…' : 'Verify'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

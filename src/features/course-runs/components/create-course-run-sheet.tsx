@@ -138,7 +138,7 @@ function CreateCourseRunSheetBody({
   });
   const selectedCourse =
     courseDetailQuery.data ??
-    coursesQuery.data?.data?.find((item) => item.id === targetCourseId) ??
+    coursesQuery.data?.find((item) => item.id === targetCourseId) ??
     null;
   const appleReady = hasAppleProductId(selectedCourse);
 

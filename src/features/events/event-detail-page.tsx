@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Copy, Pencil, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { confirmDiscard } from '@/lib/confirm-discard';
+import { buildAbsoluteJoinUrl } from '@/lib/meet-url';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminActionBar, AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
@@ -40,7 +41,13 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
-import { eventStatusLabel, eventTypeLabel, normalizeEventStatus } from '@/lib/event-labels';
+import {
+  eventStatusClasses,
+  eventStatusLabel,
+  eventTypeLabel,
+  normalizeEventStatus,
+} from '@/lib/event-labels';
+import { cn } from '@/lib/utils';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
@@ -350,7 +357,12 @@ export function EventDetailPage() {
       titleAddon={
         event ? (
           <>
-            <Badge variant="secondary">{eventStatusLabel(event.status)}</Badge>
+            <Badge
+              variant="outline"
+              className={cn(eventStatusClasses(event.status))}
+            >
+              {eventStatusLabel(event.status)}
+            </Badge>
             {event.isOfficial ? <Badge>{eventTypeLabel(true)}</Badge> : null}
           </>
         ) : undefined
@@ -433,16 +445,74 @@ export function EventDetailPage() {
               <dl className="divide-y text-sm">
                 <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
                   <dt className="text-muted-foreground">Meeting</dt>
-                  <dd>
-                    {event.roomCode
-                      ? `Room code: ${event.roomCode}`
-                      : 'Room details appear after scheduling.'}
+                  <dd className="flex flex-wrap items-center gap-2">
+                    {event.roomCode ? (
+                      <>
+                        <span className="font-mono text-sm">{event.roomCode}</span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={async () => {
+                            try {
+                              await navigator.clipboard.writeText(event.roomCode!);
+                              toast.success('Room code copied.');
+                            } catch {
+                              toast.error('Unable to copy room code.');
+                            }
+                          }}
+                        >
+                          <Copy className="mr-1 size-3" />
+                          Copy
+                        </Button>
+                      </>
+                    ) : (
+                      'Room details appear after scheduling.'
+                    )}
                   </dd>
                 </div>
                 <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-start sm:gap-4">
                   <dt className="text-muted-foreground">Join link</dt>
-                  <dd className="break-all">
-                    {event.liveLink ?? 'Access link appears when the event is ready.'}
+                  <dd className="space-y-2 break-all">
+                    {(() => {
+                      const joinUrl = buildAbsoluteJoinUrl({
+                        roomCode: event.roomCode,
+                        liveLink: event.liveLink,
+                      });
+                      if (!joinUrl) {
+                        return 'Access link appears when the event is ready.';
+                      }
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <a
+                            href={joinUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary underline-offset-2 hover:underline"
+                          >
+                            {joinUrl}
+                          </a>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-fit px-2"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(joinUrl);
+                                toast.success('Join link copied.');
+                              } catch {
+                                toast.error('Unable to copy join link.');
+                              }
+                            }}
+                          >
+                            <Copy className="mr-1 size-3" />
+                            Copy link
+                          </Button>
+                        </div>
+                      );
+                    })()}
                   </dd>
                 </div>
                 <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">

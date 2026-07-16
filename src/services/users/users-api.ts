@@ -77,6 +77,18 @@ export async function deleteUserApi(userId: string): Promise<void> {
   await apiDelete<void>(`/api/v1/admin/users/${userId}`);
 }
 
+/** Restores a soft-deleted user before retention purge. */
+export async function restoreUserApi(userId: string): Promise<UserResponse> {
+  const user = await apiPost<UserResponseRaw>(`/api/v1/admin/users/${userId}/restore`);
+  return normalizeUser(user);
+}
+
+/** Marks a user as email-verified from the admin console. */
+export async function verifyUserApi(userId: string): Promise<UserResponse> {
+  const user = await apiPost<UserResponseRaw>(`/api/v1/admin/users/${userId}/verify`);
+  return normalizeUser(user);
+}
+
 export async function getUsersApi(params: {
   page?: number;
   size?: number;

@@ -44,6 +44,7 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { hasCourseRunPricing } from '@/lib/course-run-pricing';
+import { formatDate } from '@/lib/format';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
@@ -99,12 +100,25 @@ export function CoursesListPage() {
     enabled: isProgramScope,
   });
 
+  const hasSearch = search.trim().length > 0;
+
   const coursesQuery = useQuery({
-    queryKey: [...queryKeys.courses.list(programId), page],
-    queryFn: () =>
-      isProgramScope
+    queryKey: [...queryKeys.courses.list(programId), hasSearch ? 'all' : page],
+    queryFn: async () => {
+      if (hasSearch) {
+        const data = await coursesApi.getAll(isProgramScope ? programId : undefined);
+        return {
+          data,
+          totalElement: data.length,
+          totalPages: 1,
+          currentPage: 0,
+          pageSize: data.length,
+        };
+      }
+      return isProgramScope
         ? coursesApi.getPage(page, ADMIN_LIST_PAGE_SIZE, programId)
-        : coursesApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
+        : coursesApi.getPage(page, ADMIN_LIST_PAGE_SIZE);
+    },
   });
 
   const filteredCourses = useMemo(() => {
@@ -287,6 +301,12 @@ export function CoursesListPage() {
           );
         },
       },
+      {
+        accessorKey: 'createdAt',
+        header: 'Created at',
+        meta: { className: 'hidden lg:table-cell' },
+        cell: ({ row }) => formatDate(row.original.createdAt),
+      },
     ];
 
     if (!isProgramScope) {
@@ -334,10 +354,16 @@ export function CoursesListPage() {
           ) : null}
           <AdminFilterBar
             searchValue={search}
-            onSearchChange={setSearch}
+            onSearchChange={(value) => {
+              setSearch(value);
+              setPage(0);
+            }}
             searchPlaceholder="Search by code, title, or program"
             showClear={search.trim().length > 0}
-            onClear={() => setSearch('')}
+            onClear={() => {
+              setSearch('');
+              setPage(0);
+            }}
           />
         </div>
       }
@@ -436,6 +462,11 @@ export function CoursesListPage() {
                 <InspectorField
                   label="Order"
                   value={String(selectedLiveCourse.orderIndex)}
+                />
+                <InspectorField
+                  label="Created at"
+                  value={formatDate(selectedLiveCourse.createdAt)}
+                  className="col-span-2"
                 />
               </dl>
             ) : null}

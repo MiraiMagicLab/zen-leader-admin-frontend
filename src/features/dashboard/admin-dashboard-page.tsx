@@ -58,10 +58,11 @@ export function AdminDashboardPage() {
         if ('id' in item && !('orderId' in item)) return item.id;
         return '';
       },
+      itemHref: () => '/moderation?status=PENDING',
     },
     {
       title: 'Enrollment failures',
-      viewAllHref: '/payments',
+      viewAllHref: '/payments?status=ENROLL_FAILED',
       items: failedPaymentsQuery.data?.data ?? [],
       isLoading: failedPaymentsQuery.isLoading,
       isError: failedPaymentsQuery.isError,
@@ -81,6 +82,7 @@ export function AdminDashboardPage() {
         if ('orderId' in item) return item.orderId;
         return '';
       },
+      itemHref: () => '/payments?status=ENROLL_FAILED',
     },
   ];
 

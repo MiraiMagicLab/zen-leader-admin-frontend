@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, Trash2 } from 'lucide-react';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
@@ -26,9 +26,23 @@ import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { formatDateTime } from '@/lib/format';
-import { humanizeEnumValue } from '@/lib/humanize';
+import { buildAbsoluteJoinUrl, buildMeetRoomUrl } from '@/lib/meet-url';
+import {
+  sessionStatusClasses,
+  sessionStatusLabel,
+} from '@/lib/session-status';
+import { cn } from '@/lib/utils';
 import { sessionsApi } from '@/services/lms/lms-api';
 import type { SessionResponse } from '@/services/types/domain';
+
+async function copyText(value: string, successMessage: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(successMessage);
+  } catch {
+    toast.error('Unable to copy to clipboard.');
+  }
+}
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 
 type SessionForm = {
@@ -204,7 +218,14 @@ export function CourseRunSessionsPanel({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{humanizeEnumValue(row.original.status)}</Badge>,
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={cn(sessionStatusClasses(row.original.status))}
+          >
+            {sessionStatusLabel(row.original.status)}
+          </Badge>
+        ),
       },
       {
         id: 'scheduled',
@@ -224,12 +245,45 @@ export function CourseRunSessionsPanel({
       },
       {
         id: 'meetingRoom',
-        header: 'Room code',
-        cell: ({ row }) => (
-          <span className="font-mono text-sm tabular-nums">
-            {row.original.meetingRoomId?.trim() || '—'}
-          </span>
-        ),
+        header: 'Room',
+        cell: ({ row }) => {
+          const roomCode = row.original.meetingRoomId?.trim();
+          if (!roomCode) {
+            return <span className="text-muted-foreground text-sm">—</span>;
+          }
+          return (
+            <div
+              className="flex flex-wrap items-center gap-1"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <span className="font-mono text-sm tabular-nums">{roomCode}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-1.5"
+                title="Copy room code"
+                onClick={() => void copyText(roomCode, 'Room code copied.')}
+              >
+                <Copy className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-1.5 text-xs"
+                title="Copy join link"
+                onClick={() => {
+                  const url =
+                    buildAbsoluteJoinUrl({ roomCode }) ?? buildMeetRoomUrl(roomCode);
+                  void copyText(url, 'Join link copied.');
+                }}
+              >
+                Link
+              </Button>
+            </div>
+          );
+        },
       },
       {
         id: 'waitingRoom',
@@ -577,14 +631,47 @@ export function CourseRunSessionsPanel({
             </div>
             <div className="space-y-2">
               <Label>Room code</Label>
-              <Input
-                readOnly
-                value={
-                  sessions.find((session) => session.id === editSession.id)?.meetingRoomId ??
-                  'Auto-generated on first save'
+              {(() => {
+                const roomCode =
+                  sessions.find((session) => session.id === editSession.id)?.meetingRoomId?.trim() ??
+                  '';
+                if (!roomCode) {
+                  return (
+                    <Input
+                      readOnly
+                      value="Auto-generated on first save"
+                      className="font-mono"
+                    />
+                  );
                 }
-                className="font-mono"
-              />
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    <Input readOnly value={roomCode} className="font-mono" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void copyText(roomCode, 'Room code copied.')}
+                    >
+                      <Copy className="mr-1.5 size-3.5" />
+                      Copy code
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const url =
+                          buildAbsoluteJoinUrl({ roomCode }) ?? buildMeetRoomUrl(roomCode);
+                        void copyText(url, 'Join link copied.');
+                      }}
+                    >
+                      <Copy className="mr-1.5 size-3.5" />
+                      Copy link
+                    </Button>
+                  </div>
+                );
+              })()}
             </div>
             <div className="flex items-start gap-3 rounded-lg border p-3">
               <Checkbox

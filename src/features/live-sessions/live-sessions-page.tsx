@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Copy, RefreshCw, Trash2, Power } from 'lucide-react';
@@ -24,7 +24,9 @@ import { queryKeys } from '@/hooks/query-keys';
 import { adminToast as toast } from '@/lib/admin-toast';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
+import { buildMeetRoomUrl } from '@/lib/meet-url';
 import { useAdminPageMeta } from '@/lib/page-meta';
+import { ROUTES } from '@/routes/paths';
 import { liveSessionsApi } from '@/services/live-sessions/live-sessions-api';
 import { meetingsApi } from '@/services/meetings/meetings-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
@@ -104,10 +106,28 @@ export function LiveSessionsPage() {
     mutationFn: (roomCode: string) => meetingsApi.getJoinToken(roomCode),
     onSuccess: async (data) => {
       await navigator.clipboard.writeText(data.token);
-      toast.success('Join token copied to clipboard.');
+      toast.success('Host join token copied to clipboard.');
     },
     onError: (error) => toast.error(error),
   });
+
+  const copyRoomLink = async (roomCode: string) => {
+    try {
+      await navigator.clipboard.writeText(buildMeetRoomUrl(roomCode));
+      toast.success('Meet room link copied.');
+    } catch {
+      toast.error('Unable to copy meet room link.');
+    }
+  };
+
+  const copyRoomCode = async (roomCode: string) => {
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      toast.success('Room code copied.');
+    } catch {
+      toast.error('Unable to copy room code.');
+    }
+  };
 
   const rows = sessionsQuery.data?.data ?? [];
   const selectedLiveSession =
@@ -249,6 +269,24 @@ export function LiveSessionsPage() {
                   variant="outline"
                   size="sm"
                   className="px-2.5"
+                  onClick={() => void copyRoomLink(selectedLiveSession.roomCode)}
+                >
+                  <Copy className="mr-1.5 size-3.5" />
+                  Copy link
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2.5"
+                  onClick={() => void copyRoomCode(selectedLiveSession.roomCode)}
+                >
+                  <Copy className="mr-1.5 size-3.5" />
+                  Copy code
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2.5"
                   disabled={joinMutation.isPending}
                   onClick={() => joinMutation.mutate(selectedLiveSession.roomCode)}
                 >
@@ -321,6 +359,20 @@ export function LiveSessionsPage() {
                   className="col-span-2"
                 />
                 <InspectorField
+                  label="Meet link"
+                  value={
+                    <a
+                      href={buildMeetRoomUrl(selectedLiveSession.roomCode)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary break-all underline-offset-2 hover:underline"
+                    >
+                      {buildMeetRoomUrl(selectedLiveSession.roomCode)}
+                    </a>
+                  }
+                  className="col-span-2"
+                />
+                <InspectorField
                   label="Started"
                   value={formatDateTime(selectedLiveSession.createdAt)}
                   className="col-span-2"
@@ -330,13 +382,29 @@ export function LiveSessionsPage() {
                 <dl className="grid grid-cols-1 gap-3">
                   <InspectorField label="Session reference" value={selectedLiveSession.id} mono />
                   {selectedLiveSession.eventId ? (
-                    <InspectorField label="Event reference" value={selectedLiveSession.eventId} mono />
+                    <InspectorField
+                      label="Event"
+                      value={
+                        <Link
+                          to={ROUTES.eventDetail(selectedLiveSession.eventId)}
+                          className="text-primary underline-offset-2 hover:underline"
+                        >
+                          Open event
+                        </Link>
+                      }
+                    />
                   ) : null}
                   {selectedLiveSession.courseId ? (
                     <InspectorField
-                      label="Course reference"
-                      value={selectedLiveSession.courseId}
-                      mono
+                      label="Course"
+                      value={
+                        <Link
+                          to={ROUTES.courseDetail(selectedLiveSession.courseId)}
+                          className="text-primary underline-offset-2 hover:underline"
+                        >
+                          Open course
+                        </Link>
+                      }
                     />
                   ) : null}
                 </dl>
