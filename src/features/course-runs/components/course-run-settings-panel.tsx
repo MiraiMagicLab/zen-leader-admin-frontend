@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminToast as toast } from '@/lib/admin-toast';
 
 import { DateTimePicker } from '@/components/admin/datetime-picker';
@@ -16,10 +16,16 @@ import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
 import { queryKeys } from '@/hooks/query-keys';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import {
+  APPLE_PRODUCT_ID_REQUIRED_NOTE,
+  getOpenRunBlockedMessage,
+  hasAppleProductId,
+} from '@/lib/apple-product-requirement';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { getPayPalPriceUsd, mergeCourseRunPricingMetadata } from '@/lib/course-run-pricing';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { courseRunsApi } from '@/services/course-runs/course-runs-api';
+import { coursesApi } from '@/services/courses/courses-api';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import type { CourseRunResponse } from '@/services/types/domain';
 
@@ -83,6 +89,13 @@ function CourseRunSettingsPanelBody({ open, onOpenChange, run }: CourseRunSettin
   const queryClient = useQueryClient();
   const [runSettings, setRunSettings] = useState<RunSettingsForm>(() => toRunSettingsForm(run));
 
+  const courseQuery = useQuery({
+    queryKey: queryKeys.courses.detail(run.courseId),
+    queryFn: () => coursesApi.getById(run.courseId),
+    enabled: open && Boolean(run.courseId),
+  });
+  const appleReady = hasAppleProductId(courseQuery.data);
+
   const runSettingsBaseline = toRunSettingsForm(run);
   const runSettingsDirty = (Object.keys(runSettings) as Array<keyof RunSettingsForm>).some(
     (field) => runSettings[field] !== runSettingsBaseline[field],
@@ -98,8 +111,12 @@ function CourseRunSettingsPanelBody({ open, onOpenChange, run }: CourseRunSettin
   };
 
   const updateRunMutation = useMutation({
-    mutationFn: () =>
-      courseRunsApi.update(run.id, {
+    mutationFn: () => {
+      const blocked = getOpenRunBlockedMessage(courseQuery.data, runSettings.status);
+      if (blocked) {
+        throw new Error(blocked);
+      }
+      return courseRunsApi.update(run.id, {
         courseId: run.courseId,
         code: runSettings.code,
         status: runSettings.status,
@@ -114,7 +131,8 @@ function CourseRunSettingsPanelBody({ open, onOpenChange, run }: CourseRunSettin
         enrollmentEndDate: runSettings.enrollmentEndDate
           ? new Date(runSettings.enrollmentEndDate).toISOString()
           : null,
-      }),
+      });
+    },
     onSuccess: async () => {
       toast.success('Course run updated.');
       onOpenChange(false);
@@ -180,12 +198,17 @@ function CourseRunSettingsPanelBody({ open, onOpenChange, run }: CourseRunSettin
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="DRAFT">DRAFT</SelectItem>
-                <SelectItem value="OPEN">OPEN</SelectItem>
+                <SelectItem value="OPEN" disabled={!appleReady}>
+                  OPEN
+                </SelectItem>
                 <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
                 <SelectItem value="COMPLETED">COMPLETED</SelectItem>
                 <SelectItem value="CANCELLED">CANCELLED</SelectItem>
               </SelectContent>
             </Select>
+            {!appleReady ? (
+              <p className="text-muted-foreground text-sm">{APPLE_PRODUCT_ID_REQUIRED_NOTE}</p>
+            ) : null}
           </div>
           <div className="space-y-2">
             <Label>Capacity</Label>

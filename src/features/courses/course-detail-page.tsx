@@ -64,6 +64,11 @@ import {
   mergeCourseRunPricingMetadata,
 } from '@/lib/course-run-pricing';
 import { confirmDiscard } from '@/lib/confirm-discard';
+import {
+  APPLE_PRODUCT_ID_REQUIRED_NOTE,
+  getOpenRunBlockedMessage,
+  hasAppleProductId,
+} from '@/lib/apple-product-requirement';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { toLocalDateTimeFromIso } from '@/lib/datetime-local';
 import { formatDateTime } from '@/lib/format';
@@ -248,8 +253,12 @@ export function CourseDetailPage() {
   });
 
   const updateRunMutation = useMutation({
-    mutationFn: () =>
-      courseRunsApi.update(editingRun!.id, {
+    mutationFn: () => {
+      const blocked = getOpenRunBlockedMessage(course, runForm.status);
+      if (blocked) {
+        throw new Error(blocked);
+      }
+      return courseRunsApi.update(editingRun!.id, {
         courseId: courseId!,
         code: runForm.code,
         status: runForm.status,
@@ -264,14 +273,15 @@ export function CourseDetailPage() {
         enrollmentEndDate: runForm.enrollmentEndDate
           ? new Date(runForm.enrollmentEndDate).toISOString()
           : null,
-      }),
+      });
+    },
     onSuccess: async () => {
       toast.success('Class updated.');
       setEditingRun(null);
       setRunForm(emptyRunForm);
       await invalidateCourseQueries();
     },
-    onError: (error) => toast.error(error),
+    onError: (error) => toast.error(getApiErrorMessage(error)),
   });
 
   const deleteRunMutation = useMutation({
@@ -570,7 +580,7 @@ export function CourseDetailPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="flex items-center gap-2 text-sm font-medium">
                     <ShoppingBag className="text-muted-foreground size-4" />
-                    Mobile in-app purchase (optional)
+                    Apple In-App Purchase (required to open a class)
                   </p>
                   <Button
                     variant="outline"
@@ -578,9 +588,17 @@ export function CourseDetailPage() {
                     disabled={iapMutation.isPending}
                     onClick={() => setEditIapOpen(true)}
                   >
-                    Edit purchase IDs
+                    Edit Apple Product ID
                   </Button>
                 </div>
+                <p className="text-muted-foreground mt-2 text-sm">
+                  {APPLE_PRODUCT_ID_REQUIRED_NOTE}
+                </p>
+                {!hasAppleProductId(course) ? (
+                  <p className="text-destructive mt-2 text-sm">
+                    This course cannot be opened for enrollment until an Apple Product ID is set.
+                  </p>
+                ) : null}
                 <div className="text-muted-foreground mt-3 grid gap-2 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
                   <span>Paid classes</span>
                   <span className="text-foreground tabular-nums">
@@ -589,7 +607,9 @@ export function CourseDetailPage() {
                   <span>Apple Product ID</span>
                   <span className="text-foreground break-all">{appleProductId || 'Not set'}</span>
                   <span>Android Product ID</span>
-                  <span className="text-foreground break-all">{androidProductId || 'Not set'}</span>
+                  <span className="text-foreground break-all">
+                    {androidProductId || 'Not required (PayPal)'}
+                  </span>
                 </div>
               </div>
             </WorkspaceSection>
@@ -737,15 +757,14 @@ export function CourseDetailPage() {
       <Dialog open={editIapOpen} onOpenChange={handleEditIapOpenChange}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Configure in-app purchase IDs</DialogTitle>
-            <DialogDescription>
-              Used only for in-app purchase (IAP) mapping. Web/PayPal pricing is configured per
-              class.
-            </DialogDescription>
+            <DialogTitle>Configure Apple Product ID</DialogTitle>
+            <DialogDescription>{APPLE_PRODUCT_ID_REQUIRED_NOTE}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Apple Product ID</Label>
+              <Label>
+                Apple Product ID <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={appleProductId}
                 onChange={(e) => setAppleProductId(e.target.value)}
@@ -753,12 +772,17 @@ export function CourseDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Android Product ID</Label>
+              <Label>Android Product ID (optional)</Label>
               <Input
                 value={androidProductId}
                 onChange={(e) => setAndroidProductId(e.target.value)}
-                placeholder="course_xxx"
+                placeholder="Not required — Android uses PayPal"
+                disabled
               />
+              <p className="text-muted-foreground text-xs">
+                Android students pay via PayPal on each class. Leave this empty unless Google Play
+                Billing is enabled later.
+              </p>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:flex-nowrap">
@@ -766,7 +790,7 @@ export function CourseDetailPage() {
               Cancel
             </Button>
             <Button onClick={() => iapMutation.mutate()} disabled={iapMutation.isPending}>
-              Save purchase IDs
+              Save Apple Product ID
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -808,12 +832,19 @@ export function CourseDetailPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="DRAFT">Draft</SelectItem>
-                <SelectItem value="OPEN">Open</SelectItem>
+                <SelectItem value="OPEN" disabled={!hasAppleProductId(course)}>
+                  Open
+                </SelectItem>
                 <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                 <SelectItem value="COMPLETED">Completed</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>
             </Select>
+            {runForm.status === 'OPEN' && !hasAppleProductId(course) ? (
+              <p className="text-destructive text-sm">{APPLE_PRODUCT_ID_REQUIRED_NOTE}</p>
+            ) : !hasAppleProductId(course) ? (
+              <p className="text-muted-foreground text-sm">{APPLE_PRODUCT_ID_REQUIRED_NOTE}</p>
+            ) : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

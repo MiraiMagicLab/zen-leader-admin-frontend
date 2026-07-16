@@ -1,10 +1,11 @@
 import { stripHtml } from '@/lib/html';
+import { hasAppleProductId } from '@/lib/apple-product-requirement';
 import type { CourseResponse } from '@/services/types/domain';
 
 /** Which workspace section a checklist step scrolls to. */
 export type CompletionAnchor = 'info' | 'syllabus' | 'runs';
 
-export type CompletionStepId = 'info' | 'syllabus' | 'runs' | 'sessions' | 'ready';
+export type CompletionStepId = 'info' | 'syllabus' | 'appleIap' | 'runs' | 'sessions' | 'ready';
 
 export type CompletionStep = {
   id: CompletionStepId;
@@ -27,7 +28,8 @@ export type CourseCompletion = {
 
 /**
  * Derives course setup progress purely from a {@link CourseResponse}. No backend flag exists for
- * "published"; a course is considered ready for students once it has at least one OPEN run.
+ * "published"; a course is considered ready for students once it has an Apple Product ID and at
+ * least one OPEN run. Android Product ID is not required (PayPal checkout).
  */
 export function computeCourseCompletion(
   course: CourseResponse | null | undefined,
@@ -41,6 +43,7 @@ export function computeCourseCompletion(
     0,
   );
   const hasOpenRun = runs.some((r) => r.status === 'OPEN');
+  const appleMapped = hasAppleProductId(course);
 
   const hasDescription = Boolean(stripHtml(course?.description ?? '').trim());
   const infoDone = Boolean(course?.title?.trim() && course?.code?.trim() && hasDescription);
@@ -64,6 +67,15 @@ export function computeCourseCompletion(
       anchor: 'syllabus',
     },
     {
+      id: 'appleIap',
+      label: 'Apple Product ID',
+      summary: appleMapped
+        ? 'Mapped for iOS IAP'
+        : 'Required before opening a class — contact Apple account developer',
+      done: appleMapped,
+      anchor: 'info',
+    },
+    {
       id: 'runs',
       label: 'Open a class',
       summary: runs.length > 0 ? `${runs.length} class${runs.length === 1 ? '' : 'es'}` : 'No classes yet',
@@ -80,8 +92,13 @@ export function computeCourseCompletion(
     {
       id: 'ready',
       label: 'Ready for students',
-      summary: hasOpenRun ? 'A class is open' : 'No open class',
-      done: hasOpenRun,
+      summary:
+        hasOpenRun && appleMapped
+          ? 'A class is open'
+          : !appleMapped
+            ? 'Apple Product ID required'
+            : 'No open class',
+      done: hasOpenRun && appleMapped,
       anchor: 'runs',
     },
   ];
@@ -94,7 +111,7 @@ export function computeCourseCompletion(
     doneCount,
     totalCount,
     percent: Math.round((doneCount / totalCount) * 100),
-    status: hasOpenRun ? 'ready' : 'draft',
+    status: hasOpenRun && appleMapped ? 'ready' : 'draft',
     firstIncomplete: steps.find((s) => !s.done) ?? null,
   };
 }

@@ -15,6 +15,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { mergeCourseRunPricingMetadata } from '@/lib/course-run-pricing';
+import {
+  APPLE_PRODUCT_ID_REQUIRED_NOTE,
+  getOpenRunBlockedMessage,
+  hasAppleProductId,
+} from '@/lib/apple-product-requirement';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { queryKeys } from '@/hooks/query-keys';
@@ -125,15 +130,31 @@ function CreateCourseRunSheetBody({
     enabled: open && !courseId,
   });
 
+  const targetCourseId = courseId ?? form.courseId;
+  const courseDetailQuery = useQuery({
+    queryKey: queryKeys.courses.detail(targetCourseId),
+    queryFn: () => coursesApi.getById(targetCourseId),
+    enabled: open && Boolean(targetCourseId),
+  });
+  const selectedCourse =
+    courseDetailQuery.data ??
+    coursesQuery.data?.data?.find((item) => item.id === targetCourseId) ??
+    null;
+  const appleReady = hasAppleProductId(selectedCourse);
+
   const createMutation = useMutation({
     mutationFn: () => {
-      const targetCourseId = courseId ?? form.courseId;
-      if (!targetCourseId) {
+      const resolvedCourseId = courseId ?? form.courseId;
+      if (!resolvedCourseId) {
         setCourseError('Select a course.');
         throw new Error('Missing course.');
       }
+      const blocked = getOpenRunBlockedMessage(selectedCourse, form.status);
+      if (blocked) {
+        throw new Error(blocked);
+      }
       return courseRunsApi.create({
-        courseId: targetCourseId,
+        courseId: resolvedCourseId,
         code: form.code,
         status: form.status,
         startsAt: new Date(form.startsAt).toISOString(),
@@ -239,12 +260,17 @@ function CreateCourseRunSheetBody({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="DRAFT">DRAFT</SelectItem>
-                <SelectItem value="OPEN">OPEN</SelectItem>
+                <SelectItem value="OPEN" disabled={!appleReady}>
+                  OPEN
+                </SelectItem>
                 <SelectItem value="IN_PROGRESS">IN_PROGRESS</SelectItem>
                 <SelectItem value="COMPLETED">COMPLETED</SelectItem>
                 <SelectItem value="CANCELLED">CANCELLED</SelectItem>
               </SelectContent>
             </Select>
+            {!appleReady ? (
+              <p className="text-muted-foreground text-sm">{APPLE_PRODUCT_ID_REQUIRED_NOTE}</p>
+            ) : null}
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
