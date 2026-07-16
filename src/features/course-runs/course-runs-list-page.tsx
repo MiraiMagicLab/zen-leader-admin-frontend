@@ -159,6 +159,12 @@ export function CourseRunsListPage() {
         meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => formatDateTime(row.original.startsAt),
       },
+      {
+        accessorKey: 'createdAt',
+        header: 'Created at',
+        meta: { className: 'hidden lg:table-cell' },
+        cell: ({ row }) => formatDateTime(row.original.createdAt),
+      },
     ],
     [courseTitleById],
   );

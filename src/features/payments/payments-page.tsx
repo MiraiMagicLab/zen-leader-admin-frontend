@@ -34,30 +34,19 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
 import { humanizeEnumValue } from '@/lib/humanize';
+import {
+  PAYMENT_STATUS_FILTER_OPTIONS,
+  paymentStatusClasses,
+  paymentStatusLabel,
+} from '@/lib/payment-status';
 import { useAdminPageMeta } from '@/lib/page-meta';
+import { cn } from '@/lib/utils';
 import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { paymentsApi } from '@/services/payments/payments-api';
 import type { AdminPaymentOrderResponse } from '@/services/types/domain';
 
-const PAYMENT_STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Awaiting payment',
-  PAID: 'Paid',
-  ENROLL_FAILED: 'Enrollment failed',
-  EXPIRED: 'Expired',
-  CANCELLED: 'Cancelled',
-  REFUND_PENDING: 'Refund pending',
-  REFUNDED: 'Refunded',
-};
-
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All' },
-  ...Object.entries(PAYMENT_STATUS_LABEL).map(([value, label]) => ({ value, label })),
-];
-
-function paymentStatusLabel(status: string) {
-  return PAYMENT_STATUS_LABEL[status] ?? humanizeEnumValue(status);
-}
+const STATUS_OPTIONS = PAYMENT_STATUS_FILTER_OPTIONS;
 
 const PROVIDER_LABEL: Record<string, string> = {
   VNPAY: 'VNPay',
@@ -249,7 +238,12 @@ export function PaymentsPage() {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => (
-          <Badge variant="secondary">{paymentStatusLabel(row.original.status)}</Badge>
+          <Badge
+            variant="outline"
+            className={cn(paymentStatusClasses(row.original.status))}
+          >
+            {paymentStatusLabel(row.original.status)}
+          </Badge>
         ),
       },
       {
@@ -432,7 +426,10 @@ export function PaymentsPage() {
                 <InspectorField
                   label="Status"
                   value={
-                    <Badge variant="secondary">
+                    <Badge
+                      variant="outline"
+                      className={cn(paymentStatusClasses(selectedLiveOrder.status))}
+                    >
                       {paymentStatusLabel(selectedLiveOrder.status)}
                     </Badge>
                   }

@@ -33,7 +33,12 @@ import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { formatDateTime } from '@/lib/format';
+import {
+  enrollmentStatusClasses,
+  enrollmentStatusLabel,
+} from '@/lib/enrollment-status';
 import { humanizeEnumValue } from '@/lib/humanize';
+import { cn } from '@/lib/utils';
 import {
   FILE_READ_ERROR_MESSAGE,
   snapshotUploadFile,
@@ -53,7 +58,11 @@ function EnrollmentMetaTable({ enrollment }: { enrollment: EnrollmentResponse })
     },
     {
       label: 'Status',
-      value: <Badge variant="secondary">{humanizeEnumValue(enrollment.status)}</Badge>,
+      value: (
+        <Badge variant="outline" className={cn(enrollmentStatusClasses(enrollment.status))}>
+          {enrollmentStatusLabel(enrollment.status)}
+        </Badge>
+      ),
     },
     { label: 'Method', value: humanizeEnumValue(enrollment.enrolmentMethod) ?? '—' },
     {
@@ -298,7 +307,14 @@ export function CourseRunEnrollmentsPanel({
       {
         accessorKey: 'status',
         header: 'Status',
-        cell: ({ row }) => <Badge variant="secondary">{humanizeEnumValue(row.original.status)}</Badge>,
+        cell: ({ row }) => (
+          <Badge
+            variant="outline"
+            className={cn(enrollmentStatusClasses(row.original.status))}
+          >
+            {enrollmentStatusLabel(row.original.status)}
+          </Badge>
+        ),
       },
       {
         id: 'enrolledAt',

@@ -20,6 +20,8 @@ export type NeedsAttentionColumnConfig<T> = {
   renderPrimary: (item: T) => string;
   renderSecondary: (item: T) => string;
   keyExtractor: (item: T) => string;
+  /** Optional deep-link for each queue item. */
+  itemHref?: (item: T) => string | null;
 };
 
 type NeedsAttentionSectionProps<T> = {
@@ -56,6 +58,7 @@ function AttentionQueue<T>({
     renderPrimary,
     renderSecondary,
     keyExtractor,
+    itemHref,
   } = config;
 
   if (isError) {
@@ -94,17 +97,33 @@ function AttentionQueue<T>({
         <p className="text-muted-foreground text-sm">{emptyMessage}</p>
       ) : (
         <ul className="space-y-1.5">
-          {items.map((item) => (
-            <li
-              key={keyExtractor(item)}
-              className="border-border/60 hover:border-border hover:bg-muted/30 rounded-md border px-3 py-2 transition-colors"
-            >
-              <p className="truncate text-sm font-medium">{renderPrimary(item)}</p>
-              <p className="text-muted-foreground truncate text-xs">
-                {renderSecondary(item)}
-              </p>
-            </li>
-          ))}
+          {items.map((item) => {
+            const href = itemHref?.(item) ?? null;
+            const content = (
+              <>
+                <p className="truncate text-sm font-medium">{renderPrimary(item)}</p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {renderSecondary(item)}
+                </p>
+              </>
+            );
+            return (
+              <li key={keyExtractor(item)}>
+                {href ? (
+                  <Link
+                    to={href}
+                    className="border-border/60 hover:border-border hover:bg-muted/30 block rounded-md border px-3 py-2 transition-colors"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div className="border-border/60 rounded-md border px-3 py-2">
+                    {content}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

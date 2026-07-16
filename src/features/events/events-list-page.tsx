@@ -39,8 +39,14 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDateTime } from '@/lib/format';
-import { eventStatusLabel, eventTypeLabel, normalizeEventStatus } from '@/lib/event-labels';
+import {
+  eventStatusClasses,
+  eventStatusLabel,
+  eventTypeLabel,
+  normalizeEventStatus,
+} from '@/lib/event-labels';
 import { useAdminPageMeta } from '@/lib/page-meta';
+import { cn } from '@/lib/utils';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
 import { eventsApi } from '@/services/events/events-api';
@@ -267,7 +273,12 @@ export function EventsListPage() {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => (
-          <Badge variant="secondary">{eventStatusLabel(row.original.status)}</Badge>
+          <Badge
+            variant="outline"
+            className={cn(eventStatusClasses(row.original.status))}
+          >
+            {eventStatusLabel(row.original.status)}
+          </Badge>
         ),
       },
       {
@@ -280,6 +291,12 @@ export function EventsListPage() {
         accessorKey: 'startTime',
         header: 'Start',
         cell: ({ row }) => formatDateTime(row.original.startTime),
+      },
+      {
+        accessorKey: 'createdAt',
+        header: 'Created at',
+        meta: { className: 'hidden lg:table-cell' },
+        cell: ({ row }) => formatDateTime(row.original.createdAt),
       },
     ],
     [],
@@ -445,7 +462,12 @@ export function EventsListPage() {
             <InspectorField
               label="Status"
               value={
-                <Badge variant="secondary">{eventStatusLabel(selectedEvent.status)}</Badge>
+                <Badge
+                  variant="outline"
+                  className={cn(eventStatusClasses(selectedEvent.status))}
+                >
+                  {eventStatusLabel(selectedEvent.status)}
+                </Badge>
               }
             />
             <InspectorField

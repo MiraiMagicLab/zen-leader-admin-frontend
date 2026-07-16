@@ -40,6 +40,7 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { queryKeys } from '@/hooks/query-keys';
 import { formatDate } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { useAdminPageMeta } from '@/lib/page-meta';
 import { ROUTES } from '@/routes/paths';
 import { assetsApi } from '@/services/assets/assets-api';
@@ -136,9 +137,20 @@ export function ProgramsListPage() {
     setDialogOpen(open);
   };
 
+  const hasActiveFilters = search.trim().length > 0 || statusFilter !== 'all';
+
   const programsQuery = useQuery({
-    queryKey: [...queryKeys.programs.list(), page],
-    queryFn: () => programsApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
+    queryKey: [...queryKeys.programs.list(), hasActiveFilters ? 'all' : page],
+    queryFn: () =>
+      hasActiveFilters
+        ? programsApi.getAll().then((data) => ({
+            data,
+            totalElement: data.length,
+            totalPages: 1,
+            currentPage: 0,
+            pageSize: data.length,
+          }))
+        : programsApi.getPage(page, ADMIN_LIST_PAGE_SIZE),
   });
 
   const filteredPrograms = useMemo(() => {
@@ -155,8 +167,6 @@ export function ProgramsListPage() {
       );
     });
   }, [programsQuery.data?.data, search, statusFilter]);
-
-  const hasActiveFilters = search.trim().length > 0 || statusFilter !== 'all';
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -227,7 +237,14 @@ export function ProgramsListPage() {
         accessorKey: 'isPublished',
         header: 'Status',
         cell: ({ row }) => (
-          <Badge variant={row.original.isPublished ? 'default' : 'outline'}>
+          <Badge
+            variant="outline"
+            className={cn(
+              row.original.isPublished
+                ? 'border-transparent bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                : 'border-transparent bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300',
+            )}
+          >
             {row.original.isPublished ? 'Published' : 'Draft'}
           </Badge>
         ),
@@ -272,12 +289,14 @@ export function ProgramsListPage() {
           searchValue={search}
           onSearchChange={(value) => {
             setSearch(value);
+            setPage(0);
           }}
           searchPlaceholder="Search by code or title"
           showClear={hasActiveFilters}
           onClear={() => {
             setSearch('');
             setStatusFilter('all');
+            setPage(0);
           }}
         >
           <FilterSelect
@@ -285,7 +304,10 @@ export function ProgramsListPage() {
             placeholder="All statuses"
             value={statusFilter}
             options={STATUS_FILTER_OPTIONS}
-            onChange={setStatusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(0);
+            }}
           />
         </AdminFilterBar>
       }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { adminToast as toast } from '@/lib/admin-toast';
 
@@ -34,17 +34,17 @@ import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { formatDateTime } from '@/lib/format';
 import { humanizeEnumValue } from '@/lib/humanize';
+import {
+  reportStatusClasses,
+  reportStatusLabel,
+} from '@/lib/moderation-status';
 import { useAdminPageMeta } from '@/lib/page-meta';
+import { cn } from '@/lib/utils';
 import { ROUTES } from '@/routes/paths';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { safetyApi } from '@/services/safety/safety-api';
+import { banUserApi } from '@/services/users/users-api';
 import type { UgcReportResponse } from '@/services/types/domain';
-
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: 'Pending',
-  RESOLVED: 'Resolved',
-  DISMISSED: 'Dismissed',
-};
 
 const CONTENT_TYPE_LABEL: Record<string, string> = {
   MESSAGE: 'Message',
@@ -58,10 +58,6 @@ const CONTENT_TYPE_LABEL: Record<string, string> = {
 
 function contentTypeLabel(value: string): string {
   return CONTENT_TYPE_LABEL[value.toUpperCase()] ?? humanizeEnumValue(value);
-}
-
-function reportStatusLabel(value: string): string {
-  return STATUS_LABEL[value.toUpperCase()] ?? humanizeEnumValue(value);
 }
 
 const STATUS_OPTIONS = [
@@ -91,8 +87,15 @@ export function ModerationPage() {
   useAdminPageMeta(ADMIN_PAGE_META.moderation);
 
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [page, setPage] = useState(0);
-  const [statusFilter, setStatusFilter] = useState('PENDING');
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const status = searchParams.get('status');
+    if (status && STATUS_OPTIONS.some((option) => option.value === status)) {
+      return status;
+    }
+    return 'PENDING';
+  });
   const [search, setSearch] = useState('');
   const [searchKeyword, setSearchKeyword] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -129,6 +132,16 @@ export function ModerationPage() {
     onSuccess: () => {
       toast.success('Report updated.');
       void queryClient.invalidateQueries({ queryKey: queryKeys.safety.all });
+    },
+    onError: (error) => toast.error(error),
+  });
+
+  const banTargetMutation = useMutation({
+    mutationFn: (userId: string) =>
+      banUserApi(userId, { bannedUntil: new Date('2099-12-31T23:59:59Z').toISOString() }),
+    onSuccess: () => {
+      toast.success('Reported user banned.');
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
     onError: (error) => toast.error(error),
   });
@@ -251,7 +264,12 @@ export function ModerationPage() {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => (
-          <Badge variant="secondary">{reportStatusLabel(row.original.status)}</Badge>
+          <Badge
+            variant="outline"
+            className={cn(reportStatusClasses(row.original.status))}
+          >
+            {reportStatusLabel(row.original.status)}
+          </Badge>
         ),
       },
       {
@@ -367,49 +385,73 @@ export function ModerationPage() {
               : undefined
           }
           footer={
-            selectedLiveReport?.status === 'PENDING' ? (
+            selectedLiveReport ? (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={updateStatusMutation.isPending}
-                  onClick={() =>
-                    setPendingConfirm({
-                      title: 'Dismiss this report?',
-                      description: `"${selectedLiveReport.reason}" will be marked as dismissed.`,
-                      confirmLabel: 'Dismiss',
-                      variant: 'default',
-                      action: async () => {
-                        await updateStatusMutation.mutateAsync({
-                          reportId: selectedLiveReport.id,
-                          status: 'DISMISSED',
-                        });
-                      },
-                    })
-                  }
-                >
-                  Dismiss
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={updateStatusMutation.isPending}
-                  onClick={() =>
-                    setPendingConfirm({
-                      title: 'Resolve this report?',
-                      description: `"${selectedLiveReport.reason}" will be marked as resolved.`,
-                      confirmLabel: 'Resolve',
-                      variant: 'default',
-                      action: async () => {
-                        await updateStatusMutation.mutateAsync({
-                          reportId: selectedLiveReport.id,
-                          status: 'RESOLVED',
-                        });
-                      },
-                    })
-                  }
-                >
-                  Resolve
-                </Button>
+                {selectedLiveReport.targetUserId ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={banTargetMutation.isPending}
+                    onClick={() =>
+                      setPendingConfirm({
+                        title: 'Ban the reported user?',
+                        description: `${selectedLiveReport.targetUserDisplayName ?? 'This user'} will be permanently banned. You can unban later from Users.`,
+                        confirmLabel: 'Ban user',
+                        variant: 'destructive',
+                        action: async () => {
+                          await banTargetMutation.mutateAsync(selectedLiveReport.targetUserId);
+                        },
+                      })
+                    }
+                  >
+                    Ban user
+                  </Button>
+                ) : null}
+                {selectedLiveReport.status === 'PENDING' ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={updateStatusMutation.isPending}
+                      onClick={() =>
+                        setPendingConfirm({
+                          title: 'Dismiss this report?',
+                          description: `"${selectedLiveReport.reason}" will be marked as dismissed.`,
+                          confirmLabel: 'Dismiss',
+                          variant: 'default',
+                          action: async () => {
+                            await updateStatusMutation.mutateAsync({
+                              reportId: selectedLiveReport.id,
+                              status: 'DISMISSED',
+                            });
+                          },
+                        })
+                      }
+                    >
+                      Dismiss
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={updateStatusMutation.isPending}
+                      onClick={() =>
+                        setPendingConfirm({
+                          title: 'Resolve this report?',
+                          description: `"${selectedLiveReport.reason}" will be marked as resolved.`,
+                          confirmLabel: 'Resolve',
+                          variant: 'default',
+                          action: async () => {
+                            await updateStatusMutation.mutateAsync({
+                              reportId: selectedLiveReport.id,
+                              status: 'RESOLVED',
+                            });
+                          },
+                        })
+                      }
+                    >
+                      Resolve
+                    </Button>
+                  </>
+                ) : null}
               </>
             ) : null
           }
@@ -420,7 +462,10 @@ export function ModerationPage() {
                 <InspectorField
                   label="Status"
                   value={
-                    <Badge variant="secondary">
+                    <Badge
+                      variant="outline"
+                      className={cn(reportStatusClasses(selectedLiveReport.status))}
+                    >
                       {reportStatusLabel(selectedLiveReport.status)}
                     </Badge>
                   }
