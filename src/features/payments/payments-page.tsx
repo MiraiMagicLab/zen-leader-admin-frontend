@@ -7,6 +7,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { AdminPersonAvatar } from '@/components/admin/admin-person-avatar';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
@@ -209,9 +210,14 @@ export function PaymentsPage() {
         id: 'user',
         header: 'Learner',
         cell: ({ row }) => (
-          <div>
-            <p className="font-medium">{row.original.userDisplayName}</p>
-            <p className="text-muted-foreground text-xs">{row.original.userEmail}</p>
+          <div className="flex items-center gap-3">
+            <AdminPersonAvatar name={row.original.userDisplayName} size="sm" />
+            <div className="min-w-0">
+              <p className="truncate font-medium">{row.original.userDisplayName}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {row.original.userEmail}
+              </p>
+            </div>
           </div>
         ),
       },
@@ -441,11 +447,17 @@ export function PaymentsPage() {
                 <InspectorField
                   label="Learner"
                   value={
-                    <div>
-                      <p>{selectedLiveOrder.userDisplayName}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {selectedLiveOrder.userEmail}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <AdminPersonAvatar
+                        name={selectedLiveOrder.userDisplayName}
+                        size="default"
+                      />
+                      <div className="min-w-0">
+                        <p>{selectedLiveOrder.userDisplayName}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {selectedLiveOrder.userEmail}
+                        </p>
+                      </div>
                     </div>
                   }
                   className="col-span-2"

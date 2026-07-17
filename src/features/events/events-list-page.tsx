@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useNavigate } from 'react-router-dom';
@@ -8,6 +8,8 @@ import { adminToast as toast } from '@/lib/admin-toast';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { AdminPersonAvatar } from '@/components/admin/admin-person-avatar';
+import { EventPostPreview } from '@/components/admin/event-post-preview';
 import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminQueryError } from '@/components/admin/admin-query-state';
@@ -115,8 +117,47 @@ export function EventsListPage() {
     endTime: boolean;
   }>({ title: false, startTime: false, endTime: false });
   const [selectedEvent, setSelectedEvent] = useState<EventResponse | null>(null);
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState<string | null>(null);
 
   const dockOpen = Boolean(selectedEvent) && !sheetOpen && !Boolean(pendingAction);
+
+  useEffect(() => {
+    if (!form.thumbnailFile) {
+      setThumbnailPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(form.thumbnailFile);
+    setThumbnailPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [form.thumbnailFile]);
+
+  const draftPreviewEvent = useMemo<EventResponse>(() => {
+    const now = new Date().toISOString();
+    const start = form.startTime ? new Date(form.startTime).toISOString() : now;
+    const end = form.endTime ? new Date(form.endTime).toISOString() : now;
+    return {
+      id: 'draft-preview',
+      title: form.title.trim() || 'Untitled event',
+      description: form.description.trim() || null,
+      content: form.content.trim() || undefined,
+      thumbnailUrl: thumbnailPreviewUrl,
+      liveLink: null,
+      startTime: start,
+      endTime: end,
+      status: form.publishImmediately ? 'PUBLISHED' : 'DRAFT',
+      roomCode: null,
+      isOngoing: false,
+      isOfficial: form.isOfficial,
+      author: {
+        id: 'draft',
+        name: form.isOfficial ? 'Zen Leader System' : 'You',
+        avatarUrl: null,
+      },
+      engagementStats: { likes: 0, interested: 0, comments: 0 },
+      currentUser: null,
+      createdAt: now,
+    };
+  }, [form, thumbnailPreviewUrl]);
 
   const isDirty =
     form.title !== emptyForm.title ||
@@ -251,14 +292,32 @@ export function EventsListPage() {
       {
         accessorKey: 'title',
         header: 'Event',
-        cell: ({ row }) => (
-          <div className="space-y-1">
-            <p className="font-medium">{row.original.title}</p>
-            <p className="text-muted-foreground line-clamp-2 text-xs">
-              {row.original.description || 'No summary provided'}
-            </p>
-          </div>
-        ),
+        cell: ({ row }) => {
+          const event = row.original;
+          return (
+            <div className="flex items-start gap-3">
+              <div className="bg-muted/40 size-12 shrink-0 overflow-hidden rounded-md border">
+                {event.thumbnailUrl ? (
+                  <img
+                    src={event.thumbnailUrl}
+                    alt=""
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <div className="text-muted-foreground flex size-full items-center justify-center text-[10px]">
+                    No img
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 space-y-1">
+                <p className="font-medium leading-snug">{event.title}</p>
+                <p className="text-muted-foreground line-clamp-2 text-xs">
+                  {event.description || 'No summary provided'}
+                </p>
+              </div>
+            </div>
+          );
+        },
       },
       {
         id: 'type',
@@ -284,8 +343,20 @@ export function EventsListPage() {
       {
         id: 'author',
         header: 'Creator',
-        cell: ({ row }) =>
-          row.original.isOfficial ? 'Zen Leader System' : row.original.author.name,
+        cell: ({ row }) => {
+          const authorName = row.original.isOfficial
+            ? 'Zen Leader System'
+            : row.original.author.name;
+          const authorAvatar = row.original.isOfficial
+            ? null
+            : row.original.author.avatarUrl;
+          return (
+            <div className="flex items-center gap-2">
+              <AdminPersonAvatar name={authorName} avatarUrl={authorAvatar} size="sm" />
+              <span className="truncate text-sm">{authorName}</span>
+            </div>
+          );
+        },
       },
       {
         accessorKey: 'startTime',
@@ -372,7 +443,14 @@ export function EventsListPage() {
           onRetry={() => void eventsQuery.refetch()}
         />
       ) : (
-        <AdminDockLayout dockOpen={dockOpen}>
+        <AdminDockLayout
+          dockOpen={dockOpen}
+          className={
+            dockOpen
+              ? 'lg:!mr-[calc(26rem+1.5rem)] xl:!mr-[calc(28rem+1.5rem)]'
+              : undefined
+          }
+        >
           <div className="space-y-4">
             <DataTable
               columns={columns}
@@ -405,6 +483,7 @@ export function EventsListPage() {
             ? eventTypeLabel(selectedEvent.isOfficial) + ' · ' + eventStatusLabel(selectedEvent.status)
             : undefined
         }
+        className="sm:w-[26rem] xl:w-[28rem]"
         footer={
           selectedEvent && (
             <>
@@ -456,39 +535,26 @@ export function EventsListPage() {
           )
         }
       >
-        {selectedEvent && (
-          <dl className="space-y-4">
-            <InspectorField label="Title" value={selectedEvent.title} />
-            <InspectorField
-              label="Status"
-              value={
-                <Badge
-                  variant="outline"
-                  className={cn(eventStatusClasses(selectedEvent.status))}
-                >
-                  {eventStatusLabel(selectedEvent.status)}
-                </Badge>
-              }
-            />
-            <InspectorField
-              label="Type"
-              value={
-                <Badge variant={selectedEvent.isOfficial ? 'default' : 'secondary'}>
-                  {eventTypeLabel(selectedEvent.isOfficial)}
-                </Badge>
-              }
-            />
-            <InspectorField
-              label="Creator"
-              value={
-                selectedEvent.isOfficial ? 'Zen Leader System' : selectedEvent.author.name
-              }
-            />
-            <InspectorField label="Start" value={formatDateTime(selectedEvent.startTime)} />
-            <InspectorField label="End" value={formatDateTime(selectedEvent.endTime)} />
-            <InspectorField label="Summary" value={selectedEvent.description ?? undefined} />
-          </dl>
-        )}
+        {selectedEvent ? (
+          <div className="space-y-4">
+            <EventPostPreview event={selectedEvent} dense />
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 border-t pt-3">
+              <InspectorField
+                label="Start"
+                value={formatDateTime(selectedEvent.startTime)}
+              />
+              <InspectorField
+                label="End"
+                value={formatDateTime(selectedEvent.endTime)}
+              />
+              <InspectorField
+                label="Created"
+                value={formatDateTime(selectedEvent.createdAt)}
+                className="col-span-2"
+              />
+            </dl>
+          </div>
+        ) : null}
       </AdminDockPanel>
 
       <AdminEditorDialog
@@ -627,6 +693,13 @@ export function EventsListPage() {
                 />
                 <Label>System event</Label>
               </div>
+            </div>
+
+            <div className="mt-6 space-y-3 border-t pt-6">
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                Feed preview
+              </p>
+              <EventPostPreview event={draftPreviewEvent} dense />
             </div>
         </div>
       </AdminEditorDialog>

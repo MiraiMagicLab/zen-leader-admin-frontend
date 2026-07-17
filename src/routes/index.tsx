@@ -57,11 +57,6 @@ const EventDetailPage = lazy(() =>
     default: m.EventDetailPage,
   })),
 );
-const LiveSessionsPage = lazy(() =>
-  import('@/features/live-sessions/live-sessions-page').then((m) => ({
-    default: m.LiveSessionsPage,
-  })),
-);
 const PaymentsPage = lazy(() =>
   import('@/features/payments/payments-page').then((m) => ({ default: m.PaymentsPage })),
 );
@@ -227,11 +222,7 @@ export const appRouter = createBrowserRouter([
           },
           {
             path: ROUTES.liveSessions,
-            element: (
-              <LazyPage>
-                <LiveSessionsPage />
-              </LazyPage>
-            ),
+            element: <Navigate to={ROUTES.home} replace />,
           },
           {
             path: ROUTES.payments,
