@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import { AdminPersonAvatar } from '@/components/admin/admin-person-avatar';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -96,9 +97,16 @@ export function UserPicker({
                 key={user.id}
                 className="flex items-center justify-between gap-3 px-3 py-1.5 text-xs hover:bg-muted/10"
               >
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-foreground truncate">{user.displayName}</p>
-                  <p className="text-muted-foreground truncate">{user.email}</p>
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <AdminPersonAvatar
+                    name={user.displayName}
+                    avatarUrl={user.avatarUrl}
+                    size="sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground truncate">{user.displayName}</p>
+                    <p className="text-muted-foreground truncate">{user.email}</p>
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -138,6 +146,11 @@ export function UserPicker({
                     <Checkbox
                       checked={checked}
                       onCheckedChange={() => toggleUser(user)}
+                    />
+                    <AdminPersonAvatar
+                      name={user.displayName}
+                      avatarUrl={user.avatarUrl}
+                      size="sm"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="font-medium">{user.displayName}</p>

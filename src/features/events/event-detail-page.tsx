@@ -9,6 +9,8 @@ import { buildAbsoluteJoinUrl } from '@/lib/meet-url';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { AdminPageShell } from '@/components/admin/admin-page-shell';
 import { AdminActionBar, AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
+import { AdminPersonAvatar } from '@/components/admin/admin-person-avatar';
+import { EventPostPreview } from '@/components/admin/event-post-preview';
 import { AdminDetailSkeleton, AdminEmptyState, AdminQueryError } from '@/components/admin/admin-query-state';
 import { DateTimePicker } from '@/components/admin/datetime-picker';
 import { ImageFilePicker } from '@/components/admin/image-file-picker';
@@ -90,12 +92,21 @@ function CommentItem({
   return (
     <div className="space-y-2">
       <div className="flex items-start justify-between gap-4 rounded-md border p-3">
-        <div className="min-w-0">
-          <p className="font-medium">{comment.userDisplayName}</p>
-          <p className="text-muted-foreground mt-1 whitespace-pre-wrap text-sm">{comment.content}</p>
-          <p className="text-muted-foreground mt-2 text-xs">
-            {formatDateTime(comment.createdAt)} • {comment.likesCount} likes
-          </p>
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <AdminPersonAvatar
+            name={comment.userDisplayName}
+            avatarUrl={comment.userAvatarUrl}
+            size="default"
+          />
+          <div className="min-w-0">
+            <p className="font-medium">{comment.userDisplayName}</p>
+            <p className="text-muted-foreground mt-1 whitespace-pre-wrap text-sm">
+              {comment.content}
+            </p>
+            <p className="text-muted-foreground mt-2 text-xs">
+              {formatDateTime(comment.createdAt)} • {comment.likesCount} likes
+            </p>
+          </div>
         </div>
         <div className="flex shrink-0 gap-1.5">
           <Button variant="outline" size="sm" onClick={() => onEdit(comment)}>
@@ -409,31 +420,37 @@ export function EventDetailPage() {
 
       {event ? (
         <div className="space-y-6">
-          <section className="overflow-hidden rounded-lg border">
-            {event.thumbnailUrl ? (
-              <div className="flex justify-center bg-muted/10 py-6 border-b px-4">
-                <img
-                  src={event.thumbnailUrl}
-                  alt={event.title}
-                  className="max-h-[220px] w-auto rounded-lg border bg-background shadow-sm object-contain sm:max-h-[320px]"
-                />
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.8fr)]">
+            <EventPostPreview event={event} />
+
+            <section className="overflow-hidden rounded-xl border bg-background shadow-sm">
+              <div className="border-b px-4 py-3">
+                <h2 className="text-sm font-semibold">Operations</h2>
+                <p className="text-muted-foreground text-xs">
+                  Schedule, meeting access, and publishing metadata.
+                </p>
               </div>
-            ) : null}
-            <div className="grid lg:grid-cols-2 lg:divide-x">
               <dl className="divide-y text-sm">
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                  <dt className="text-muted-foreground">Start time</dt>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Owner</dt>
+                  <dd className="flex items-center gap-2">
+                    <AdminPersonAvatar
+                      name={event.isOfficial ? 'Zen Leader System' : event.author.name}
+                      avatarUrl={event.isOfficial ? null : event.author.avatarUrl}
+                      size="sm"
+                    />
+                    <span>{eventOwnerLabel}</span>
+                  </dd>
+                </div>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">Start</dt>
                   <dd>{formatDateTime(event.startTime)}</dd>
                 </div>
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                  <dt className="text-muted-foreground">End time</dt>
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                  <dt className="text-muted-foreground">End</dt>
                   <dd>{formatDateTime(event.endTime)}</dd>
                 </div>
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                  <dt className="text-muted-foreground">Owner</dt>
-                  <dd>{eventOwnerLabel}</dd>
-                </div>
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
                   <dt className="text-muted-foreground">Visibility</dt>
                   <dd>
                     {normalizeEventStatus(event.status) === 'PUBLISHED'
@@ -441,9 +458,7 @@ export function EventDetailPage() {
                       : 'Hidden from public feed'}
                   </dd>
                 </div>
-              </dl>
-              <dl className="divide-y text-sm">
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
                   <dt className="text-muted-foreground">Meeting</dt>
                   <dd className="flex flex-wrap items-center gap-2">
                     {event.roomCode ? (
@@ -472,7 +487,7 @@ export function EventDetailPage() {
                     )}
                   </dd>
                 </div>
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-start sm:gap-4">
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-start sm:gap-4">
                   <dt className="text-muted-foreground">Join link</dt>
                   <dd className="space-y-2 break-all">
                     {(() => {
@@ -515,41 +530,28 @@ export function EventDetailPage() {
                     })()}
                   </dd>
                 </div>
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
+                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[7.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
                   <dt className="text-muted-foreground">Created</dt>
                   <dd>{formatDateTime(event.createdAt)}</dd>
                 </div>
-                <div className="grid gap-1 px-4 py-3 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:gap-4">
-                  <dt className="text-muted-foreground">Engagement</dt>
-                  <dd>
-                    {event.engagementStats.likes} likes · {event.engagementStats.interested}{' '}
-                    interested · {event.engagementStats.comments ?? 0} comments
-                  </dd>
-                </div>
               </dl>
-            </div>
-            {event.content ? (
-              <div className="border-t px-4 py-4">
-                <p className="text-muted-foreground mb-2 text-sm">Content</p>
-                <p className="whitespace-pre-wrap text-sm">{event.content}</p>
-              </div>
-            ) : null}
-            {metadataEntries.length > 0 ? (
-              <div className="border-t px-4 py-4">
-                <p className="text-muted-foreground mb-3 text-sm">Additional details</p>
-                <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-                  {metadataEntries.map(([key, value]) => (
-                    <div key={key} className="min-w-0">
-                      <dt className="text-muted-foreground text-xs">{humanizeKey(key)}</dt>
-                      <dd className="mt-0.5 break-words">
-                        {typeof value === 'string' ? value : JSON.stringify(value)}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            ) : null}
-          </section>
+              {metadataEntries.length > 0 ? (
+                <div className="border-t px-4 py-4">
+                  <p className="text-muted-foreground mb-3 text-sm">Additional details</p>
+                  <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-1">
+                    {metadataEntries.map(([key, value]) => (
+                      <div key={key} className="min-w-0">
+                        <dt className="text-muted-foreground text-xs">{humanizeKey(key)}</dt>
+                        <dd className="mt-0.5 break-words">
+                          {typeof value === 'string' ? value : JSON.stringify(value)}
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ) : null}
+            </section>
+          </div>
 
           <section className="space-y-4">
             <h2 className="text-base font-semibold">

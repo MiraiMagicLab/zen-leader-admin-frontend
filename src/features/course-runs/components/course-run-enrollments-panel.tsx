@@ -8,6 +8,7 @@ import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-d
 import { AdminDockPanel } from '@/components/admin/admin-dock-panel';
 import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
 import { AdminEditorDialog } from '@/components/admin/admin-editor-dialog';
+import { AdminPersonAvatar } from '@/components/admin/admin-person-avatar';
 import { UserPicker } from '@/components/admin/user-picker';
 import { DataTable } from '@/components/data-table/data-table';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +51,19 @@ import type { EnrollmentImportResponse, EnrollmentResponse, UserResponse } from 
 
 function EnrollmentMetaTable({ enrollment }: { enrollment: EnrollmentResponse }) {
   const rows: Array<{ label: string; value: ReactNode }> = [
-    { label: 'Name', value: enrollment.userDisplayName ?? '—' },
+    {
+      label: 'Learner',
+      value: (
+        <div className="flex items-center gap-2">
+          <AdminPersonAvatar
+            name={enrollment.userDisplayName ?? enrollment.userEmail}
+            avatarUrl={enrollment.userAvatarUrl}
+            size="sm"
+          />
+          <span>{enrollment.userDisplayName ?? '—'}</span>
+        </div>
+      ),
+    },
     { label: 'Email', value: enrollment.userEmail ?? '—' },
     {
       label: 'Role',
@@ -287,8 +300,19 @@ export function CourseRunEnrollmentsPanel({
       {
         id: 'name',
         header: 'Name',
-        cell: ({ row }) =>
-          row.original.userDisplayName ?? row.original.userEmail ?? 'User',
+        cell: ({ row }) => {
+          const name = row.original.userDisplayName ?? row.original.userEmail ?? 'User';
+          return (
+            <div className="flex items-center gap-2">
+              <AdminPersonAvatar
+                name={name}
+                avatarUrl={row.original.userAvatarUrl}
+                size="sm"
+              />
+              <span className="font-medium">{name}</span>
+            </div>
+          );
+        },
       },
       {
         id: 'email',

@@ -56,6 +56,7 @@ import { queryKeys } from '@/hooks/query-keys';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
 import { ADMIN_LIST_PAGE_SIZE } from '@/lib/admin-pagination';
 import { confirmDiscard } from '@/lib/confirm-discard';
+import { AdminPersonAvatar } from '@/components/admin/admin-person-avatar';
 import { ADMIN_PAGE_META } from '@/lib/admin-page-meta';
 import { isBanActive } from '@/lib/domain-labels';
 import { formatDate, formatDateTime } from '@/lib/format';
@@ -332,9 +333,16 @@ export function UsersListPage() {
         accessorKey: 'displayName',
         header: 'User',
         cell: ({ row }) => (
-          <div>
-            <p className="font-medium">{row.original.displayName}</p>
-            <p className="text-muted-foreground text-xs">{row.original.email}</p>
+          <div className="flex items-center gap-3">
+            <AdminPersonAvatar
+              name={row.original.displayName}
+              avatarUrl={row.original.avatarUrl}
+              size="default"
+            />
+            <div className="min-w-0">
+              <p className="truncate font-medium">{row.original.displayName}</p>
+              <p className="text-muted-foreground truncate text-xs">{row.original.email}</p>
+            </div>
           </div>
         ),
       },
@@ -575,6 +583,19 @@ export function UsersListPage() {
         >
           {selectedLiveUser ? (
             <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <AdminPersonAvatar
+                  name={selectedLiveUser.displayName}
+                  avatarUrl={selectedLiveUser.avatarUrl}
+                  size="lg"
+                />
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{selectedLiveUser.displayName}</p>
+                  <p className="text-muted-foreground truncate text-xs">
+                    {selectedLiveUser.email}
+                  </p>
+                </div>
+              </div>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                 <InspectorField label="Display name" value={selectedLiveUser.displayName} />
                 <InspectorField label="Email" value={selectedLiveUser.email} />

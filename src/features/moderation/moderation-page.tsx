@@ -7,6 +7,7 @@ import { adminToast as toast } from '@/lib/admin-toast';
 
 import { AdminBulkBar } from '@/components/admin/admin-bulk-bar';
 import { AdminFilterBar } from '@/components/admin/admin-filter-bar';
+import { AdminPersonAvatar } from '@/components/admin/admin-person-avatar';
 import { ConfirmDialog, type PendingConfirm } from '@/components/admin/confirm-dialog';
 import { FilterSelect } from '@/components/admin/filter-select';
 import { AdminDockLayout, AdminDockPanel } from '@/components/admin/admin-dock-panel';
@@ -249,16 +250,26 @@ export function ModerationPage() {
         header: 'Reporter',
         meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) => (
-          <div>
-            <p>{row.original.reporterDisplayName}</p>
-            <p className="text-muted-foreground text-xs">{row.original.reporterEmail}</p>
+          <div className="flex items-center gap-2">
+            <AdminPersonAvatar name={row.original.reporterDisplayName} size="sm" />
+            <div className="min-w-0">
+              <p className="truncate">{row.original.reporterDisplayName}</p>
+              <p className="text-muted-foreground truncate text-xs">
+                {row.original.reporterEmail}
+              </p>
+            </div>
           </div>
         ),
       },
       {
         id: 'target',
         header: 'Target',
-        cell: ({ row }) => row.original.targetUserDisplayName,
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <AdminPersonAvatar name={row.original.targetUserDisplayName} size="sm" />
+            <span className="truncate">{row.original.targetUserDisplayName}</span>
+          </div>
+        ),
       },
       {
         accessorKey: 'status',
@@ -482,18 +493,32 @@ export function ModerationPage() {
                 <InspectorField
                   label="Reporter"
                   value={
-                    <div>
-                      <p>{selectedLiveReport.reporterDisplayName}</p>
-                      <p className="text-muted-foreground text-xs">
-                        {selectedLiveReport.reporterEmail}
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <AdminPersonAvatar
+                        name={selectedLiveReport.reporterDisplayName}
+                        size="default"
+                      />
+                      <div className="min-w-0">
+                        <p>{selectedLiveReport.reporterDisplayName}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {selectedLiveReport.reporterEmail}
+                        </p>
+                      </div>
                     </div>
                   }
                   className="col-span-2"
                 />
                 <InspectorField
                   label="Reported user"
-                  value={selectedLiveReport.targetUserDisplayName}
+                  value={
+                    <div className="flex items-center gap-3">
+                      <AdminPersonAvatar
+                        name={selectedLiveReport.targetUserDisplayName}
+                        size="default"
+                      />
+                      <span>{selectedLiveReport.targetUserDisplayName}</span>
+                    </div>
+                  }
                   className="col-span-2"
                 />
                 <InspectorField
