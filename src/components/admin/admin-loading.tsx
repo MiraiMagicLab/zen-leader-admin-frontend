@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { ZenBreathingLoader, ZenPageLoading } from '@/components/admin/zen-breathing-loader';
+import { ZenBlockLoader, ZenPageLoading } from '@/components/admin/zen-breathing-loader';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -87,7 +87,7 @@ type AdminInlineLoadingProps = {
   className?: string;
 };
 
-/** Small inline zen breathing loader for mutations inside panels. */
+/** Small inline horizontal block loader for mutations inside panels. */
 export function AdminInlineLoading({
   label = 'Loading…',
   className,
@@ -99,7 +99,7 @@ export function AdminInlineLoading({
         className,
       )}
     >
-      <ZenBreathingLoader size={18} compact label={label} />
+      <ZenBlockLoader size={18} compact label={label} />
       {label}
     </div>
   );

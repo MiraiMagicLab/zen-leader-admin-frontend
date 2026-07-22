@@ -229,72 +229,54 @@
     padding: 0.2rem;
   }
 
-  /* Zen breathing-ripple loader — shared with mobile + Meet. */
-  .zen-breathing-loader {
-    --zen-breath-navy: #1f3e72;
-    --zen-breath-green: #87c744;
-    position: relative;
+  /* Zen horizontal block-wave loader — shared with mobile meet + Meet client. */
+  .zen-block-loader {
+    --zen-block-navy: #1f3e72;
+    --zen-block-green: #87c744;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 0.35em;
     flex-shrink: 0;
+    height: 2.5rem;
   }
 
-  .dark .zen-breathing-loader {
-    --zen-breath-navy: #6391ff;
+  .dark .zen-block-loader {
+    --zen-block-navy: #6391ff;
   }
 
-  .zen-breathing-core {
-    position: absolute;
-    width: 22%;
-    height: 22%;
-    border-radius: 9999px;
-    background: color-mix(in srgb, var(--zen-breath-navy) 22%, transparent);
-    box-shadow: inset 0 0 0 999px
-      color-mix(in srgb, var(--zen-breath-green) 35%, transparent);
-    animation: zen-breath-core 2.4s ease-in-out infinite;
+  .zen-block-dot {
+    width: 0.72em;
+    height: 0.72em;
+    border-radius: 28%;
+    background: var(--zen-block-navy);
+    animation: zen-block-wave 1.05s ease-in-out infinite;
+    transform-origin: center bottom;
   }
 
-  .zen-breathing-ring {
-    position: absolute;
-    inset: 0;
-    border-radius: 9999px;
-    border: 2px solid var(--zen-breath-navy);
-    opacity: 0;
-    transform: scale(0.28);
-    animation: zen-breath-ring 2.4s ease-out infinite;
+  .zen-block-dot:nth-child(even) {
+    background: var(--zen-block-green);
   }
 
-  .zen-breathing-ring:nth-child(odd) {
-    border-color: var(--zen-breath-navy);
+  .zen-block-loader.is-compact {
+    gap: 0.28em;
+    height: 1.15rem;
   }
 
-  .zen-breathing-ring:nth-child(even) {
-    border-color: var(--zen-breath-green);
+  .zen-block-loader.is-compact .zen-block-dot {
+    width: 0.48em;
+    height: 0.48em;
   }
 
-  .zen-breathing-loader.is-compact .zen-breathing-ring {
-    border-width: 1.5px;
-  }
-
-  @keyframes zen-breath-ring {
-    0% {
-      transform: scale(0.28);
-      opacity: 0.55;
-    }
-    100% {
-      transform: scale(1);
-      opacity: 0;
-    }
-  }
-
-  @keyframes zen-breath-core {
+  @keyframes zen-block-wave {
     0%,
     100% {
-      transform: scale(0.92);
+      transform: translateY(0.22em) scale(0.72);
+      opacity: 0.4;
     }
-    50% {
-      transform: scale(1.08);
+    40% {
+      transform: translateY(-0.18em) scale(1.08);
+      opacity: 1;
     }
   }
 }

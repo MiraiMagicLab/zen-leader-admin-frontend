@@ -1,10 +1,10 @@
 import { BRAND } from '@/lib/brand/constants';
 import { cn } from '@/lib/utils';
 
-type ZenBreathingLoaderProps = {
-  /** Outer diameter in px. */
+type ZenBlockLoaderProps = {
+  /** Row height in px (blocks scale from this). */
   size?: number;
-  /** Fewer rings for tight inline slots. */
+  /** Three smaller blocks for tight inline slots. */
   compact?: boolean;
   className?: string;
   /** Accessible label for screen readers. */
@@ -12,30 +12,29 @@ type ZenBreathingLoaderProps = {
 };
 
 /**
- * Shared Zen breathing-ripple loader (navy + green rings).
- * Matches mobile Flutter `ZenBreathingLoader` and Meet client CSS.
+ * Horizontal square-block wave loader (navy + green).
+ * Shared visual with mobile meet connect + Meet client.
  */
-export function ZenBreathingLoader({
-  size = 48,
+export function ZenBlockLoader({
+  size = 40,
   compact = false,
   className,
   label = 'Loading',
-}: ZenBreathingLoaderProps) {
-  const ringCount = compact ? 2 : 3;
+}: ZenBlockLoaderProps) {
+  const count = compact ? 3 : 4;
 
   return (
     <span
       role="status"
       aria-label={label}
-      className={cn('zen-breathing-loader', compact && 'is-compact', className)}
-      style={{ width: size, height: size }}
+      className={cn('zen-block-loader', compact && 'is-compact', className)}
+      style={{ height: size, fontSize: size }}
     >
-      <span className="zen-breathing-core" aria-hidden />
-      {Array.from({ length: ringCount }).map((_, index) => (
+      {Array.from({ length: count }).map((_, index) => (
         <span
           key={index}
-          className="zen-breathing-ring"
-          style={{ animationDelay: `${(-index * 0.8).toFixed(1)}s` }}
+          className="zen-block-dot"
+          style={{ animationDelay: `${index * 0.12}s` }}
           aria-hidden
         />
       ))}
@@ -43,6 +42,9 @@ export function ZenBreathingLoader({
     </span>
   );
 }
+
+/** @deprecated Prefer [ZenBlockLoader]. */
+export const ZenBreathingLoader = ZenBlockLoader;
 
 type ZenPageLoadingProps = {
   message?: string;
@@ -79,7 +81,7 @@ export function ZenPageLoading({
           }}
         />
       ) : null}
-      <ZenBreathingLoader size={72} label={message ?? 'Loading'} />
+      <ZenBlockLoader size={44} label={message ?? 'Loading'} />
       {message ? (
         <p className="text-muted-foreground max-w-xs text-center text-sm">{message}</p>
       ) : null}
