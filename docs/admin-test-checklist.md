@@ -4,7 +4,6 @@ Use after each deploy or major UI change. Auth: admin account only.
 
 ## Shell
 - [ ] Login with admin succeeds; non-admin rejected
-- [ ] Sidebar shows Live Sessions under Community
 - [ ] ⌘K / Ctrl+K opens command palette and navigates
 - [ ] Theme toggle in header user menu works (light/dark/system)
 - [ ] Breadcrumb updates per route
@@ -16,7 +15,6 @@ Use after each deploy or major UI change. Auth: admin account only.
 - [ ] Payments: status filter, retry enrollment, order inspector (no misleading stat cards)
 - [ ] Moderation: resolve/dismiss, target deep-link for EVENT
 - [ ] Audit log: filters, metadata inspector
-- [ ] Live Sessions: status filter, end/delete, copy join token (no misleading stat cards)
 
 ## Detail / workspace
 - [ ] Course detail: info, syllabus, runs sections (no reviews/checklist gamification)

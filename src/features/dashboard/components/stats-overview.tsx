@@ -64,10 +64,10 @@ const OPS_METRICS: OpsMetricItem[] = [
     label: 'Live rooms',
     description: 'Sessions currently active on meet',
     icon: Radio,
-    href: ROUTES.liveSessions,
+    href: ROUTES.events,
     tone: 'live',
     getValue: (m) => formatNumber(m.activeLiveSessions),
-    getHint: () => 'Open live sessions',
+    getHint: () => 'View events & sessions',
   },
   {
     label: 'Revenue (30d)',

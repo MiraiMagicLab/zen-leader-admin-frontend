@@ -21,7 +21,6 @@ export const ROUTES = {
   syllabusItemDetail: (itemId: string) => `/syllabus-items/${itemId}`,
   events: '/events',
   eventDetail: (eventId: string) => `/events/${eventId}`,
-  liveSessions: '/live-sessions',
   payments: '/payments',
   revenue: '/revenue',
   notifications: '/notifications',

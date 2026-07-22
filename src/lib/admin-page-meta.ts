@@ -74,11 +74,6 @@ export const ADMIN_PAGE_META = {
     description:
       'Send platform notifications to selected users or broader operational audiences.',
   },
-  liveSessions: {
-    title: 'Zen Leader Admin | Live Sessions',
-    description:
-      'Review active and completed meeting rooms used by Zen Leader live sessions.',
-  },
   settings: {
     title: 'Zen Leader Admin | Settings',
     description:

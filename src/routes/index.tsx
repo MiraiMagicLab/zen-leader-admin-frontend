@@ -81,11 +81,6 @@ const AuditLogsPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import('@/features/settings/settings-page').then((m) => ({ default: m.SettingsPage })),
 );
-const LiveSessionsPage = lazy(() =>
-  import('@/features/live-sessions/live-sessions-page').then((m) => ({
-    default: m.LiveSessionsPage,
-  })),
-);
 
 function ProtectedRoute() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
@@ -222,14 +217,6 @@ export const appRouter = createBrowserRouter([
             element: (
               <LazyPage>
                 <EventDetailPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.liveSessions,
-            element: (
-              <LazyPage>
-                <LiveSessionsPage />
               </LazyPage>
             ),
           },

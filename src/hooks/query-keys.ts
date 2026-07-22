@@ -92,11 +92,6 @@ export const queryKeys = {
     reports: (page: number, status?: string, keyword?: string) =>
       [...queryKeys.safety.all, 'reports', page, status ?? 'all', keyword ?? ''] as const,
   },
-  liveSessions: {
-    all: ['live-sessions'] as const,
-    list: (page: number, status?: string) =>
-      [...queryKeys.liveSessions.all, 'list', page, status ?? 'all'] as const,
-  },
   notifications: {
     all: ['notifications'] as const,
     byUser: (userId: string) =>
