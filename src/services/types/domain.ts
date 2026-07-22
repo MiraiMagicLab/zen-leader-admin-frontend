@@ -481,18 +481,6 @@ export type CourseIapMappingRequest = {
   androidProductId?: string | null;
 };
 
-export type LiveSessionResponse = {
-  id: string;
-  roomCode: string;
-  status: string;
-  ownerId: string;
-  eventId: string | null;
-  programId: string | null;
-  courseId: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
 export type NotificationResponse = {
   id: string;
   title: string;
