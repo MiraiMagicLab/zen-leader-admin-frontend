@@ -1,4 +1,4 @@
-import { lazy, Suspense, type ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
 import {
   Navigate,
   Outlet,
@@ -8,77 +8,79 @@ import {
 import { LoginPage } from '@/features/authentication';
 import { AdminRouteLoading } from '@/components/admin/admin-query-state';
 import { AdminLayout } from '@/layouts/admin-layout';
+import { lazyWithRetry } from '@/lib/lazy-with-retry';
 import { ROUTES } from '@/routes/paths';
+import { RouteErrorElement } from '@/routes/route-error-element';
 import { selectIsAuthenticated, useAuthStore } from '@/stores/auth-store';
 
-const AdminDashboardPage = lazy(() =>
+const AdminDashboardPage = lazyWithRetry(() =>
   import('@/features/dashboard').then((m) => ({ default: m.AdminDashboardPage })),
 );
-const UsersListPage = lazy(() =>
+const UsersListPage = lazyWithRetry(() =>
   import('@/features/users/users-list-page').then((m) => ({ default: m.UsersListPage })),
 );
-const ProgramsListPage = lazy(() =>
+const ProgramsListPage = lazyWithRetry(() =>
   import('@/features/programs/programs-list-page').then((m) => ({
     default: m.ProgramsListPage,
   })),
 );
-const CoursesListPage = lazy(() =>
+const CoursesListPage = lazyWithRetry(() =>
   import('@/features/courses/courses-list-page').then((m) => ({
     default: m.CoursesListPage,
   })),
 );
-const CourseDetailPage = lazy(() =>
+const CourseDetailPage = lazyWithRetry(() =>
   import('@/features/courses/course-detail-page').then((m) => ({
     default: m.CourseDetailPage,
   })),
 );
-const CourseRunsListPage = lazy(() =>
+const CourseRunsListPage = lazyWithRetry(() =>
   import('@/features/course-runs/course-runs-list-page').then((m) => ({
     default: m.CourseRunsListPage,
   })),
 );
-const CourseRunDetailPage = lazy(() =>
+const CourseRunDetailPage = lazyWithRetry(() =>
   import('@/features/course-runs/course-run-detail-page').then((m) => ({
     default: m.CourseRunDetailPage,
   })),
 );
-const SyllabusItemDetailPage = lazy(() =>
+const SyllabusItemDetailPage = lazyWithRetry(() =>
   import('@/features/syllabus-items/syllabus-item-detail-page').then((m) => ({
     default: m.SyllabusItemDetailPage,
   })),
 );
-const EventsListPage = lazy(() =>
+const EventsListPage = lazyWithRetry(() =>
   import('@/features/events/events-list-page').then((m) => ({
     default: m.EventsListPage,
   })),
 );
-const EventDetailPage = lazy(() =>
+const EventDetailPage = lazyWithRetry(() =>
   import('@/features/events/event-detail-page').then((m) => ({
     default: m.EventDetailPage,
   })),
 );
-const PaymentsPage = lazy(() =>
+const PaymentsPage = lazyWithRetry(() =>
   import('@/features/payments/payments-page').then((m) => ({ default: m.PaymentsPage })),
 );
-const RevenueDashboardPage = lazy(() =>
+const RevenueDashboardPage = lazyWithRetry(() =>
   import('@/features/revenue').then((m) => ({ default: m.RevenueDashboardPage })),
 );
-const NotificationsPage = lazy(() =>
+const NotificationsPage = lazyWithRetry(() =>
   import('@/features/notifications/notifications-page').then((m) => ({
     default: m.NotificationsPage,
   })),
 );
-const ModerationPage = lazy(() =>
+const ModerationPage = lazyWithRetry(() =>
   import('@/features/moderation/moderation-page').then((m) => ({
     default: m.ModerationPage,
   })),
 );
-const AuditLogsPage = lazy(() =>
+const AuditLogsPage = lazyWithRetry(() =>
   import('@/features/audit-logs/audit-logs-page').then((m) => ({
     default: m.AuditLogsPage,
   })),
 );
-const SettingsPage = lazy(() =>
+const SettingsPage = lazyWithRetry(() =>
   import('@/features/settings/settings-page').then((m) => ({ default: m.SettingsPage })),
 );
 
@@ -118,163 +120,169 @@ function LazyPage({ children }: { children: ReactNode }) {
 
 export const appRouter = createBrowserRouter([
   {
-    element: <GuestRoute />,
+    element: <Outlet />,
+    errorElement: <RouteErrorElement />,
     children: [
       {
-        path: ROUTES.login,
-        element: <LoginPage />,
-      },
-    ],
-  },
-  {
-    element: <ProtectedRoute />,
-    children: [
-      {
-        element: <AdminLayout />,
+        element: <GuestRoute />,
         children: [
           {
-            path: ROUTES.home,
-            element: (
-              <LazyPage>
-                <AdminDashboardPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.users,
-            element: (
-              <LazyPage>
-                <UsersListPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.programs,
-            element: (
-              <LazyPage>
-                <ProgramsListPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: '/programs/:programId/courses',
-            element: (
-              <LazyPage>
-                <CoursesListPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.courses,
-            element: (
-              <LazyPage>
-                <CoursesListPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: '/courses/:courseId',
-            element: (
-              <LazyPage>
-                <CourseDetailPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.courseRuns,
-            element: (
-              <LazyPage>
-                <CourseRunsListPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: '/course-runs/:runId',
-            element: (
-              <LazyPage>
-                <CourseRunDetailPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: '/syllabus-items/:itemId',
-            element: (
-              <LazyPage>
-                <SyllabusItemDetailPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.events,
-            element: (
-              <LazyPage>
-                <EventsListPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: '/events/:eventId',
-            element: (
-              <LazyPage>
-                <EventDetailPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.payments,
-            element: (
-              <LazyPage>
-                <PaymentsPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.revenue,
-            element: (
-              <LazyPage>
-                <RevenueDashboardPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.notifications,
-            element: (
-              <LazyPage>
-                <NotificationsPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.moderation,
-            element: (
-              <LazyPage>
-                <ModerationPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.auditLogs,
-            element: (
-              <LazyPage>
-                <AuditLogsPage />
-              </LazyPage>
-            ),
-          },
-          {
-            path: ROUTES.settings,
-            element: (
-              <LazyPage>
-                <SettingsPage />
-              </LazyPage>
-            ),
+            path: ROUTES.login,
+            element: <LoginPage />,
           },
         ],
       },
+      {
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: <AdminLayout />,
+            children: [
+              {
+                path: ROUTES.home,
+                element: (
+                  <LazyPage>
+                    <AdminDashboardPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.users,
+                element: (
+                  <LazyPage>
+                    <UsersListPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.programs,
+                element: (
+                  <LazyPage>
+                    <ProgramsListPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: '/programs/:programId/courses',
+                element: (
+                  <LazyPage>
+                    <CoursesListPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.courses,
+                element: (
+                  <LazyPage>
+                    <CoursesListPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: '/courses/:courseId',
+                element: (
+                  <LazyPage>
+                    <CourseDetailPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.courseRuns,
+                element: (
+                  <LazyPage>
+                    <CourseRunsListPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: '/course-runs/:runId',
+                element: (
+                  <LazyPage>
+                    <CourseRunDetailPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: '/syllabus-items/:itemId',
+                element: (
+                  <LazyPage>
+                    <SyllabusItemDetailPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.events,
+                element: (
+                  <LazyPage>
+                    <EventsListPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: '/events/:eventId',
+                element: (
+                  <LazyPage>
+                    <EventDetailPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.payments,
+                element: (
+                  <LazyPage>
+                    <PaymentsPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.revenue,
+                element: (
+                  <LazyPage>
+                    <RevenueDashboardPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.notifications,
+                element: (
+                  <LazyPage>
+                    <NotificationsPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.moderation,
+                element: (
+                  <LazyPage>
+                    <ModerationPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.auditLogs,
+                element: (
+                  <LazyPage>
+                    <AuditLogsPage />
+                  </LazyPage>
+                ),
+              },
+              {
+                path: ROUTES.settings,
+                element: (
+                  <LazyPage>
+                    <SettingsPage />
+                  </LazyPage>
+                ),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        path: '*',
+        element: <CatchAllRoute />,
+      },
     ],
-  },
-  {
-    path: '*',
-    element: <CatchAllRoute />,
   },
 ]);
 
