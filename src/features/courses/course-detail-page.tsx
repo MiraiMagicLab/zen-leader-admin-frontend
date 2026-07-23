@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Image as ImageIcon,
   Info,
+  Pencil,
   Plus,
   ShoppingBag,
   Trash2,
@@ -23,6 +24,8 @@ import { ImageFilePicker } from '@/components/admin/image-file-picker';
 import { RichTextEditor } from '@/components/rich-text-editor';
 import { RichTextPreview } from '@/components/rich-text-preview';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AdminFormDialogFooter } from '@/components/admin/admin-action-bar';
@@ -488,6 +491,7 @@ export function CourseDetailPage() {
         course ? (
           <AdminActionBar>
             <Button size="sm" variant="outline" onClick={() => setEditCourseOpen(true)}>
+              <Pencil className="mr-1.5 size-3.5" />
               Edit info
             </Button>
             <Button size="sm" variant="destructiveOutline" onClick={confirmDeleteCourse}>
@@ -528,18 +532,19 @@ export function CourseDetailPage() {
           </AdminTabsList>
 
           <AdminTabsContent value="info">
-            <WorkspaceSection
-              id="info"
-              icon={<Info className="size-4" />}
-              title="Course information"
-              action={
-                <Button variant="outline" size="sm" onClick={() => setEditCourseOpen(true)}>
-                  Edit info
+            <Card className="p-6 space-y-6 shadow-2xs border">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-4">
+                <h2 className="flex items-center gap-2 text-base font-semibold">
+                  <Info className="text-muted-foreground size-4.5" />
+                  Course Overview
+                </h2>
+                <Button variant="outline" size="sm" className="h-8 text-xs font-medium" onClick={() => setEditCourseOpen(true)}>
+                  Edit Info
                 </Button>
-              }
-            >
-              <div className="grid gap-5 sm:grid-cols-[140px_minmax(0,1fr)]">
-                <div className="bg-muted/30 mx-auto aspect-square w-full max-w-[140px] overflow-hidden rounded-md border sm:mx-0">
+              </div>
+
+              <div className="grid gap-6 sm:grid-cols-[160px_minmax(0,1fr)]">
+                <div className="bg-muted/40 mx-auto aspect-square w-full max-w-[160px] overflow-hidden rounded-lg border sm:mx-0 shadow-2xs">
                   {course.thumbnailUrl ? (
                     <img
                       src={course.thumbnailUrl}
@@ -547,83 +552,101 @@ export function CourseDetailPage() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-1.5 text-center text-xs">
-                      <ImageIcon className="size-7" />
-                      <span>No image</span>
+                    <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 text-center text-xs">
+                      <ImageIcon className="size-8 stroke-[1.5]" />
+                      <span>No thumbnail</span>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-3">
-                  <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[7rem_minmax(0,1fr)]">
-                    <dt className="text-muted-foreground">Course code</dt>
-                    <dd className="font-mono">{course.code}</dd>
-                    <dt className="text-muted-foreground">Program</dt>
+                <div className="space-y-4">
+                  <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[8rem_minmax(0,1fr)]">
+                    <dt className="text-muted-foreground font-medium">Course Code</dt>
+                    <dd className="font-mono text-foreground font-medium">{course.code}</dd>
+
+                    <dt className="text-muted-foreground font-medium">Program</dt>
                     <dd>
                       {course.programId ? (
-                        <span>{programDisplayName}</span>
+                        <span className="font-medium text-foreground">{programDisplayName}</span>
                       ) : (
-                        <span className="text-muted-foreground">Not linked</span>
+                        <span className="text-muted-foreground italic">Not linked</span>
                       )}
                     </dd>
-                    <dt className="text-muted-foreground">Updated</dt>
-                    <dd>{formatDateTime(course.updatedAt)}</dd>
+
+                    <dt className="text-muted-foreground font-medium">Last Updated</dt>
+                    <dd className="text-foreground">{formatDateTime(course.updatedAt)}</dd>
                   </dl>
+
                   <div>
-                    <p className="text-muted-foreground mb-1 text-sm">Description</p>
-                    <RichTextPreview value={course.description} />
+                    <p className="text-muted-foreground mb-1.5 text-xs font-medium uppercase tracking-wider">Description</p>
+                    <div className="rounded-md border bg-muted/20 p-3 text-sm">
+                      <RichTextPreview value={course.description} />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 border-t pt-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="flex items-center gap-2 text-sm font-medium">
+              <div className="border-t pt-5 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
                     <ShoppingBag className="text-muted-foreground size-4" />
-                    Apple In-App Purchase (required to open a class)
-                  </p>
+                    <span className="text-sm font-semibold">Apple In-App Purchase Setup</span>
+                    {!hasAppleProductId(course) ? (
+                      <Badge variant="outline" className="text-amber-600 border-amber-300 dark:text-amber-400 text-xs">
+                        Action Needed
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 text-xs">
+                        Ready
+                      </Badge>
+                    )}
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-8 text-xs font-medium"
                     disabled={iapMutation.isPending}
                     onClick={() => setEditIapOpen(true)}
                   >
-                    Edit Apple Product ID
+                    Edit Product IDs
                   </Button>
                 </div>
-                <p className="text-muted-foreground mt-2 text-sm">
+
+                <p className="text-muted-foreground text-xs leading-relaxed">
                   {APPLE_PRODUCT_ID_REQUIRED_NOTE}
                 </p>
-                {!hasAppleProductId(course) ? (
-                  <p className="text-destructive mt-2 text-sm">
+
+                {!hasAppleProductId(course) && (
+                  <div className="rounded-md border border-amber-200 bg-amber-50/50 p-2.5 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300">
                     This course cannot be opened for enrollment until an Apple Product ID is set.
-                  </p>
-                ) : null}
-                <div className="text-muted-foreground mt-3 grid gap-2 text-sm sm:grid-cols-[10rem_minmax(0,1fr)]">
-                  <span>Paid classes</span>
-                  <span className="text-foreground tabular-nums">
+                  </div>
+                )}
+
+                <div className="bg-muted/20 rounded-md border p-3 grid gap-2 text-xs sm:grid-cols-[10rem_minmax(0,1fr)]">
+                  <span className="text-muted-foreground font-medium">Paid Classes</span>
+                  <span className="text-foreground font-medium tabular-nums">
                     {paidRunCount} / {courseRuns.length}
                   </span>
-                  <span>Apple Product ID</span>
-                  <span className="text-foreground break-all">{appleProductId || 'Not set'}</span>
-                  <span>Android Product ID</span>
-                  <span className="text-foreground break-all">
+
+                  <span className="text-muted-foreground font-medium">Apple Product ID</span>
+                  <span className="text-foreground font-mono break-all">{appleProductId || 'Not set'}</span>
+
+                  <span className="text-muted-foreground font-medium">Android Product ID</span>
+                  <span className="text-foreground font-mono break-all">
                     {androidProductId || 'Not required (PayPal)'}
                   </span>
                 </div>
               </div>
-            </WorkspaceSection>
+            </Card>
           </AdminTabsContent>
 
           <AdminTabsContent value="syllabus">
-            <WorkspaceSection id="syllabus" icon={<BookOpen className="size-4" />} title="Syllabus">
-              <SyllabusEditor
-                courseId={courseId}
-                courseTitle={course.title}
-                initialItemId={deepLinkItemId}
-                onInitialItemHandled={clearDeepLinkItem}
-              />
-            </WorkspaceSection>
+            <SyllabusEditor
+              courseId={courseId}
+              courseTitle={course.title}
+              initialItemId={deepLinkItemId}
+              onInitialItemHandled={clearDeepLinkItem}
+            />
           </AdminTabsContent>
 
           <AdminTabsContent value="runs">
