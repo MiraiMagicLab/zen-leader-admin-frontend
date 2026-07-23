@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, Trash2, Users, Video } from 'lucide-react';
+import { ArrowRight, CalendarClock, Pencil, Trash2, Users, Video } from 'lucide-react';
 
 import { AdminActionBar } from '@/components/admin/admin-action-bar';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +59,7 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
 
       <AdminActionBar className="mt-4 justify-end border-t pt-3">
         <Button size="sm" variant="outline" onClick={onEdit}>
+          <Pencil className="mr-1.5 size-3.5" />
           Edit
         </Button>
         <Button size="sm" variant="destructiveOutline" onClick={onDelete}>
@@ -66,6 +67,7 @@ export function CourseRunCard({ run, onEdit, onDelete }: CourseRunCardProps) {
           Delete
         </Button>
         <Button size="sm" onClick={() => navigate(ROUTES.courseRunDetail(run.id))}>
+          <ArrowRight className="mr-1.5 size-3.5" />
           Go to manage
         </Button>
       </AdminActionBar>

@@ -21,10 +21,13 @@ import {
   BookOpen,
   ChevronDown,
   ChevronRight,
+  ChevronsDown,
+  ChevronsUp,
   CopyPlus,
   FileText,
   GripVertical,
   Loader2,
+  MoreHorizontal,
   Pencil,
   PlayCircle,
   Plus,
@@ -38,6 +41,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -49,6 +59,7 @@ import { Label } from '@/components/ui/label';
 import { queryKeys } from '@/hooks/query-keys';
 import { confirmDiscard } from '@/lib/confirm-discard';
 import { useBeforeUnload } from '@/hooks/use-beforeunload';
+import { cn } from '@/lib/utils';
 import { getApiErrorMessage } from '@/services/lib/get-api-error-message';
 import { syllabusItemsApi, syllabusSectionsApi } from '@/services/lms/lms-api';
 import type { SyllabusItemResponse, SyllabusSectionResponse } from '@/services/types/domain';
@@ -124,73 +135,91 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className="hover:bg-muted/40 flex items-center gap-3 rounded-lg border p-3 transition-colors"
+      className="group hover:bg-accent/40 flex items-center gap-3 rounded-lg border bg-card p-2.5 transition-colors shadow-2xs"
     >
       <button
         type="button"
-        className="bg-muted flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md hover:bg-accent active:cursor-grabbing"
+        className="text-muted-foreground/60 hover:text-foreground flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md transition-colors active:cursor-grabbing"
+        title="Drag to reorder lesson"
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="text-muted-foreground size-4" />
+        <GripVertical className="size-4" />
       </button>
-      <div className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-md">
-        <Icon className="text-muted-foreground size-4" />
+
+      <div
+        className={cn(
+          'flex size-8 shrink-0 items-center justify-center rounded-md text-xs font-medium',
+          isVideo
+            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+            : 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+        )}
+      >
+        <Icon className="size-4" />
       </div>
+
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{item.title}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="truncate text-sm font-medium text-foreground">{item.title}</p>
+          <Badge variant="secondary" className="text-[11px] px-1.5 py-0 font-normal">
             {typeLabel(item.type)}
           </Badge>
-          {item.isHidden ? (
-            <Badge variant="outline" className="text-xs">
+          {item.isHidden && (
+            <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-normal text-muted-foreground">
               Hidden
             </Badge>
-          ) : null}
-          {item.isOptional ? (
-            <Badge variant="outline" className="text-xs">
+          )}
+          {item.isOptional && (
+            <Badge variant="outline" className="text-[11px] px-1.5 py-0 font-normal text-muted-foreground">
               Optional
             </Badge>
-          ) : null}
+          )}
           {hasContent ? (
             <Badge
               variant="secondary"
-              className="bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200/60 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50 text-xs py-0 h-5"
+              className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 text-[11px] py-0 h-4 font-normal"
             >
               {isVideo ? 'Video Uploaded' : 'Content Ready'}
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="text-amber-600 border-amber-300 bg-amber-50/50 dark:text-amber-400 dark:border-amber-900/50 text-xs py-0 h-5"
+              className="text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-900/50 text-[11px] py-0 h-4 font-normal"
             >
               {isVideo ? 'Missing Video' : 'Empty Content'}
             </Badge>
           )}
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
-        <Button variant="outline" size="sm" onClick={() => onEdit(section, item)}>
+
+      <div className="flex shrink-0 items-center gap-1">
+        <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => onEdit(section, item)}>
+          <Pencil className="mr-1 size-3.5" />
           Edit
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={isDuplicatePending}
-          onClick={() => onDuplicate(item.id)}
-        >
-          {isDuplicatePending ? (
-            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-          ) : (
-            <CopyPlus className="mr-1.5 size-3.5" />
-          )}
-          Duplicate
-        </Button>
-        <Button variant="destructiveOutline" size="sm" onClick={() => onDelete(item)}>
-          <Trash2 className="mr-1.5 size-3.5" />
-          Delete
-        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="size-8">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem disabled={isDuplicatePending} onClick={() => onDuplicate(item.id)}>
+              {isDuplicatePending ? (
+                <Loader2 className="mr-2 size-4 animate-spin" />
+              ) : (
+                <CopyPlus className="mr-2 size-4" />
+              )}
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onDelete(item)}>
+              <Trash2 className="mr-2 size-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
@@ -270,20 +299,21 @@ function SortableSection({
   );
 
   return (
-    <Card ref={setNodeRef} style={style}>
-      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
-        <div className="flex items-start gap-2">
+    <Card ref={setNodeRef} style={style} className="overflow-hidden border shadow-2xs">
+      <CardHeader className="bg-muted/20 flex flex-row items-center justify-between p-3.5 border-b">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            className="bg-muted mt-1 flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md hover:bg-accent active:cursor-grabbing"
+            className="text-muted-foreground/60 hover:text-foreground flex size-7 shrink-0 cursor-grab items-center justify-center rounded-md transition-colors active:cursor-grabbing"
+            title="Drag to reorder chapter"
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="text-muted-foreground size-4" />
+            <GripVertical className="size-4" />
           </button>
           <button
             type="button"
-            className="text-muted-foreground hover:text-foreground mt-1 flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
+            className="text-muted-foreground hover:text-foreground flex size-7 shrink-0 items-center justify-center rounded-md transition-colors"
             onClick={() => onToggleCollapse(section.id)}
           >
             {collapsed ? (
@@ -292,75 +322,91 @@ function SortableSection({
               <ChevronDown className="size-4" />
             )}
           </button>
-          <div>
-            <CardTitle className="text-base">{section.title}</CardTitle>
-            <p className="text-muted-foreground mt-1 text-sm">{items.length} lessons</p>
+          <div className="flex items-center gap-2.5">
+            <CardTitle className="text-sm font-semibold">{section.title}</CardTitle>
+            <Badge variant="outline" className="text-[11px] font-normal px-2 py-0.5">
+              {items.length} {items.length === 1 ? 'lesson' : 'lessons'}
+            </Badge>
           </div>
         </div>
-        <div className="flex shrink-0 flex-nowrap items-center gap-1.5">
-          <Button variant="outline" size="sm" onClick={() => onAddItem(section)}>
-            <Plus className="mr-1 size-4" />
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs font-medium" onClick={() => onAddItem(section)}>
+            <Plus className="mr-1.5 size-3.5" />
             Add Lesson
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isDuplicateSectionPending}
-            onClick={() => onDuplicateSection(section.id)}
-          >
-            {isDuplicateSectionPending ? (
-              <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-            ) : (
-              <CopyPlus className="mr-1.5 size-3.5" />
-            )}
-            Duplicate
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => onEditSection(section)}>
-            <Pencil className="mr-1.5 size-3.5" />
-            Rename
-          </Button>
-          <Button variant="destructiveOutline" size="sm" onClick={() => onDeleteSection(section)}>
-            <Trash2 className="mr-1.5 size-3.5" />
-            Delete
-          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="size-8">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => onEditSection(section)}>
+                <Pencil className="mr-2 size-4" />
+                Rename Chapter
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={isDuplicateSectionPending}
+                onClick={() => onDuplicateSection(section.id)}
+              >
+                {isDuplicateSectionPending ? (
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <CopyPlus className="mr-2 size-4" />
+                )}
+                Duplicate Chapter
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => onDeleteSection(section)}
+              >
+                <Trash2 className="mr-2 size-4" />
+                Delete Chapter
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
+
       <div className="collapsible-content" data-state={collapsed ? 'closed' : 'open'}>
-      <CardContent className="space-y-2 pt-0">
-        {items.length === 0 ? (
-          <div className="rounded-lg border border-dashed p-4 text-center">
-            <p className="text-muted-foreground text-sm">This chapter has no lessons yet.</p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <Button size="sm" variant="secondary" onClick={() => onAddItem(section, 'VIDEO')}>
-                <PlayCircle className="mr-1 size-3.5" />
-                Video
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => onAddItem(section, 'ARTICLE')}>
-                <FileText className="mr-1 size-3.5" />
-                Article
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
-            <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {items.map((item) => (
-                  <SortableItem
-                    key={item.id}
-                    item={item}
-                    section={section}
-                    onEdit={onEditItem}
-                    onDelete={onDeleteItem}
-                    onDuplicate={onDuplicateItem}
-                    isDuplicatePending={isDuplicateItemPending}
-                  />
-                ))}
+        <CardContent className="space-y-2 p-3 pt-3">
+          {items.length === 0 ? (
+            <div className="rounded-md border border-dashed p-4 text-center">
+              <p className="text-muted-foreground text-xs">This chapter has no lessons yet.</p>
+              <div className="mt-2.5 flex flex-wrap justify-center gap-2">
+                <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => onAddItem(section, 'VIDEO')}>
+                  <PlayCircle className="mr-1 size-3.5" />
+                  + Video
+                </Button>
+                <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => onAddItem(section, 'ARTICLE')}>
+                  <FileText className="mr-1 size-3.5" />
+                  + Article
+                </Button>
               </div>
-            </SortableContext>
-          </DndContext>
-        )}
-      </CardContent>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleItemDragEnd}>
+              <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {items.map((item) => (
+                    <SortableItem
+                      key={item.id}
+                      item={item}
+                      section={section}
+                      onEdit={onEditItem}
+                      onDelete={onDeleteItem}
+                      onDuplicate={onDuplicateItem}
+                      isDuplicatePending={isDuplicateItemPending}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </CardContent>
       </div>
     </Card>
   );
@@ -616,20 +662,49 @@ export function SyllabusEditor({
     }
   };
 
+  const handleExpandAll = () => setCollapsedSections(new Set());
+  const handleCollapseAll = () => setCollapsedSections(new Set(sections.map((s) => s.id)));
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium">Course syllabus</p>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-base font-semibold">Course Syllabus</p>
+          <p className="text-muted-foreground text-xs">
             {courseTitle ? `${courseTitle} · ` : ''}
-            {sections.length} chapters · {totalItems} lessons — shared across all runs.
+            {sections.length} {sections.length === 1 ? 'chapter' : 'chapters'} · {totalItems} {totalItems === 1 ? 'lesson' : 'lessons'}
           </p>
         </div>
-        <Button size="sm" onClick={() => setSectionSheetOpen(true)}>
-          <Plus className="mr-2 size-4" />
-          Add chapter
-        </Button>
+        <div className="flex items-center gap-2">
+          {sections.length > 0 && (
+            <div className="flex items-center rounded-md border bg-card p-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleExpandAll}
+                title="Expand all chapters"
+              >
+                <ChevronsDown className="mr-1 size-3.5" />
+                Expand All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                onClick={handleCollapseAll}
+                title="Collapse all chapters"
+              >
+                <ChevronsUp className="mr-1 size-3.5" />
+                Collapse All
+              </Button>
+            </div>
+          )}
+          <Button size="sm" className="h-8" onClick={() => setSectionSheetOpen(true)}>
+            <Plus className="mr-1.5 size-4" />
+            Add Chapter
+          </Button>
+        </div>
       </div>
 
       {sectionsQuery.isLoading ? (
